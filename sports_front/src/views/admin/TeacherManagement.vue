@@ -14,6 +14,7 @@
     </div>
 
     <el-table :data="teacherList" style="width: 100%" v-loading="loading">
+      <el-table-column prop="id" label="ID" width="80"></el-table-column>
       <el-table-column prop="username" label="用户名"></el-table-column>
       <el-table-column prop="realName" label="姓名"></el-table-column>
       <el-table-column prop="email" label="邮箱"></el-table-column>
@@ -93,7 +94,7 @@ export default {
     async fetchTeacherList() {
       try {
         this.loading = true
-        const res = await this.$http.get('/api/admin/users/list', {
+        const res = await this.$http.get('/admin/users', {
           params: {
             userType: 'TEACHER',
             keyword: this.searchKeyword
@@ -101,8 +102,11 @@ export default {
         })
         if (res.data.code === 200) {
           this.teacherList = res.data.data
+        } else {
+          this.$message.error(res.data.msg || '获取教师列表失败')
         }
       } catch (error) {
+        console.error('获取教师列表失败:', error)
         this.$message.error('获取教师列表失败')
       } finally {
         this.loading = false
@@ -132,17 +136,18 @@ export default {
       this.$refs.form.validate(async valid => {
         if (valid) {
           try {
-            const url = this.form.id ? '/api/admin/users/update' : '/api/admin/users/add'
+            const url = this.form.id ? '/admin/users/update' : '/admin/users/add'
             const res = await this.$http[this.form.id ? 'put' : 'post'](url, this.form)
             if (res.data.code === 200) {
-              this.$message.success(res.data.msg)
+              this.$message.success(this.form.id ? '更新成功' : '添加成功')
               this.dialogVisible = false
               this.fetchTeacherList()
             } else {
-              this.$message.error(res.data.msg)
+              this.$message.error(res.data.msg || '操作失败')
             }
           } catch (error) {
-            this.$message.error('操作失败')
+            console.error('操作失败:', error)
+            this.$message.error('操作失败，请检查网络连接或联系管理员')
           }
         }
       })
@@ -152,12 +157,12 @@ export default {
         await this.$confirm('确认删除该教师吗？', '提示', {
           type: 'warning'
         })
-        const res = await this.$http.delete(`/api/admin/users/delete/${row.id}`)
+        const res = await this.$http.delete(`/api/admin/users/${row.id}`)
         if (res.data.code === 200) {
-          this.$message.success(res.data.msg)
+          this.$message.success('删除成功')
           this.fetchTeacherList()
         } else {
-          this.$message.error(res.data.msg)
+          this.$message.error(res.data.msg || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
@@ -172,9 +177,9 @@ export default {
         })
         const res = await this.$http.put(`/api/admin/users/reset-password/${row.id}`)
         if (res.data.code === 200) {
-          this.$message.success(res.data.msg)
+          this.$message.success('密码重置成功')
         } else {
-          this.$message.error(res.data.msg)
+          this.$message.error(res.data.msg || '密码重置失败')
         }
       } catch (error) {
         if (error !== 'cancel') {

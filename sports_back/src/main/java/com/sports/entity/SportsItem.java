@@ -11,16 +11,14 @@ public class SportsItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
     private String name;
     
     private String description;
     
-    @Column(nullable = false)
-    private String unit; // 计量单位：秒、米、个等
+    private String unit;
     
-    @Column(nullable = false)
-    private String type; // 类型：田赛、径赛等
+    private String type;
     
-    private Boolean isActive = true; // 是否启用
-} 
+    @Column(name = "is_active")
+    private Boolean isActive;
+}

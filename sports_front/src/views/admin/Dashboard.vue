@@ -9,13 +9,7 @@
           </div>
           <div class="stats-info">
             <div class="stats-title">学生总数</div>
-            <div class="stats-number">
-              <count-to
-                :start-val="0"
-                :end-val="stats.studentCount"
-                :duration="2000"
-              />
-            </div>
+            <div class="stats-number">{{ stats.studentCount }}</div>
             <div class="stats-desc">在校学生总人数</div>
           </div>
         </el-card>
@@ -27,13 +21,7 @@
           </div>
           <div class="stats-info">
             <div class="stats-title">教师总数</div>
-            <div class="stats-number">
-              <count-to
-                :start-val="0"
-                :end-val="stats.teacherCount"
-                :duration="2000"
-              />
-            </div>
+            <div class="stats-number">{{ stats.teacherCount }}</div>
             <div class="stats-desc">任职教师总人数</div>
           </div>
         </el-card>
@@ -166,23 +154,26 @@ export default {
     }
   },
   created() {
-    this.fetchDashboardData()
+    this.fetchStats()
     this.fetchNotices()
   },
   methods: {
-    async fetchDashboardData() {
+    async fetchStats() {
       try {
-        const res = await this.$http.get('/api/admin/dashboard/stats')
+        const res = await this.$http.get('/admin/dashboard/stats')
         if (res.data.code === 200) {
           this.stats = res.data.data
+        } else {
+          this.$message.error(res.data.msg || '获取统计数据失败')
         }
       } catch (error) {
         console.error('获取统计数据失败:', error)
+        this.$message.error('获取统计数据失败')
       }
     },
     async fetchNotices() {
       try {
-        const res = await this.$http.get('/api/admin/notices/latest')
+        const res = await this.$http.get('/admin/notices/latest')
         if (res.data.code === 200) {
           this.notices = res.data.data
         }
