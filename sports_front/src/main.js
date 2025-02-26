@@ -10,7 +10,7 @@ Vue.use(ElementUI)
 Vue.config.productionTip = false
 
 // axios配置
-axios.defaults.baseURL = '/api'  // 确保只有一个 /api
+axios.defaults.baseURL = '/api'  // 已经配置了 /api 前缀
 axios.defaults.timeout = 5000
 
 // 请求拦截器

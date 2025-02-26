@@ -64,23 +64,28 @@
           </el-switch>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="200">
         <template slot-scope="scope">
-          <el-button
-            size="mini"
-            type="primary"
-            @click="handleView(scope.row)"
-          >查看</el-button>
-          <el-button
-            size="mini"
-            type="warning"
-            @click="handleEdit(scope.row)"
-          >编辑</el-button>
-          <el-button
-            size="mini"
-            type="danger"
-            @click="handleDelete(scope.row)"
-          >删除</el-button>
+          <el-button-group class="operation-group">
+            <el-button
+              type="primary"
+              size="mini"
+              @click="handleView(scope.row)">
+              查看
+            </el-button>
+            <el-button
+              type="warning"
+              size="mini"
+              @click="handleEdit(scope.row)">
+              编辑
+            </el-button>
+            <el-button
+              type="danger"
+              size="mini"
+              @click="handleDelete(scope.row)">
+              删除
+            </el-button>
+          </el-button-group>
         </template>
       </el-table-column>
     </el-table>
@@ -188,7 +193,10 @@ export default {
         priority: 'NORMAL',
         title: '',
         content: '',
-        status: 1
+        status: 1,
+        createTime: null,
+        updateTime: null,
+        createBy: this.$store.state.user.id
       },
       rules: {
         type: [
@@ -253,7 +261,7 @@ export default {
         }
       } catch (error) {
         console.error('获取通知列表失败:', error)
-        this.$message.error('获取通知列表失败')
+        this.$message.error('获取通知列表失败，请检查网络连接')
       } finally {
         this.loading = false
       }
@@ -278,7 +286,10 @@ export default {
         priority: 'NORMAL',
         title: '',
         content: '',
-        status: 1
+        status: 1,
+        createTime: null,
+        updateTime: null,
+        createBy: this.$store.state.user.id
       }
       this.dialogVisible = true
     },
@@ -296,7 +307,12 @@ export default {
         if (valid) {
           try {
             const url = this.form.id ? '/admin/notices/update' : '/admin/notices/add'
-            const res = await this.$http[this.form.id ? 'put' : 'post'](url, this.form)
+            const res = await this.$http[this.form.id ? 'put' : 'post'](url, {
+              ...this.form,
+              createTime: new Date(),
+              updateTime: new Date()
+            })
+            
             if (res.data.code === 200) {
               this.$message.success(this.form.id ? '更新成功' : '发布成功')
               this.dialogVisible = false
@@ -306,7 +322,7 @@ export default {
             }
           } catch (error) {
             console.error('操作失败:', error)
-            this.$message.error('操作失败')
+            this.$message.error('操作失败，请检查网络连接')
           }
         }
       })
@@ -401,5 +417,27 @@ export default {
 }
 .notice-priority i {
   margin-right: 5px;
+}
+.operation-group {
+  display: inline-block;
+}
+
+.operation-group .el-button {
+  padding: 4px 8px;
+  margin: 0;
+  border-radius: 0;
+}
+
+.operation-group .el-button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.operation-group .el-button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+/* 可选：鼠标悬停效果 */
+.operation-group .el-button:hover {
+  opacity: 0.8;
 }
 </style> 

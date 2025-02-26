@@ -23,4 +23,11 @@ public class User {
     private String realName;
     private String email;
     private String phone;
+
+    public User() {
+    }
+
+    public User(Long id) {
+        this.id = id;
+    }
 } 

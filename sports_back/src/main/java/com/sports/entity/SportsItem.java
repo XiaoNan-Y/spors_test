@@ -21,4 +21,11 @@ public class SportsItem {
     
     @Column(name = "is_active")
     private Boolean isActive;
+
+    public SportsItem() {
+    }
+
+    public SportsItem(Long id) {
+        this.id = id;
+    }
 }
