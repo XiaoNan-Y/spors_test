@@ -138,7 +138,7 @@
 import CountTo from 'vue-count-to'  // 需要安装 vue-count-to 包
 
 export default {
-  name: 'AdminDashboard',
+  name: 'Dashboard',
   components: {
     CountTo
   },
@@ -150,7 +150,11 @@ export default {
         sportsItemCount: 0,
         testRecordCount: 0
       },
-      notices: []
+      notices: [],
+      loading: {
+        stats: false,
+        notices: false
+      }
     }
   },
   created() {
@@ -160,7 +164,8 @@ export default {
   methods: {
     async fetchStats() {
       try {
-        const res = await this.$http.get('/admin/dashboard/stats')
+        this.loading.stats = true
+        const res = await this.$http.get('/api/admin/dashboard/stats')
         if (res.data.code === 200) {
           this.stats = res.data.data
         } else {
@@ -168,18 +173,27 @@ export default {
         }
       } catch (error) {
         console.error('获取统计数据失败:', error)
-        this.$message.error('获取统计数据失败')
+        this.$message.error('获取统计数据失败: ' + error.message)
+      } finally {
+        this.loading.stats = false
       }
     },
     async fetchNotices() {
       try {
-        const res = await this.$http.get('/admin/notices/latest')
+        const res = await this.$http.get('/api/admin/notices/latest')
         if (res.data.code === 200) {
           this.notices = res.data.data
+        } else {
+          throw new Error(res.data.msg)
         }
       } catch (error) {
         console.error('获取公告失败:', error)
+        this.$message.error('获取公告失败: ' + error.message)
       }
+    },
+    formatDate(date) {
+      if (!date) return ''
+      return new Date(date).toLocaleString()
     }
   }
 }

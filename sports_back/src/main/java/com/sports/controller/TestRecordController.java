@@ -31,7 +31,7 @@ public class TestRecordController {
             @RequestParam(required = false) Long sportsItemId,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
             log.info("Fetching records with params: status={}, teacherId={}, sportsItemId={}, startDate={}, endDate={}, page={}, size={}",
@@ -56,7 +56,7 @@ public class TestRecordController {
                 }
             }
             
-            PageRequest pageRequest = PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "testTime"));
+            PageRequest pageRequest = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "testTime"));
             Page<TestRecord> records = testRecordService.getRecordList(
                 status, teacherId, sportsItemId, start, end, pageRequest
             );
@@ -70,30 +70,51 @@ public class TestRecordController {
         }
     }
     
-    @PostMapping("/review/{id}")
-    public Result reviewRecord(
-            @PathVariable Long id,
-            @RequestBody Map<String, String> params,
-            @RequestAttribute Long userId) {
-        
-        TestRecord record = testRecordService.reviewRecord(
-            id, params.get("status"), params.get("comment"), userId
-        );
-        
-        return Result.success(record);
+    @PutMapping("/review")
+    public Result reviewRecord(@RequestBody Map<String, Object> params) {
+        try {
+            log.info("Reviewing record with params: {}", params);
+            
+            Long recordId = Long.parseLong(params.get("id").toString());
+            String status = (String) params.get("status");
+            String reviewComment = (String) params.get("reviewComment");
+            Long reviewerId = Long.parseLong(params.get("reviewerId").toString());
+            
+            TestRecord updated = testRecordService.reviewRecord(recordId, status, reviewComment, reviewerId);
+            return Result.success(updated);
+        } catch (Exception e) {
+            log.error("Review record failed:", e);
+            return Result.error("审核失败: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{id}")
-    public Result updateRecord(
-            @PathVariable Long id,
-            @RequestBody TestRecord record,
-            @RequestAttribute Long userId) {
+    public Result updateRecord(@PathVariable Long id, @RequestBody TestRecord record) {
         try {
+            log.info("Updating record with id: {} and data: {}", id, record);
+            
+            // 验证必要字段
+            if (record.getStudent() == null || record.getStudent().getId() == null) {
+                return Result.error("学生信息不能为空");
+            }
+            if (record.getSportsItem() == null || record.getSportsItem().getId() == null) {
+                return Result.error("测试项目不能为空");
+            }
+            if (record.getTeacher() == null || record.getTeacher().getId() == null) {
+                return Result.error("教师信息不能为空");
+            }
+            if (record.getScore() == null) {
+                return Result.error("成绩不能为空");
+            }
+            if (record.getTestTime() == null) {
+                return Result.error("测试时间不能为空");
+            }
+            
             record.setId(id);
-            TestRecord updated = testRecordService.updateRecord(record, userId);
+            TestRecord updated = testRecordService.updateRecord(record);
             return Result.success(updated);
         } catch (Exception e) {
-            log.error("Error updating record:", e);
+            log.error("Update record failed:", e);
             return Result.error("修改记录失败: " + e.getMessage());
         }
     }

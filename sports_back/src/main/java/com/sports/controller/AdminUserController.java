@@ -3,48 +3,77 @@ package com.sports.controller;
 import com.sports.common.Result;
 import com.sports.entity.User;
 import com.sports.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 import lombok.extern.slf4j.Slf4j;
 
-@RestController
-@RequestMapping("/api/admin/users")
 @Slf4j
+@RestController
+@RequestMapping("/api/admin")
 public class AdminUserController {
 
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
-    @GetMapping
-    public Result getUserList(
-        @RequestParam String userType,
-        @RequestParam(required = false) String keyword
-    ) {
-        log.debug("Getting user list for type: {}, keyword: {}", userType, keyword);
-        return userService.getUserList(userType, keyword);
+    public AdminUserController(UserService userService) {
+        this.userService = userService;
     }
 
-    @PostMapping("/add")
+    @GetMapping("/users")
+    public Result getUsers(
+        @RequestParam(required = false) String userType,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
+        try {
+            Page<User> users = userService.getUsers(userType, keyword, PageRequest.of(page, size));
+            return Result.success(users);
+        } catch (Exception e) {
+            log.error("获取用户列表失败", e);
+            return Result.error("获取用户列表失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/users")
     public Result addUser(@RequestBody User user) {
-        log.debug("Adding new user: {}", user);
-        return userService.addUser(user);
+        try {
+            log.info("Adding new user: {}", user);
+            return userService.addUser(user);
+        } catch (Exception e) {
+            log.error("添加用户失败", e);
+            return Result.error("添加用户失败：" + e.getMessage());
+        }
     }
 
-    @PostMapping("/update")
-    public Result updateUser(@RequestBody User user) {
-        log.debug("Updating user: {}", user);
-        return userService.updateUser(user);
+    @PutMapping("/users/{id}")
+    public Result updateUser(@PathVariable Long id, @RequestBody User user) {
+        try {
+            log.info("Updating user with id: {}, data: {}", id, user);
+            user.setId(id);
+            return userService.updateUser(user);
+        } catch (Exception e) {
+            log.error("Error updating user: ", e);
+            return Result.error("更新失败：" + e.getMessage());
+        }
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/users/{id}")
     public Result deleteUser(@PathVariable Long id) {
-        log.debug("Deleting user with id: {}", id);
-        return userService.deleteUser(id);
+        try {
+            return userService.deleteUser(id);
+        } catch (Exception e) {
+            log.error("删除用户失败", e);
+            return Result.error("删除用户失败：" + e.getMessage());
+        }
     }
 
-    @PostMapping("/{id}/reset-password")
+    @PutMapping("/users/{id}/reset-password")
     public Result resetPassword(@PathVariable Long id) {
-        log.debug("Resetting password for user id: {}", id);
-        return userService.resetPassword(id);
+        try {
+            return userService.resetPassword(id);
+        } catch (Exception e) {
+            log.error("重置密码失败", e);
+            return Result.error("重置密码失败：" + e.getMessage());
+        }
     }
 } 

@@ -62,45 +62,23 @@
 
     <!-- 添加/编辑对话框 -->
     <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="500px">
-      <el-form :model="form" :rules="rules" ref="form" label-width="100px">
-        <el-form-item label="项目名称" prop="name">
-          <el-input v-model="form.name" maxlength="50" show-word-limit></el-input>
+      <el-form :model="form" :rules="rules" ref="form" label-width="80px">
+        <el-form-item label="名称" prop="name">
+          <el-input v-model="form.name"></el-input>
         </el-form-item>
-        <el-form-item label="项目类型" prop="type">
-          <el-select v-model="form.type" placeholder="请选择项目类型" style="width: 100%">
-            <el-option label="田赛" value="田赛"></el-option>
-            <el-option label="径赛" value="径赛"></el-option>
-            <el-option label="体能" value="体能"></el-option>
+        <el-form-item label="描述" prop="description">
+          <el-input type="textarea" v-model="form.description"></el-input>
+        </el-form-item>
+        <el-form-item label="单位" prop="unit">
+          <el-input v-model="form.unit"></el-input>
+        </el-form-item>
+        <el-form-item label="类型" prop="type">
+          <el-select v-model="form.type" placeholder="请选择类型">
+            <el-option label="田径" value="田径"></el-option>
+            <el-option label="球类" value="球类"></el-option>
+            <el-option label="力量" value="力量"></el-option>
+            <el-option label="其他" value="其他"></el-option>
           </el-select>
-        </el-form-item>
-        <el-form-item label="计量单位" prop="unit">
-          <el-select v-model="form.unit" placeholder="请选择计量单位" style="width: 100%">
-            <el-option label="米" value="米"></el-option>
-            <el-option label="秒" value="秒"></el-option>
-            <el-option label="分钟" value="分钟"></el-option>
-            <el-option label="次" value="次"></el-option>
-            <el-option label="个" value="个"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="项目描述" prop="description">
-          <el-input
-            type="textarea"
-            v-model="form.description"
-            :rows="3"
-            maxlength="500"
-            show-word-limit
-            placeholder="请输入项目描述"
-          ></el-input>
-        </el-form-item>
-        <el-form-item label="状态" prop="isActive">
-          <el-switch
-            v-model="form.isActive"
-            active-color="#13ce66"
-            inactive-color="#ff4949"
-            active-text="启用"
-            inactive-text="禁用"
-          >
-          </el-switch>
         </el-form-item>
       </el-form>
       <div slot="footer">
@@ -120,30 +98,31 @@ export default {
       itemList: [],
       loading: false,
       dialogVisible: false,
-      dialogTitle: '',
+      isEdit: false,
       form: {
         id: null,
         name: '',
-        type: '',
-        unit: '',
         description: '',
+        unit: '',
+        type: '',
         isActive: true
       },
       rules: {
         name: [
-          { required: true, message: '请输入项目名称', trigger: 'blur' },
-          { max: 50, message: '长度不能超过50个字符', trigger: 'blur' }
+          { required: true, message: '请输入项目名称', trigger: 'blur' }
+        ],
+        unit: [
+          { required: true, message: '请输入计量单位', trigger: 'blur' }
         ],
         type: [
           { required: true, message: '请选择项目类型', trigger: 'change' }
-        ],
-        unit: [
-          { required: true, message: '请选择计量单位', trigger: 'change' }
-        ],
-        description: [
-          { max: 500, message: '描述不能超过500个字符', trigger: 'blur' }
         ]
       }
+    }
+  },
+  computed: {
+    dialogTitle() {
+      return this.isEdit ? '编辑项目' : '添加项目'
     }
   },
   created() {
@@ -161,16 +140,15 @@ export default {
     async fetchItemList() {
       try {
         this.loading = true
-        const res = await this.$http.get('/admin/sports-items', {
-          params: { keyword: this.searchKeyword }
+        const res = await this.$http.get('/api/admin/sports-items', {
+          params: {
+            keyword: this.searchKeyword
+          }
         })
         if (res.data.code === 200) {
           this.itemList = res.data.data
-        } else {
-          this.$message.error(res.data.msg || '获取项目列表失败')
         }
       } catch (error) {
-        console.error('获取项目列表失败:', error)
         this.$message.error('获取项目列表失败')
       } finally {
         this.loading = false
@@ -180,19 +158,19 @@ export default {
       this.fetchItemList()
     },
     handleAdd() {
-      this.dialogTitle = '添加项目'
+      this.isEdit = false
       this.form = {
         id: null,
         name: '',
-        type: '',
-        unit: '',
         description: '',
+        unit: '',
+        type: '',
         isActive: true
       }
       this.dialogVisible = true
     },
     handleEdit(row) {
-      this.dialogTitle = '编辑项目'
+      this.isEdit = true
       this.form = { ...row }
       this.dialogVisible = true
     },
@@ -200,10 +178,13 @@ export default {
       this.$refs.form.validate(async valid => {
         if (valid) {
           try {
-            const url = this.form.id ? '/admin/sports-items/update' : '/admin/sports-items/add'
-            const res = await this.$http[this.form.id ? 'put' : 'post'](url, this.form)
+            const url = this.isEdit 
+              ? `/api/admin/sports-items/${this.form.id}`
+              : '/api/admin/sports-items'
+            const method = this.isEdit ? 'put' : 'post'
+            const res = await this.$http[method](url, this.form)
             if (res.data.code === 200) {
-              this.$message.success(this.form.id ? '更新成功' : '添加成功')
+              this.$message.success(this.isEdit ? '更新成功' : '添加成功')
               this.dialogVisible = false
               this.fetchItemList()
             } else {
@@ -211,22 +192,20 @@ export default {
             }
           } catch (error) {
             console.error('操作失败:', error)
-            this.$message.error('操作失败')
+            this.$message.error(error.response?.data?.msg || '操作失败')
           }
         }
       })
     },
     async handleDelete(row) {
       try {
-        await this.$confirm('确认删除该项目吗？', '提示', {
+        await this.$confirm('确认删除该项目?', '提示', {
           type: 'warning'
         })
-        const res = await this.$http.delete(`/admin/sports-items/${row.id}`)
+        const res = await this.$http.delete(`/api/admin/sports-items/${row.id}`)
         if (res.data.code === 200) {
           this.$message.success('删除成功')
           this.fetchItemList()
-        } else {
-          this.$message.error(res.data.msg || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
@@ -236,14 +215,14 @@ export default {
     },
     async handleStatusChange(row) {
       try {
-        const res = await this.$http.put(`/admin/sports-items/${row.id}/status`, {
+        const res = await this.$http.put(`/api/admin/sports-items/${row.id}/status`, {
           isActive: row.isActive
         })
         if (res.data.code === 200) {
           this.$message.success(`${row.isActive ? '启用' : '禁用'}成功`)
         } else {
           row.isActive = !row.isActive // 恢复状态
-          this.$message.error(res.data.msg || '操作失败')
+          this.$message.error('操作失败')
         }
       } catch (error) {
         row.isActive = !row.isActive // 恢复状态

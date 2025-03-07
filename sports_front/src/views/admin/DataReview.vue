@@ -55,7 +55,7 @@
 
     <!-- 数据列表 -->
     <el-table
-      :data="recordList"
+      :data="recordList || []"
       border
       stripe
       v-loading="loading"
@@ -64,22 +64,26 @@
       <el-table-column prop="id" label="ID" width="80"></el-table-column>
       <el-table-column label="学生姓名">
         <template slot-scope="scope">
-          {{ scope.row.student?.realName }}
+          {{ scope.row?.student?.realName || '未知' }}
         </template>
       </el-table-column>
       <el-table-column label="测试项目">
         <template slot-scope="scope">
-          {{ scope.row.sportsItem?.name }}
+          {{ scope.row?.sportsItem?.name || '未知' }}
         </template>
       </el-table-column>
       <el-table-column label="测试成绩">
         <template slot-scope="scope">
           <span :class="{ 'abnormal-score': isAbnormalScore(scope.row) }">
-            {{ scope.row.score }}{{ scope.row.sportsItem?.unit }}
+            {{ scope.row?.score }}{{ scope.row?.sportsItem?.unit || '' }}
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="teacher.realName" label="录入教师"></el-table-column>
+      <el-table-column label="录入教师">
+        <template slot-scope="scope">
+          {{ scope.row?.teacher?.realName || '未知' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="testTime" label="测试时间" width="180">
         <template slot-scope="scope">
           {{ formatDate(scope.row.testTime) }}
@@ -97,7 +101,7 @@
           <el-button
             size="mini"
             type="primary"
-            @click="handleReview(scope.row)"
+            @click="handleReview(scope.row, 'approve')"
             v-if="scope.row.status === 'PENDING'"
           >审核</el-button>
           <el-button
@@ -128,46 +132,44 @@
     </div>
 
     <!-- 审核对话框 -->
-    <el-dialog title="数据审核" :visible.sync="reviewDialogVisible" width="500px">
-      <div class="review-info">
-        <p><strong>学生：</strong>{{ currentRecord.student?.realName }}</p>
-        <p><strong>测试项目：</strong>{{ currentRecord.sportsItem?.name }}</p>
-        <p><strong>测试成绩：</strong>{{ currentRecord.score }}{{ currentRecord.sportsItem?.unit }}</p>
-        <p><strong>录入教师：</strong>{{ currentRecord.teacher?.realName }}</p>
-        <p><strong>测试时间：</strong>{{ formatDate(currentRecord.testTime) }}</p>
-        <p v-if="isAbnormalScore(currentRecord)" class="warning-text">
-          <i class="el-icon-warning"></i> 该成绩可能异常，请仔细审核
-        </p>
+    <el-dialog
+      :title="reviewDialogTitle"
+      :visible.sync="reviewDialogVisible"
+      width="500px"
+    >
+      <div class="review-info" v-if="currentRecord">
+        <p>学生：{{ currentRecord.student?.realName || '未知' }}</p>
+        <p>测试项目：{{ currentRecord.sportsItem?.name || '未知' }}</p>
+        <p>测试成绩：{{ currentRecord.score }}{{ currentRecord.sportsItem?.unit || '' }}</p>
+        <p>测试时间：{{ formatDate(currentRecord.testTime) }}</p>
       </div>
-      <el-form :model="reviewForm" ref="reviewForm" label-width="80px">
-        <el-form-item label="审核结果" prop="status">
-          <el-radio-group v-model="reviewForm.status">
-            <el-radio label="APPROVED">通过</el-radio>
-            <el-radio label="REJECTED">驳回</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="审核意见" prop="comment">
-          <el-input
-            type="textarea"
-            v-model="reviewForm.comment"
-            :rows="3"
-            placeholder="请输入审核意见"
-          ></el-input>
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button @click="reviewDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitReview">确定</el-button>
+
+      <div v-if="reviewType === 'reject'" class="reject-form">
+        <el-form :model="reviewForm" :rules="reviewRules" ref="reviewForm">
+          <el-form-item label="驳回原因" prop="reviewComment">
+            <el-input
+              type="textarea"
+              v-model="reviewForm.reviewComment"
+              :rows="3"
+              placeholder="请输入驳回原因"
+            ></el-input>
+          </el-form-item>
+        </el-form>
       </div>
+
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="reviewDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitReview">确 定</el-button>
+      </span>
     </el-dialog>
 
     <!-- 详情对话框 -->
     <el-dialog title="详细信息" :visible.sync="detailDialogVisible" width="500px">
-      <div class="detail-info">
-        <p><strong>学生：</strong>{{ currentRecord.student?.realName }}</p>
-        <p><strong>测试项目：</strong>{{ currentRecord.sportsItem?.name }}</p>
-        <p><strong>测试成绩：</strong>{{ currentRecord.score }}{{ currentRecord.sportsItem?.unit }}</p>
-        <p><strong>录入教师：</strong>{{ currentRecord.teacher?.realName }}</p>
+      <div class="detail-info" v-if="currentRecord">
+        <p><strong>学生：</strong>{{ currentRecord.student?.realName || '未知' }}</p>
+        <p><strong>测试项目：</strong>{{ currentRecord.sportsItem?.name || '未知' }}</p>
+        <p><strong>测试成绩：</strong>{{ currentRecord.score }}{{ currentRecord.sportsItem?.unit || '' }}</p>
+        <p><strong>录入教师：</strong>{{ currentRecord.teacher?.realName || '未知' }}</p>
         <p><strong>测试时间：</strong>{{ formatDate(currentRecord.testTime) }}</p>
         <p><strong>审核状态：</strong>{{ getStatusLabel(currentRecord.status) }}</p>
         <p><strong>审核意见：</strong>{{ currentRecord.reviewComment || '无' }}</p>
@@ -307,10 +309,15 @@ export default {
       reviewDialogVisible: false,
       detailDialogVisible: false,
       editDialogVisible: false,
-      currentRecord: {},
+      currentRecord: null,
+      reviewType: '',
       reviewForm: {
-        status: 'APPROVED',
-        comment: ''
+        reviewComment: ''
+      },
+      reviewRules: {
+        reviewComment: [
+          { required: true, message: '请输入驳回原因', trigger: 'blur' }
+        ]
       },
       editForm: {
         studentId: '',
@@ -321,15 +328,11 @@ export default {
         reviewComment: ''
       },
       editRules: {
-        score: [
-          { required: true, message: '请输入测试成绩', trigger: 'blur' }
-        ],
-        testTime: [
-          { required: true, message: '请选择测试时间', trigger: 'change' }
-        ],
-        status: [
-          { required: true, message: '请选择审核状态', trigger: 'change' }
-        ]
+        studentId: [{ required: true, message: '请选择学生', trigger: 'change' }],
+        teacherId: [{ required: true, message: '请选择教师', trigger: 'change' }],
+        sportsItemId: [{ required: true, message: '请选择测试项目', trigger: 'change' }],
+        score: [{ required: true, message: '请输入成绩', trigger: 'blur' }],
+        testTime: [{ required: true, message: '请选择测试时间', trigger: 'change' }]
       },
       addDialogVisible: false,
       addForm: {
@@ -353,13 +356,32 @@ export default {
         ]
       },
       selectedItem: null,
-      students: []
+      students: [],
+      rejectReason: ''
     }
   },
-  created() {
-    this.fetchSportsItems()
-    this.fetchTeachers()
-    this.fetchRecordList()
+  computed: {
+    reviewDialogTitle() {
+      return this.reviewType === 'approve' ? '审核通过确认' : '驳回确认'
+    }
+  },
+  async created() {
+    try {
+      this.loading = true
+      // 先获取基础数据
+      await Promise.all([
+        this.fetchSportsItems(),
+        this.fetchTeachers(),
+        this.fetchStudents()
+      ])
+      // 再获取记录列表
+      await this.fetchRecordList()
+    } catch (error) {
+      console.error('初始化数据失败:', error)
+      this.$message.error('初始化数据失败')
+    } finally {
+      this.loading = false
+    }
   },
   methods: {
     formatDate(date) {
@@ -398,69 +420,59 @@ export default {
     },
     async fetchSportsItems() {
       try {
-        const res = await this.$http.get('/admin/sports-items')
+        const res = await this.$http.get('/api/admin/sports-items')
         if (res.data.code === 200) {
-          this.sportsItems = res.data.data
+          this.sportsItems = res.data.data || []
         }
       } catch (error) {
         console.error('获取体育项目失败:', error)
-        this.$message.error('获取体育项目失败')
+        this.$message.error('获取体育项目失败: ' + error.message)
+        this.sportsItems = []
       }
     },
     async fetchTeachers() {
       try {
-        const res = await this.$http.get('/admin/users', {
+        const res = await this.$http.get('/api/admin/users', {
           params: { userType: 'TEACHER' }
         })
         if (res.data.code === 200) {
-          this.teachers = res.data.data
+          this.teachers = res.data.data || []
         }
       } catch (error) {
         console.error('获取教师列表失败:', error)
-        this.$message.error('获取教师列表失败')
+        this.$message.error('获取教师列表失败: ' + error.message)
+        this.teachers = []
       }
     },
     async fetchRecordList() {
       try {
         this.loading = true
         const params = {
-          page: this.page.current,
-          size: this.page.size,
-          status: this.filterForm.status || null,
-          teacherId: this.filterForm.teacherId || null,
-          sportsItemId: this.filterForm.sportsItemId || null,
+          status: this.filterForm.status,
+          teacherId: this.filterForm.teacherId,
+          sportsItemId: this.filterForm.sportsItemId,
           startDate: this.filterForm.dateRange?.[0] || null,
-          endDate: this.filterForm.dateRange?.[1] || null
+          endDate: this.filterForm.dateRange?.[1] || null,
+          page: this.page.current - 1,
+          size: this.page.size
         }
         
-        // 移除所有空值参数
-        Object.keys(params).forEach(key => {
-          if (params[key] === null || params[key] === '') {
-            delete params[key];
-          }
-        });
-
-        console.log('Fetching records with params:', params);
-        const res = await this.$http.get('/admin/test-records/review', { params })
-        console.log('Response:', res.data);
+        console.log('Fetching records with params:', params)
+        const res = await this.$http.get('/api/admin/test-records/review', { params })
+        console.log('Response:', res.data)
 
         if (res.data.code === 200) {
-          if (res.data.data && Array.isArray(res.data.data.content)) {
-            this.recordList = res.data.data.content;
-            this.page.total = res.data.data.totalElements;
-            console.log('Records loaded:', this.recordList);
-          } else {
-            console.warn('Unexpected data format:', res.data);
-            this.$message.warning('数据格式不正确');
-          }
+          this.recordList = Array.isArray(res.data.data.content) ? res.data.data.content : []
+          this.page.total = res.data.data.totalElements || 0
         } else {
-          this.$message.error(res.data.msg || '获取记录列表失败');
+          throw new Error(res.data.msg || '获取记录列表失败')
         }
       } catch (error) {
-        console.error('获取记录列表失败:', error);
-        this.$message.error(error.response?.data?.msg || '获取记录列表失败');
+        console.error('获取记录列表失败:', error)
+        this.$message.error('获取记录列表失败: ' + error.message)
+        this.recordList = []
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
     handleSearch() {
@@ -484,70 +496,62 @@ export default {
       this.page.current = val
       this.fetchRecordList()
     },
-    handleReview(row) {
-      this.currentRecord = { ...row }
-      this.reviewForm = {
-        status: 'APPROVED',
-        comment: ''
-      }
+    handleReview(record, type) {
+      this.currentRecord = { ...record }
+      this.reviewType = type
+      this.reviewForm.reviewComment = ''
       this.reviewDialogVisible = true
     },
-    handleDetail(row) {
-      this.currentRecord = { ...row }
+    handleDetail(record) {
+      this.currentRecord = { ...record }
       this.detailDialogVisible = true
     },
-    handleEdit(row) {
-      this.currentRecord = { ...row }
+    handleEdit(record) {
+      this.currentRecord = record;
       this.editForm = {
-        studentId: row.student?.id,
-        sportsItemId: row.sportsItem?.id,
-        score: row.score,
-        testTime: this.formatDateTime(row.testTime),
-        status: row.status,
-        reviewComment: row.reviewComment
-      }
-      this.editDialogVisible = true
-    },
-    formatDateTime(date) {
-      if (!date) return ''
-      const d = new Date(date)
-      const pad = (n) => n < 10 ? `0${n}` : n
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-    },
-    async submitReview() {
-      try {
-        const res = await this.$http.post(`/admin/test-records/review/${this.currentRecord.id}`, {
-          status: this.reviewForm.status,
-          comment: this.reviewForm.comment
-        })
-        if (res.data.code === 200) {
-          this.$message.success('审核完成')
-          this.reviewDialogVisible = false
-          this.fetchRecordList()
-        }
-      } catch (error) {
-        console.error('审核失败:', error)
-        this.$message.error('审核失败')
-      }
+        studentId: record.student?.id,
+        teacherId: record.teacher?.id,
+        sportsItemId: record.sportsItem?.id,
+        score: record.score,
+        testTime: record.testTime,
+        status: record.status,
+        remark: record.remark || ''
+      };
+      this.editDialogVisible = true;
     },
     async submitEdit() {
       try {
-        await this.$refs.editForm.validate()
-        const res = await this.$http.put(`/admin/test-records/${this.currentRecord.id}`, {
-          ...this.editForm,
-          reviewTime: this.editForm.status !== 'PENDING' ? new Date().toISOString() : null
-        })
+        await this.$refs.editForm.validate();
         
+        // 构造请求数据，确保数据格式正确
+        const editData = {
+          id: this.currentRecord.id,
+          student: { id: this.editForm.studentId },
+          teacher: { id: this.editForm.teacherId },
+          sportsItem: { id: this.editForm.sportsItemId },
+          score: parseFloat(this.editForm.score),
+          testTime: this.editForm.testTime ? new Date(this.editForm.testTime).toISOString() : null,
+          status: this.editForm.status,
+          remark: this.editForm.remark
+        };
+
+        console.log('Submitting edit data:', editData);
+
+        const res = await this.$http.put(
+          `/api/admin/test-records/${this.currentRecord.id}`,
+          editData
+        );
+
         if (res.data.code === 200) {
-          this.$message.success('修改成功')
-          this.editDialogVisible = false
-          this.fetchRecordList()
+          this.$message.success('修改成功');
+          this.editDialogVisible = false;
+          await this.fetchRecordList();
         } else {
-          this.$message.error(res.data.msg || '修改失败')
+          throw new Error(res.data.msg || '修改失败');
         }
       } catch (error) {
-        console.error('修改失败:', error)
-        this.$message.error('修改失败')
+        console.error('修改失败:', error);
+        this.$message.error('修改失败: ' + (error.response?.data?.msg || error.message));
       }
     },
     handleAdd() {
@@ -596,6 +600,36 @@ export default {
       } catch (error) {
         console.error('录入失败:', error)
         this.$message.error(error.response?.data?.msg || '录入失败')
+      }
+    },
+    async submitReview() {
+      try {
+        if (this.reviewType === 'reject') {
+          // 驳回时验证表单
+          await this.$refs.reviewForm.validate()
+        }
+
+        const params = {
+          id: this.currentRecord.id,
+          status: this.reviewType === 'approve' ? 'APPROVED' : 'REJECTED',
+          reviewComment: this.reviewType === 'approve' ? '审核通过' : this.reviewForm.reviewComment,
+          reviewerId: this.$store.state.user.id
+        }
+
+        console.log('Submitting review:', params)
+
+        const res = await this.$http.put('/api/admin/test-records/review', params)
+
+        if (res.data.code === 200) {
+          this.$message.success(this.reviewType === 'approve' ? '审核通过成功' : '驳回成功')
+          this.reviewDialogVisible = false
+          await this.fetchRecordList()
+        } else {
+          throw new Error(res.data.msg || '审核失败')
+        }
+      } catch (error) {
+        console.error('审核失败:', error)
+        this.$message.error('审核失败: ' + (error.response?.data?.msg || error.message))
       }
     },
     async fetchStudents() {
@@ -664,5 +698,9 @@ export default {
 
 .operation-buttons {
   margin-left: 20px;
+}
+
+.reject-form {
+  margin-top: 20px;
 }
 </style> 

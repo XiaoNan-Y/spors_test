@@ -4,6 +4,7 @@ import com.sports.entity.SportsItem;
 import com.sports.repository.SportsItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -24,8 +25,19 @@ public class SportsItemService {
         sportsItemRepository.save(sportsItem);
     }
 
+    @Transactional
     public void update(SportsItem sportsItem) {
-        sportsItemRepository.save(sportsItem);
+        SportsItem existingItem = sportsItemRepository.findById(sportsItem.getId())
+            .orElseThrow(() -> new RuntimeException("项目不存在"));
+        
+        // 更新字段
+        existingItem.setName(sportsItem.getName());
+        existingItem.setDescription(sportsItem.getDescription());
+        existingItem.setUnit(sportsItem.getUnit());
+        existingItem.setType(sportsItem.getType());
+        existingItem.setIsActive(sportsItem.getIsActive());
+        
+        sportsItemRepository.save(existingItem);
     }
 
     public void delete(Long id) {

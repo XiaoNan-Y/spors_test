@@ -51,33 +51,35 @@ export default {
       this.$refs.loginForm.validate(async valid => {
         if (valid) {
           try {
-            const res = await this.$http.post('/user/login', this.loginForm)
+            console.log('Attempting login with:', this.loginForm);
+            const res = await this.$http.post('/api/user/login', this.loginForm);
+            
             if (res.data.code === 200) {
               // 保存用户信息到vuex
-              this.$store.dispatch('setUser', res.data.data)
-              this.$message.success('登录成功')
+              this.$store.dispatch('setUser', res.data.data);
+              this.$message.success('登录成功');
               
               // 根据用户类型跳转到不同的页面
-              const userType = res.data.data.userType
+              const userType = res.data.data.userType;
               switch (userType) {
                 case 'ADMIN':
-                  this.$router.push('/admin/dashboard')
-                  break
+                  this.$router.push('/admin/dashboard');
+                  break;
                 case 'TEACHER':
-                  this.$router.push('/teacher/dashboard')
-                  break
+                  this.$router.push('/teacher/dashboard');
+                  break;
                 case 'STUDENT':
-                  this.$router.push('/student/dashboard')
-                  break
+                  this.$router.push('/student/dashboard');
+                  break;
                 default:
-                  this.$message.error('未知的用户类型')
+                  this.$message.error('未知的用户类型');
               }
             } else {
-              this.$message.error(res.data.msg)
+              this.$message.error(res.data.msg || '登录失败');
             }
           } catch (error) {
-            console.error('Login error:', error)
-            this.$message.error('登录失败，请检查网络连接')
+            console.error('Login error:', error);
+            this.$message.error('登录失败：' + (error.response?.data?.msg || '请检查网络连接'));
           }
         }
       })

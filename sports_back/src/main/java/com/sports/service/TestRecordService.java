@@ -2,6 +2,7 @@ package com.sports.service;
 
 import com.sports.entity.TestRecord;
 import com.sports.entity.User;
+import com.sports.entity.SportsItem;
 import com.sports.repository.TestRecordRepository;
 import com.sports.repository.UserRepository;
 import com.sports.repository.SportsItemRepository;
@@ -10,12 +11,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.JoinType;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -47,6 +50,7 @@ public class TestRecordService {
                     root.fetch("student", JoinType.LEFT);
                     root.fetch("teacher", JoinType.LEFT);
                     root.fetch("sportsItem", JoinType.LEFT);
+                    root.fetch("reviewer", JoinType.LEFT);
                     query.distinct(true);
                 }
                 
@@ -87,34 +91,60 @@ public class TestRecordService {
         }
     }
     
+    @Transactional
     public TestRecord reviewRecord(Long id, String status, String comment, Long reviewerId) {
+        log.info("Reviewing record: id={}, status={}, comment={}, reviewerId={}", 
+                id, status, comment, reviewerId);
+        
         TestRecord record = testRecordRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("记录不存在"));
+            .orElseThrow(() -> new RuntimeException("测试记录不存在"));
             
+        // 验证状态值
+        if (!Arrays.asList(
+                TestRecord.STATUS_APPROVED, 
+                TestRecord.STATUS_REJECTED
+            ).contains(status)) {
+            throw new RuntimeException("无效的审核状态");
+        }
+        
+        // 更新审核信息
         record.setStatus(status);
         record.setReviewComment(comment);
         record.setReviewTime(LocalDateTime.now());
         record.setReviewer(new User(reviewerId));
+        record.setUpdatedAt(LocalDateTime.now());
         
+        log.info("Saving reviewed record: {}", record);
         return testRecordRepository.save(record);
     }
 
-    public TestRecord updateRecord(TestRecord record, Long userId) {
+    @Transactional
+    public TestRecord updateRecord(TestRecord record) {
+        log.info("Updating record: {}", record);
+        
         TestRecord existing = testRecordRepository.findById(record.getId())
-            .orElseThrow(() -> new RuntimeException("记录不存在"));
+            .orElseThrow(() -> new RuntimeException("测试记录不存在"));
         
         // 更新基本信息
         existing.setScore(record.getScore());
         existing.setTestTime(record.getTestTime());
+        existing.setRemark(record.getRemark());
         
-        // 更新审核信息
-        if (!existing.getStatus().equals(record.getStatus())) {
-            existing.setStatus(record.getStatus());
-            existing.setReviewComment(record.getReviewComment());
-            existing.setReviewTime(LocalDateTime.now());
-            existing.setReviewer(new User(userId));
+        // 更新关联实体
+        if (record.getStudent() != null && record.getStudent().getId() != null) {
+            existing.setStudent(new User(record.getStudent().getId()));
+        }
+        if (record.getTeacher() != null && record.getTeacher().getId() != null) {
+            existing.setTeacher(new User(record.getTeacher().getId()));
+        }
+        if (record.getSportsItem() != null && record.getSportsItem().getId() != null) {
+            existing.setSportsItem(new SportsItem(record.getSportsItem().getId()));
         }
         
+        // 更新时间
+        existing.setUpdatedAt(LocalDateTime.now());
+        
+        log.info("Saving updated record: {}", existing);
         return testRecordRepository.save(existing);
     }
 

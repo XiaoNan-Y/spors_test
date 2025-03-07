@@ -135,7 +135,7 @@ export default {
     async fetchStudentList() {
       try {
         this.loading = true
-        const res = await this.$http.get('/admin/users', {
+        const res = await this.$http.get('/api/admin/users', {
           params: {
             userType: 'STUDENT',
             keyword: this.searchKeyword,
@@ -144,12 +144,22 @@ export default {
           }
         })
         if (res.data.code === 200) {
-          this.studentList = res.data.data
-          this.total = this.studentList.length
+          if (Array.isArray(res.data.data)) {
+            this.studentList = res.data.data
+            this.total = res.data.data.length
+          } else if (res.data.data.content) {
+            this.studentList = res.data.data.content
+            this.total = res.data.data.totalElements
+          } else {
+            this.studentList = res.data.data
+            this.total = res.data.data.length
+          }
+        } else {
+          this.$message.error(res.data.msg || '获取学生列表失败')
         }
       } catch (error) {
         console.error('获取学生列表失败:', error)
-        this.$message.error('获取学生列表失败')
+        this.$message.error('获取学生列表失败: ' + error.message)
       } finally {
         this.loading = false
       }
@@ -177,23 +187,22 @@ export default {
       this.$refs.studentForm.validate(async valid => {
         if (valid) {
           try {
-            const data = {
+            const url = this.dialogType === 'add' ? '/api/admin/users' : `/api/admin/users/${this.studentForm.id}`
+            const method = this.dialogType === 'add' ? 'post' : 'put'
+            const res = await this.$http[method](url, {
               ...this.studentForm,
-              userType: 'STUDENT',
-              password: '123456' // 设置默认密码
-            }
-            const url = this.dialogType === 'add' ? '/admin/users/add' : '/admin/users/update'
-            const res = await this.$http.post(url, data)
+              userType: 'STUDENT'
+            })
             if (res.data.code === 200) {
               this.$message.success(this.dialogType === 'add' ? '添加成功' : '更新成功')
               this.dialogVisible = false
               this.fetchStudentList()
             } else {
-              this.$message.error(res.data.msg || (this.dialogType === 'add' ? '添加失败' : '更新失败'))
+              this.$message.error(res.data.msg || '操作失败')
             }
           } catch (error) {
             console.error('操作失败:', error)
-            this.$message.error(this.dialogType === 'add' ? '添加失败' : '更新失败')
+            this.$message.error(error.response?.data?.msg || '操作失败')
           }
         }
       })
@@ -203,7 +212,7 @@ export default {
         await this.$confirm('确认删除该学生吗？', '提示', {
           type: 'warning'
         })
-        const res = await this.$http.delete(`/admin/users/${row.id}`)
+        const res = await this.$http.delete(`/api/admin/users/${row.id}`)
         if (res.data.code === 200) {
           this.$message.success('删除成功')
           this.fetchStudentList()
@@ -219,7 +228,7 @@ export default {
         await this.$confirm('确认重置该学生的密码吗？', '提示', {
           type: 'warning'
         })
-        const res = await this.$http.post(`/admin/users/${row.id}/reset-password`)
+        const res = await this.$http.post(`/api/admin/users/${row.id}/reset-password`)
         if (res.data.code === 200) {
           this.$message.success('密码重置成功')
         }

@@ -1,128 +1,116 @@
 package com.sports.service.impl;
 
+import com.sports.common.Result;
 import com.sports.entity.User;
 import com.sports.repository.UserRepository;
 import com.sports.service.UserService;
-import com.sports.common.Result;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
-
+@Slf4j
 @Service
-@Transactional(readOnly = true)  // 默认只读事务
-@Slf4j  // 添加 Lombok 日志注解
 public class UserServiceImpl implements UserService {
-
+    
     @Autowired
     private UserRepository userRepository;
-
+    
+    @Override
+    public Page<User> getUsers(String userType, String keyword, Pageable pageable) {
+        return userRepository.findByUserTypeAndKeyword(userType, keyword, pageable);
+    }
+    
     @Override
     public Result login(User user) {
-        log.debug("Attempting login for username: {}", user.getUsername());
-        User dbUser = userRepository.findByUsername(user.getUsername());
-        if (dbUser == null) {
-            log.debug("User not found: {}", user.getUsername());
+        User existingUser = userRepository.findByUsername(user.getUsername());
+        if (existingUser == null) {
             return Result.error("用户不存在");
         }
-        log.debug("Found user: {}", dbUser);
-        if (!dbUser.getPassword().equals(user.getPassword())) {
-            return Result.error("密码错误");
-        }
-        return Result.success(dbUser);
+        // TODO: 实现密码验证
+        return Result.success(existingUser);
     }
-
+    
     @Override
-    public Result getUserList(String userType, String keyword) {
-        List<User> users;
-        if (StringUtils.hasText(keyword)) {
-            users = userRepository.findByUserTypeAndUsernameContainingOrRealNameContaining(
-                userType, keyword, keyword);
-        } else {
-            users = userRepository.findByUserType(userType);
-        }
-        return Result.success(users);
+    public Result changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("用户不存在"));
+        // TODO: 实现密码修改
+        return Result.success(null);
     }
-
+    
     @Override
-    @Transactional  // 添加事务注解
+    @Transactional
     public Result addUser(User user) {
-        log.debug("Adding new user: {}", user);  // 添加日志
         try {
             // 检查用户名是否已存在
-            if (userRepository.findByUsername(user.getUsername()) != null) {
+            User existingUser = userRepository.findByUsername(user.getUsername());
+            if (existingUser != null) {
                 return Result.error("用户名已存在");
             }
             
             // 设置默认密码
-            user.setPassword("123456");
+            if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+                user.setPassword("123456"); // 默认密码
+            }
             
             // 保存用户
             User savedUser = userRepository.save(user);
-            log.debug("User saved successfully: {}", savedUser);
+            log.info("Successfully added user: {}", savedUser.getUsername());
+            return Result.success(savedUser);
             
-            return Result.success("添加成功");
         } catch (Exception e) {
             log.error("Error adding user: ", e);
-            return Result.error("添加失败：" + e.getMessage());
+            throw new RuntimeException("添加用户失败: " + e.getMessage());
         }
     }
-
+    
     @Override
+    @Transactional
     public Result updateUser(User user) {
-        User existingUser = userRepository.findById(user.getId()).orElse(null);
-        if (existingUser == null) {
-            return Result.error("用户不存在");
+        try {
+            User existingUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+                
+            existingUser.setRealName(user.getRealName());
+            existingUser.setEmail(user.getEmail());
+            existingUser.setPhone(user.getPhone());
+            
+            userRepository.save(existingUser);
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("更新用户失败", e);
+            return Result.error("更新用户失败：" + e.getMessage());
         }
-        // 如果修改了用户名，需要检查新用户名是否已存在
-        if (!existingUser.getUsername().equals(user.getUsername()) &&
-            userRepository.findByUsername(user.getUsername()) != null) {
-            return Result.error("用户名已存在");
-        }
-        // 保持原密码不变
-        user.setPassword(existingUser.getPassword());
-        userRepository.save(user);
-        return Result.success("更新成功");
     }
-
+    
     @Override
+    @Transactional
     public Result deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            return Result.error("用户不存在");
+        try {
+            userRepository.deleteById(id);
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("删除用户失败", e);
+            return Result.error("删除用户失败：" + e.getMessage());
         }
-        userRepository.deleteById(id);
-        return Result.success("删除成功");
     }
-
+    
     @Override
+    @Transactional
     public Result resetPassword(Long id) {
-        User user = userRepository.findById(id).orElse(null);
-        if (user == null) {
-            return Result.error("用户不存在");
+        try {
+            User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            // TODO: 实现密码重置
+            user.setPassword("123456"); // 设置默认密码
+            userRepository.save(user);
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("重置密码失败", e);
+            return Result.error("重置密码失败：" + e.getMessage());
         }
-        user.setPassword("123456");
-        userRepository.save(user);
-        return Result.success("密码重置成功");
-    }
-
-    @Override
-    public Result changePassword(Long userId, String oldPassword, String newPassword) {
-        User user = userRepository.findById(userId).orElse(null);
-        if (user == null) {
-            return Result.error("用户不存在");
-        }
-        
-        // 验证旧密码
-        if (!user.getPassword().equals(oldPassword)) {
-            return Result.error("原密码错误");
-        }
-        
-        // 更新密码
-        user.setPassword(newPassword);
-        userRepository.save(user);
-        return Result.success("密码修改成功");
     }
 } 

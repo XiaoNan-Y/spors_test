@@ -33,8 +33,12 @@ public class TestRecord {
     @Column(name = "test_time")
     private LocalDateTime testTime;
     
+    public static final String STATUS_PENDING = "PENDING";    // 待审核
+    public static final String STATUS_APPROVED = "APPROVED";  // 已通过
+    public static final String STATUS_REJECTED = "REJECTED";  // 已驳回
+    
     @Column(name = "status")
-    private String status = "PENDING";
+    private String status = STATUS_PENDING;
     
     @Column(name = "remark")
     private String remark;

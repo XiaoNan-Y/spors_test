@@ -245,23 +245,29 @@ export default {
     async fetchNoticeList() {
       try {
         this.loading = true
-        const res = await this.$http.get('/admin/notices', {
+        console.log('Fetching notices...')
+        const res = await this.$http.get('/api/admin/notices', {
           params: {
-            page: this.page.current,
-            size: this.page.size,
             keyword: this.searchKeyword,
-            type: this.searchType
+            page: this.page.current - 1,
+            size: this.page.size
           }
         })
+        console.log('Response:', res.data)
         if (res.data.code === 200) {
-          this.noticeList = res.data.data.records
-          this.page.total = res.data.data.total
+          if (Array.isArray(res.data.data)) {
+            this.noticeList = res.data.data
+            this.page.total = res.data.data.length
+          } else if (res.data.data.content) {
+            this.noticeList = res.data.data.content
+            this.page.total = res.data.data.totalElements
+          }
         } else {
           this.$message.error(res.data.msg || '获取通知列表失败')
         }
       } catch (error) {
         console.error('获取通知列表失败:', error)
-        this.$message.error('获取通知列表失败，请检查网络连接')
+        this.$message.error('获取通知列表失败')
       } finally {
         this.loading = false
       }
@@ -306,15 +312,12 @@ export default {
       this.$refs.form.validate(async valid => {
         if (valid) {
           try {
-            const url = this.form.id ? '/admin/notices/update' : '/admin/notices/add'
-            const res = await this.$http[this.form.id ? 'put' : 'post'](url, {
-              ...this.form,
-              createTime: new Date(),
-              updateTime: new Date()
-            })
+            const url = this.form.id ? `/api/admin/notices/${this.form.id}` : '/api/admin/notices'
+            const method = this.form.id ? 'put' : 'post'
             
+            const res = await this.$http[method](url, this.form)
             if (res.data.code === 200) {
-              this.$message.success(this.form.id ? '更新成功' : '发布成功')
+              this.$message.success(this.form.id ? '更新成功' : '添加成功')
               this.dialogVisible = false
               this.fetchNoticeList()
             } else {
@@ -322,7 +325,7 @@ export default {
             }
           } catch (error) {
             console.error('操作失败:', error)
-            this.$message.error('操作失败，请检查网络连接')
+            this.$message.error(error.response?.data?.msg || '操作失败')
           }
         }
       })
@@ -332,12 +335,10 @@ export default {
         await this.$confirm('确认删除该通知吗？', '提示', {
           type: 'warning'
         })
-        const res = await this.$http.delete(`/admin/notices/${row.id}`)
+        const res = await this.$http.delete(`/api/admin/notices/${row.id}`)
         if (res.data.code === 200) {
           this.$message.success('删除成功')
           this.fetchNoticeList()
-        } else {
-          this.$message.error(res.data.msg || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
