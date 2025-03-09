@@ -1,7 +1,7 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Login from '../views/Login.vue'
-import AdminLayout from '../layouts/AdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
 Vue.use(VueRouter)
 
@@ -43,14 +43,19 @@ const routes = [
         component: () => import('../views/admin/NoticeManagement.vue')
       },
       {
-        path: 'data-review',
-        name: 'DataReview',
-        component: () => import('../views/admin/DataReview.vue')
-      },
-      {
         path: 'profile',
         name: 'AdminProfile',
         component: () => import('../views/admin/Profile.vue')
+      },
+      {
+        path: 'data-review',
+        name: 'DataReview',
+        component: () => import('../views/admin/DataReview.vue'),
+        meta: {
+          title: '数据录入与审核',
+          requiresAuth: true,
+          role: 'ADMIN'
+        }
       }
     ]
   },

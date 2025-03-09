@@ -1,5 +1,6 @@
 package com.sports.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -12,61 +13,46 @@ public class TestRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "student_id", nullable = false)
+    @Column(name = "student_id")
+    private Long studentId;
+
+    @Column(name = "sports_item_id")
+    private Long sportsItemId;
+
+    @Column(name = "teacher_id")
+    private Long teacherId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id", insertable = false, updatable = false)
     private User student;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "teacher_id", nullable = false)
-    private User teacher;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "sports_item_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sports_item_id", insertable = false, updatable = false)
     private SportsItem sportsItem;
 
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "teacher_id", insertable = false, updatable = false)
+    private User teacher;
+
     private Double score;
 
-    @Column(name = "test_time", nullable = false)
-    private LocalDateTime testTime;
+    private String status;
 
-    @Column(nullable = false)
-    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime testTime;
 
     @Column(name = "review_comment")
     private String reviewComment;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "reviewer_id")
-    private User reviewer;
-
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Column(name = "review_time")
     private LocalDateTime reviewTime;
 
-    @Column(name = "is_abnormal")
-    private Boolean isAbnormal = false;
-
-    @Column(name = "abnormal_reason")
-    private String abnormalReason;
-
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
+    @Column(name = "updated_at")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
-
-    public static final String STATUS_PENDING = "PENDING";
-    public static final String STATUS_APPROVED = "APPROVED";
-    public static final String STATUS_REJECTED = "REJECTED";
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-}
+} 

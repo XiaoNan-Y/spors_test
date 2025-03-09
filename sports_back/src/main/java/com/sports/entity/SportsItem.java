@@ -11,16 +11,18 @@ public class SportsItem {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @Column(nullable = false)
     private String name;
     
     private String description;
     
+    @Column(nullable = false)
     private String unit;
     
     private String type;
     
     @Column(name = "is_active")
-    private Boolean isActive;
+    private Boolean isActive = true;
 
     public SportsItem() {
     }
