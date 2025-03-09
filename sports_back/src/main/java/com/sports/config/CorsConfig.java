@@ -15,6 +15,7 @@ public class CorsConfig implements WebMvcConfigurer {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         
+<<<<<<< HEAD
         // 允许所有源
         config.addAllowedOriginPattern("*");
         // 允许所有请求头
@@ -22,6 +23,15 @@ public class CorsConfig implements WebMvcConfigurer {
         // 允许所有方法
         config.addAllowedMethod("*");
         // 允许携带认证信息
+=======
+        // 允许跨域的源
+        config.addAllowedOrigin("http://localhost:8081");
+        // 允许跨域的请求头
+        config.addAllowedHeader("*");
+        // 允许跨域的方法
+        config.addAllowedMethod("*");
+        // 允许携带cookie
+>>>>>>> 9aa70dfb89326d075348adb786f9fca620904233
         config.setAllowCredentials(true);
         // 暴露响应头
         config.addExposedHeader("*");
