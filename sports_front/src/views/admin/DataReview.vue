@@ -10,114 +10,108 @@
       </el-button>
     </div>
 
-    <!-- 搜索筛选区 -->
-    <div class="filter-section">
-      <el-form :inline="true" :model="queryParams" ref="queryForm">
-        <el-form-item label="测试项目">
-          <el-select v-model="queryParams.sportsItemId" placeholder="选择测试项目" clearable>
-            <el-option
-              v-for="item in sportsItems"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="queryParams.status" placeholder="选择状态" clearable>
-            <el-option label="待审核" value="PENDING"></el-option>
-            <el-option label="已通过" value="APPROVED"></el-option>
-            <el-option label="已驳回" value="REJECTED"></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </div>
+   <!-- 搜索筛选区 -->
+<div class="filter-section">
+  <el-form :inline="true" :model="queryParams" ref="queryForm">
+    <el-form-item label="测试项目">
+      <el-select v-model="queryParams.sportsItemId" placeholder="选择测试项目" clearable>
+        <el-option
+          v-for="item in sportsItems"
+          :key="item.id"
+          :label="item.name"
+          :value="item.id"
+        ></el-option>
+      </el-select>
+    </el-form-item>
+    <el-form-item label="状态">
+      <el-select v-model="queryParams.status" placeholder="选择状态" clearable>
+        <el-option label="待审核" value="PENDING"></el-option>
+        <el-option label="已通过" value="APPROVED"></el-option>
+        <el-option label="已驳回" value="REJECTED"></el-option>
+      </el-select>
+    </el-form-item>
+    <el-form-item label="关键字">
+      <el-input 
+        v-model="queryParams.keyword" 
+        placeholder="学生/教师姓名"
+        clearable
+      ></el-input>
+    </el-form-item>
+    <el-form-item>
+      <el-button type="primary" @click="handleQuery">查询</el-button>
+      <el-button @click="resetQuery">重置</el-button>
+    </el-form-item>
+  </el-form>
+</div>
 
     <!-- 数据表格 -->
     <el-card class="table-card">
-      <el-table
-        v-loading="loading"
-        :data="tableData"
-        border
-        stripe
-        style="width: 100%"
-      >
-        <el-table-column type="index" label="序号" width="60"></el-table-column>
-        
-        <el-table-column label="学生ID" prop="student_id" width="100"></el-table-column>
-        
-        <el-table-column label="教师ID" prop="teacher_id" width="100"></el-table-column>
-        
-        <el-table-column label="项目ID" prop="sports_item_id" width="100"></el-table-column>
-        
-        <el-table-column label="成绩" prop="score" width="120">
-          <template slot-scope="scope">
-            <span :class="{ 'abnormal-score': scope.row.isAbnormal }">
-              {{ scope.row.score }}{{ scope.row.sportsItem?.unit || '' }}
-            </span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="测试时间" prop="test_time" width="180">
-          <template slot-scope="scope">
-            {{ formatDateTime(scope.row.test_time) }}
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="状态" width="100">
-          <template slot-scope="scope">
-            <el-tag :type="getStatusType(scope.row.status)">
-              {{ getStatusText(scope.row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="审核意见" prop="review_comment" min-width="200">
-          <template slot-scope="scope">
-            <el-tooltip v-if="scope.row.review_comment" :content="scope.row.review_comment" placement="top">
-              <span class="review-comment">{{ scope.row.review_comment }}</span>
-            </el-tooltip>
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="审核时间" prop="review_time" width="180">
-          <template slot-scope="scope">
-            {{ scope.row.review_time ? formatDateTime(scope.row.review_time) : '-' }}
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="创建时间" prop="created_at" width="180">
-          <template slot-scope="scope">
-            {{ formatDateTime(scope.row.created_at) }}
-          </template>
-        </el-table-column>
-        
-        <el-table-column label="更新时间" prop="updated_at" width="180">
-          <template slot-scope="scope">
-            {{ formatDateTime(scope.row.updated_at) }}
-          </template>
-        </el-table-column>
+      <!-- 数据表格部分 -->
+    <el-table
+      v-loading="loading"
+      :data="tableData"
+      border
+      stripe
+      style="width: 100%"
+    >
+      <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
+      
+      <el-table-column label="学生姓名" prop="student.realName" min-width="120" align="center">
+        <template slot-scope="scope">
+          {{ scope.row.student?.realName || '-' }}
+        </template>
+      </el-table-column>
+      
+      <el-table-column label="教师姓名" prop="teacher.realName" min-width="120" align="center">
+        <template slot-scope="scope">
+          {{ scope.row.teacher?.realName || '-' }}
+        </template>
+      </el-table-column>
+      
+      <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center">
+        <template slot-scope="scope">
+          {{ scope.row.sportsItem?.name || '-' }}
+        </template>
+      </el-table-column>
+      
+      <el-table-column label="成绩" min-width="120" align="center">
+        <template slot-scope="scope">
+          <span :class="{ 'abnormal-score': scope.row.isAbnormal }">
+            {{ scope.row.score }}{{ scope.row.sportsItem?.unit || '' }}
+          </span>
+        </template>
+      </el-table-column>
+      
+      <el-table-column label="测试时间" min-width="160" align="center">
+        <template slot-scope="scope">
+          {{ formatDateTime(scope.row.testTime) }}
+        </template>
+      </el-table-column>
 
-        <el-table-column label="操作" width="150" fixed="right">
-          <template slot-scope="scope">
-            <el-button 
-              v-if="scope.row.status === 'PENDING'"
-              size="mini" 
-              type="primary"
-              @click="handleReview(scope.row)"
-            >审核</el-button>
-            <el-button 
-              size="mini"
-              type="info"
-              @click="handleDetail(scope.row)"
-            >详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-table-column label="状态" width="100" align="center">
+        <template slot-scope="scope">
+          <el-tag :type="getStatusType(scope.row.status)">
+            {{ getStatusText(scope.row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+
+      <el-table-column label="操作" width="150" fixed="right" align="center">
+        <template slot-scope="scope">
+          <el-button 
+            v-if="scope.row.status === 'PENDING'"
+            size="mini" 
+            type="primary"
+            @click="handleReview(scope.row)"
+          >审核</el-button>
+          <el-button 
+            size="mini"
+            type="info"
+            @click="handleDetail(scope.row)"
+          >详情</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
 
       <!-- 分页 -->
       <div class="pagination-container">
@@ -133,80 +127,95 @@
       </div>
     </el-card>
 
-    <!-- 录入成绩对话框 -->
-    <el-dialog 
-      title="录入成绩" 
-      :visible.sync="addDialog.visible" 
-      width="500px"
-      @closed="handleDialogClosed"
-    >
-      <el-form :model="form" :rules="rules" ref="recordForm" label-width="100px">
-        <el-form-item label="学生" prop="studentId">
-          <el-select 
-            v-model="form.studentId" 
-            placeholder="选择学生" 
-            filterable
-            remote
-            :remote-method="searchStudents"
-            :loading="studentLoading"
+  <!-- 录入成绩对话框 -->
+  <el-dialog 
+    title="录入成绩" 
+    :visible.sync="addDialog.visible" 
+    width="400px"
+    @closed="handleDialogClosed"
+  >
+    <el-form :model="form" :rules="rules" ref="recordForm" label-width="80px">
+      <!-- 学生选择 -->
+      <el-form-item label="学生" prop="studentId">
+        <el-select 
+          v-model="form.studentId" 
+          placeholder="请选择学生" 
+          filterable
+          remote
+          :remote-method="searchStudents"
+          :loading="studentLoading"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="student in students"
+            :key="student.id"
+            :label="student.realName"
+            :value="student.id"
           >
-            <el-option
-              v-for="student in students"
-              :key="student.id"
-              :label="student.realName"
-              :value="student.id"
-            >
-              <span>{{ student.realName }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">
-                {{ student.username }}
-              </span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="测试项目" prop="sportsItemId">
-          <el-select 
-            v-model="form.sportsItemId" 
-            placeholder="选择测试项目"
-            @change="handleSportsItemChange"
+            <span>{{ student.realName }}</span>
+            <span style="float: right; color: #8492a6; font-size: 13px">
+              {{ student.username }}
+            </span>
+          </el-option>
+        </el-select>
+      </el-form-item>
+
+      <!-- 测试项目选择 -->
+      <el-form-item label="测试项目" prop="sportsItemId">
+        <el-select 
+          v-model="form.sportsItemId" 
+          placeholder="请选择项目"
+          @change="handleSportsItemChange"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="item in sportsItems"
+            :key="item.id"
+            :label="item.name"
+            :value="item.id"
           >
-            <el-option
-              v-for="item in sportsItems"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            >
-              <span>{{ item.name }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">
-                {{ item.unit }}
-              </span>
-            </el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="测试成绩" prop="score">
+            <span>{{ item.name }}</span>
+            <span style="float: right; color: #8492a6; font-size: 13px">
+              {{ item.unit }}
+            </span>
+          </el-option>
+        </el-select>
+      </el-form-item>
+
+      <!-- 成绩输入 -->
+      <el-form-item label="成绩" prop="score">
+        <div style="display: flex; align-items: center;">
           <el-input-number 
             v-model="form.score" 
             :precision="2"
             :step="0.1"
             :min="0"
             controls-position="right"
+            style="width: 160px;"
           ></el-input-number>
-          <span style="margin-left: 10px">{{ selectedItemUnit }}</span>
-        </el-form-item>
-        <el-form-item label="测试时间" prop="testTime">
-          <el-date-picker
-            v-model="form.testTime"
-            type="datetime"
-            placeholder="选择测试时间"
-            format="yyyy-MM-dd HH:mm:ss"
-            value-format="yyyy-MM-dd HH:mm:ss"
-          ></el-date-picker>
-        </el-form-item>
-      </el-form>
-      <div slot="footer">
-        <el-button @click="addDialog.visible = false">取消</el-button>
-        <el-button type="primary" @click="submitForm">确定</el-button>
-      </div>
-    </el-dialog>
+          <span style="margin-left: 10px; color: #606266;">{{ selectedItemUnit }}</span>
+        </div>
+      </el-form-item>
+
+      <!-- 测试时间选择 -->
+      <el-form-item label="测试时间" prop="testTime">
+        <el-date-picker
+          v-model="form.testTime"
+          type="datetime"
+          placeholder="选择测试时间"
+          format="yyyy-MM-dd HH:mm"
+          value-format="yyyy-MM-dd HH:mm:ss"
+          style="width: 100%"
+        ></el-date-picker>
+      </el-form-item>
+    </el-form>
+
+    <!-- 对话框底部按钮 -->
+    <div slot="footer" class="dialog-footer">
+      <el-button @click="addDialog.visible = false">取 消</el-button>
+      <el-button type="primary" @click="submitForm">确 定</el-button>
+    </div>
+  </el-dialog>
 
     <!-- 审核对话框 -->
     <el-dialog 
@@ -323,7 +332,7 @@ export default {
     async getList() {
       this.loading = true
       try {
-        const res = await this.$http.get('/api/admin/test-records/review', {
+        const res = await this.$http.get('/api/admin/test-record/review', {
           params: this.queryParams
         })
         if (res.data.code === 200) {
@@ -401,7 +410,7 @@ export default {
               teacherId: JSON.parse(localStorage.getItem('user')).id
             }
 
-            const res = await this.$http.post('/api/admin/test-records', data)
+            const res = await this.$http.post('/api/admin/test-record', data)
             if (res.data.code === 200) {
               this.$message.success('成绩录入成功')
               this.addDialog.visible = false
@@ -460,7 +469,7 @@ export default {
 
     async handleExport() {
       try {
-        const res = await this.$http.get('/api/admin/test-records/export', {
+        const res = await this.$http.get('/api/admin/test-record/export', {
           params: this.queryParams,
           responseType: 'blob'
         })
@@ -513,30 +522,32 @@ export default {
     },
 
     submitReview() {
-      this.$refs.reviewForm.validate(async (valid) => {
+    this.$refs.reviewForm.validate(async (valid) => {
         if (valid) {
-          try {
-            const data = {
-              id: this.currentRecord.id,
-              status: this.reviewForm.status,
-              comment: this.reviewForm.comment
-            }
+            try {
+                const currentUser = JSON.parse(localStorage.getItem('user'));
+                const data = {
+                    id: this.currentRecord.id,
+                    status: this.reviewForm.status,
+                    comment: this.reviewForm.comment,
+                    reviewerId: currentUser.id  // 添加审核人ID
+                }
 
-            const res = await this.$http.put('/api/admin/test-records/review', data)
-            if (res.data.code === 200) {
-              this.$message.success('审核成功')
-              this.reviewDialog.visible = false
-              this.getList()
-            } else {
-              this.$message.error(res.data.message || '审核失败')
+                const res = await this.$http.put('/api/admin/test-record/review', data)
+                if (res.data.code === 200) {
+                    this.$message.success('审核成功')
+                    this.reviewDialog.visible = false
+                    this.getList()
+                } else {
+                    this.$message.error(res.data.message || '审核失败')
+                }
+            } catch (error) {
+                console.error('审核失败:', error)
+                this.$message.error(error.response?.data?.message || '审核失败')
             }
-          } catch (error) {
-            console.error('审核失败:', error)
-            this.$message.error(error.response?.data?.message || '审核失败')
-          }
         }
-      })
-    },
+    })
+},
 
     searchStudents(query) {
       this.studentLoading = true

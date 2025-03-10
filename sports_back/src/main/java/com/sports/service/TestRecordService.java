@@ -17,7 +17,7 @@ public interface TestRecordService {
     
     TestRecord updateRecord(TestRecord record);
     
-    TestRecord reviewRecord(Long id, String status, String reviewComment, Long reviewerId);
+    TestRecord reviewRecord(Long id, String status, String comment, Long reviewerId);
     
     boolean checkAbnormalScore(TestRecord record);
     

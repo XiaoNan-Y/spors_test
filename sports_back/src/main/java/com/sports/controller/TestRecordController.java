@@ -29,7 +29,7 @@ public class TestRecordController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) Long sportsItemId,
-            @RequestParam(defaultValue = "0") int pageNum,
+            @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         try {
             Page<TestRecord> records = testRecordService.getRecordList(
@@ -42,6 +42,24 @@ public class TestRecordController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("获取记录列表失败: " + e.getMessage());
+        }
+    }
+
+
+    @PutMapping("/review")
+    public Result reviewRecord(@RequestBody Map<String, Object> params) {
+        try {
+            Long id = Long.valueOf(String.valueOf(params.get("id")));
+            String status = String.valueOf(params.get("status"));
+            String comment = String.valueOf(params.get("comment"));
+            // 从当前登录用户中获取审核人ID，或从请求参数中获取
+            Long reviewerId = Long.valueOf(String.valueOf(params.get("reviewerId"))); // 添加审核人ID
+        
+            TestRecord record = testRecordService.reviewRecord(id, status, comment, reviewerId);
+            return Result.success(record);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("审核失败: " + e.getMessage());
         }
     }
 
@@ -109,6 +127,18 @@ public class TestRecordController {
             testRecordService.exportToExcel(response, status, teacherId, sportsItemId);
         } catch (Exception e) {
             throw new RuntimeException("导出失败: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}")
+    public Result updateRecord(@PathVariable Long id, @RequestBody TestRecord record) {
+        try {
+            record.setId(id);
+            TestRecord updated = testRecordService.updateRecord(record);
+            return Result.success(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("修改失败: " + e.getMessage());
         }
     }
 
