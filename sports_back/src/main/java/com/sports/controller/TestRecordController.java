@@ -6,6 +6,7 @@ import com.sports.service.TestRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,20 +32,22 @@ public class TestRecordController {
     @GetMapping("/review")
     public Result getRecordList(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) Long sportsItemId,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         try {
+            log.debug("Fetching test records with status: {}, sportsItemId: {}", 
+                      status, sportsItemId);
+                  
             Page<TestRecord> records = testRecordService.getRecordList(
-                status, teacherId, sportsItemId, null, null,
+                status, sportsItemId, null, null,
                 PageRequest.of(pageNum - 1, pageSize)
             );
             
-            System.out.println("Retrieved records: " + records.getContent().size());
+            log.debug("Found {} records", records.getTotalElements());
             return Result.success(records);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error fetching test records", e);
             return Result.error("获取记录列表失败: " + e.getMessage());
         }
     }
@@ -68,36 +71,21 @@ public class TestRecordController {
     }
 
     @PostMapping
-    public Result addRecord(@RequestBody Map<String, Object> params) {
+    public ResponseEntity<?> createRecord(@RequestBody TestRecord record) {
         try {
-            // 添加日志以便调试
-            log.info("Received params for new record: {}", params);
-            
-            TestRecord record = new TestRecord();
-            
-            // 设置关联对象
-            record.setStudentId(Long.valueOf(String.valueOf(params.get("studentId"))));
-            record.setSportsItemId(Long.valueOf(String.valueOf(params.get("sportsItemId"))));
-            record.setTeacherId(Long.valueOf(String.valueOf(params.get("teacherId"))));
-            
-            // 设置成绩和时间
-            record.setScore(Double.valueOf(String.valueOf(params.get("score"))));
-            String testTimeStr = String.valueOf(params.get("testTime"));
-            record.setTestTime(LocalDateTime.parse(testTimeStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-            
-            // 设置初始状态和时间戳
-            record.setStatus("PENDING");
+            // 确保设置了必要的字段
+            if (record.getStudentNumber() == null || record.getSportsItemId() == null) {
+                return ResponseEntity.badRequest().body("学号和体测项目ID不能为空");
+            }
+
+            record.setStatus("PENDING");  // 设置初始状态为待审核
             record.setCreatedAt(LocalDateTime.now());
             record.setUpdatedAt(LocalDateTime.now());
             
-            // 保存记录并确保事务提交
-            TestRecord saved = testRecordService.save(record);
-            log.info("Successfully saved record: {}", saved);
-            
-            return Result.success(saved);
+            TestRecord savedRecord = testRecordService.save(record);
+            return ResponseEntity.ok(savedRecord);
         } catch (Exception e) {
-            log.error("Error adding record:", e);
-            return Result.error("添加记录失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body("创建记录失败: " + e.getMessage());
         }
     }
 
@@ -128,10 +116,9 @@ public class TestRecordController {
     @GetMapping("/export")
     public void exportData(HttpServletResponse response,
                           @RequestParam(required = false) String status,
-                          @RequestParam(required = false) Long teacherId,
                           @RequestParam(required = false) Long sportsItemId) {
         try {
-            testRecordService.exportToExcel(response, status, teacherId, sportsItemId);
+            testRecordService.exportToExcel(response, status, sportsItemId);
         } catch (Exception e) {
             throw new RuntimeException("导出失败: " + e.getMessage());
         }
@@ -159,15 +146,15 @@ public class TestRecordController {
     }
 
     @GetMapping("/history")
-    public Result getHistoryRecords(
-            @RequestParam Long studentId,
+    public ResponseEntity<?> getHistoryRecords(
+            @RequestParam String studentNumber,
             @RequestParam Long sportsItemId,
             @RequestParam(required = false) Long excludeId) {
         try {
-            List<TestRecord> records = testRecordService.getHistoryRecords(studentId, sportsItemId, excludeId);
-            return Result.success(records);
+            List<TestRecord> records = testRecordService.getHistoryRecords(studentNumber, sportsItemId, excludeId);
+            return ResponseEntity.ok(records);
         } catch (Exception e) {
-            return Result.error("获取历史记录失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body("获取历史记录失败：" + e.getMessage());
         }
     }
 

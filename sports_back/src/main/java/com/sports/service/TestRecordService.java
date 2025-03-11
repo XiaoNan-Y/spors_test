@@ -12,14 +12,14 @@ import java.util.List;
 public interface TestRecordService {
     /**
      * 获取学生在某个项目的历史测试记录
-     * @param studentId 学生ID
+     * @param studentNumber 学生学号
      * @param sportsItemId 体育项目ID
      * @param excludeId 需要排除的记录ID（可选）
      * @return 历史测试记录列表
      */
-    List<TestRecord> getHistoryRecords(Long studentId, Long sportsItemId, Long excludeId);
+    List<TestRecord> getHistoryRecords(String studentNumber, Long sportsItemId, Long excludeId);
 
-    Page<TestRecord> getRecordList(String status, Long teacherId, Long sportsItemId, 
+    Page<TestRecord> getRecordList(String status, Long sportsItemId, 
                                  LocalDate startDate, LocalDate endDate, Pageable pageable);
     
     TestRecord save(TestRecord record);
@@ -40,7 +40,7 @@ public interface TestRecordService {
     /**
      * 导出数据到Excel
      */
-    void exportToExcel(HttpServletResponse response, String status, Long teacherId, Long sportsItemId) throws Exception;
+    void exportToExcel(HttpServletResponse response, String status, Long sportsItemId) throws Exception;
 
     /**
      * 生成Excel导入模板

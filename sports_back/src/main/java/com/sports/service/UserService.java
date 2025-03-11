@@ -20,4 +20,6 @@ public interface UserService {
     Result deleteUser(Long id);
     
     Result resetPassword(Long id);
+    
+    Page<User> getUsersByType(String userType, Pageable pageable);
 } 

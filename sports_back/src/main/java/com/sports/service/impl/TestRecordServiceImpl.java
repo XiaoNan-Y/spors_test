@@ -48,18 +48,18 @@ public class TestRecordServiceImpl implements TestRecordService {
     private SportsItemRepository sportsItemRepository;
 
     @Override
-    public Page<TestRecord> getRecordList(String status, Long teacherId, Long sportsItemId,
+    public Page<TestRecord> getRecordList(String status, Long sportsItemId,
                                         LocalDate startDate, LocalDate endDate, Pageable pageable) {
         try {
             Specification<TestRecord> spec = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
                 
+                // 添加关联查询
+                root.fetch("student", JoinType.LEFT);
+                root.fetch("sportsItem", JoinType.LEFT);
+                
                 if (status != null && !status.isEmpty()) {
                     predicates.add(cb.equal(root.get("status"), status));
-                }
-                
-                if (teacherId != null) {
-                    predicates.add(cb.equal(root.get("teacherId"), teacherId));
                 }
                 
                 if (sportsItemId != null) {
@@ -67,29 +67,24 @@ public class TestRecordServiceImpl implements TestRecordService {
                 }
                 
                 if (startDate != null) {
-                    predicates.add(cb.greaterThanOrEqualTo(root.get("testTime"), startDate.atStartOfDay()));
+                    predicates.add(cb.greaterThanOrEqualTo(
+                        root.get("testTime"), startDate.atStartOfDay()));
                 }
                 
                 if (endDate != null) {
-                    predicates.add(cb.lessThan(root.get("testTime"), endDate.plusDays(1).atStartOfDay()));
-                }
-
-                // 添加关联查询
-                if (query.getResultType() == TestRecord.class) {
-                    root.fetch("student", JoinType.LEFT);
-                    root.fetch("teacher", JoinType.LEFT);
-                    root.fetch("sportsItem", JoinType.LEFT);
+                    predicates.add(cb.lessThan(
+                        root.get("testTime"), endDate.plusDays(1).atStartOfDay()));
                 }
                 
-                return predicates.isEmpty() ? null : cb.and(predicates.toArray(new Predicate[0]));
+                // 处理 distinct 去重
+                query.distinct(true);
+                
+                return predicates.isEmpty() ? null : 
+                       cb.and(predicates.toArray(new Predicate[0]));
             };
-
-            // 添加调试日志
-            System.out.println("Executing query with spec: " + spec);
             
             return testRecordRepository.findAll(spec, pageable);
         } catch (Exception e) {
-            e.printStackTrace(); // 添加错误堆栈跟踪
             throw new RuntimeException("获取记录列表失败: " + e.getMessage());
         }
     }
@@ -97,8 +92,8 @@ public class TestRecordServiceImpl implements TestRecordService {
     @Override
     public TestRecord save(TestRecord record) {
         // 添加验证
-        if (record.getStudentId() == null || record.getSportsItemId() == null || 
-            record.getTeacherId() == null || record.getScore() == null) {
+        if (record.getStudentNumber() == null || record.getSportsItemId() == null || 
+            record.getScore() == null) {
             throw new IllegalArgumentException("必填字段不能为空");
         }
         
@@ -244,16 +239,13 @@ public class TestRecordServiceImpl implements TestRecordService {
     }
 
     @Override
-    public void exportToExcel(HttpServletResponse response, String status, Long teacherId, Long sportsItemId) throws Exception {
+    public void exportToExcel(HttpServletResponse response, String status, Long sportsItemId) throws Exception {
         // 查询数据
         Specification<TestRecord> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             
             if (status != null && !status.isEmpty()) {
                 predicates.add(cb.equal(root.get("status"), status));
-            }
-            if (teacherId != null) {
-                predicates.add(cb.equal(root.get("teacherId"), teacherId));
             }
             if (sportsItemId != null) {
                 predicates.add(cb.equal(root.get("sportsItemId"), sportsItemId));
@@ -275,73 +267,28 @@ public class TestRecordServiceImpl implements TestRecordService {
         sheet.setColumnWidth(3, 15 * 256);  // 测试项目
         sheet.setColumnWidth(4, 10 * 256);  // 成绩
         sheet.setColumnWidth(5, 10 * 256);  // 状态
-        sheet.setColumnWidth(6, 12 * 256);  // 教师姓名
-        sheet.setColumnWidth(7, 15 * 256);  // 审核时间
-        sheet.setColumnWidth(8, 20 * 256);  // 审核意见
-
-        // 创建标题行样式
-        CellStyle headerStyle = workbook.createCellStyle();
-        headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-        headerStyle.setAlignment(HorizontalAlignment.CENTER);
-        headerStyle.setBorderTop(BorderStyle.THIN);
-        headerStyle.setBorderRight(BorderStyle.THIN);
-        headerStyle.setBorderBottom(BorderStyle.THIN);
-        headerStyle.setBorderLeft(BorderStyle.THIN);
-
-        XSSFFont headerFont = workbook.createFont();
-        headerFont.setBold(true);
-        headerStyle.setFont(headerFont);
+        sheet.setColumnWidth(6, 20 * 256);  // 审核意见
 
         // 创建标题行
-        String[] headers = {"测试时间", "学生姓名", "学号", "测试项目", "成绩", "状态", "教师姓名", "审核时间", "审核意见"};
         Row headerRow = sheet.createRow(0);
+        String[] headers = {"测试时间", "学生姓名", "学号", "测试项目", "成绩", "状态", "审核意见"};
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
-            cell.setCellStyle(headerStyle);
         }
 
-        // 创建数据行样式
-        CellStyle dataStyle = workbook.createCellStyle();
-        dataStyle.setAlignment(HorizontalAlignment.CENTER);
-        dataStyle.setBorderTop(BorderStyle.THIN);
-        dataStyle.setBorderRight(BorderStyle.THIN);
-        dataStyle.setBorderBottom(BorderStyle.THIN);
-        dataStyle.setBorderLeft(BorderStyle.THIN);
-
         // 写入数据
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         int rowNum = 1;
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         for (TestRecord record : records) {
             Row row = sheet.createRow(rowNum++);
-            
-            // 测试时间
             row.createCell(0).setCellValue(record.getTestTime().format(formatter));
-            // 学生姓名
             row.createCell(1).setCellValue(record.getStudent() != null ? record.getStudent().getRealName() : "");
-            // 学号
-            row.createCell(2).setCellValue(record.getStudent() != null ? record.getStudent().getUsername() : "");
-            // 测试项目
+            row.createCell(2).setCellValue(record.getStudentNumber());
             row.createCell(3).setCellValue(record.getSportsItem() != null ? record.getSportsItem().getName() : "");
-            // 成绩
-            row.createCell(4).setCellValue(record.getScore() != null ? record.getScore() : 0.0);
-            // 状态
+            row.createCell(4).setCellValue(record.getScore());
             row.createCell(5).setCellValue(getStatusText(record.getStatus()));
-            // 教师姓名
-            row.createCell(6).setCellValue(record.getTeacher() != null ? record.getTeacher().getRealName() : "");
-            // 审核时间
-            row.createCell(7).setCellValue(record.getReviewTime() != null ? record.getReviewTime().format(formatter) : "");
-            // 审核意见
-            row.createCell(8).setCellValue(record.getReviewComment() != null ? record.getReviewComment() : "");
-
-            // 应用样式
-            for (int i = 0; i < headers.length; i++) {
-                Cell cell = row.getCell(i);
-                if (cell != null) {
-                    cell.setCellStyle(dataStyle);
-                }
-            }
+            row.createCell(6).setCellValue(record.getReviewComment() != null ? record.getReviewComment() : "");
         }
 
         // 写入响应
@@ -351,7 +298,6 @@ public class TestRecordServiceImpl implements TestRecordService {
         workbook.close();
     }
 
-    // 添加辅助方法：获取状态的中文描述
     private String getStatusText(String status) {
         if (status == null) return "";
         switch (status) {
@@ -379,8 +325,8 @@ public class TestRecordServiceImpl implements TestRecordService {
     public List<TestRecord> saveAll(List<TestRecord> records) {
         // 批量保存前进行数据验证
         for (TestRecord record : records) {
-            if (record.getStudentId() == null || record.getSportsItemId() == null || 
-                record.getTeacherId() == null || record.getScore() == null || 
+            if (record.getStudentNumber() == null || record.getSportsItemId() == null || 
+                record.getScore() == null || 
                 record.getTestTime() == null) {
                 throw new RuntimeException("记录数据不完整");
             }
@@ -397,12 +343,12 @@ public class TestRecordServiceImpl implements TestRecordService {
     }
 
     @Override
-    public List<TestRecord> getHistoryRecords(Long studentId, Long sportsItemId, Long excludeId) {
+    public List<TestRecord> getHistoryRecords(String studentNumber, Long sportsItemId, Long excludeId) {
         try {
             Specification<TestRecord> spec = (root, query, cb) -> {
                 List<Predicate> predicates = new ArrayList<>();
                 
-                predicates.add(cb.equal(root.get("studentId"), studentId));
+                predicates.add(cb.equal(root.get("studentNumber"), studentNumber));
                 predicates.add(cb.equal(root.get("sportsItemId"), sportsItemId));
                 
                 if (excludeId != null) {

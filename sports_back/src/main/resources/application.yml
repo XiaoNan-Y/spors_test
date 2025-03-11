@@ -2,10 +2,14 @@ server:
   port: 8080
 
 spring:
+  sql:
+    init:
+      mode: always      # 总是执行 SQL 初始化
+      schema-locations: classpath:data.sql  # 指定 SQL 文件位置
   datasource:
-    url: jdbc:mysql://localhost:3306/your_database_name?useSSL=false&serverTimezone=UTC
-    username: your_username
-    password: your_password
+    url: jdbc:mysql://localhost:3306/sports?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root  # 替换为你的数据库用户名
+    password: root  # 替换为你的数据库密码
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       # 连接池名称
@@ -26,12 +30,13 @@ spring:
       connection-test-query: SELECT 1
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: none  # 禁止 Hibernate 自动修改表结构
     show-sql: true
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQL8Dialect
+    database-platform: org.hibernate.dialect.MySQL8Dialect
 
 logging:
   level:

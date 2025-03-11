@@ -20,7 +20,20 @@ public class UserServiceImpl implements UserService {
     
     @Override
     public Page<User> getUsers(String userType, String keyword, Pageable pageable) {
-        return userRepository.findByUserTypeAndKeyword(userType, keyword, pageable);
+        try {
+            log.info("Fetching users with type: {}, keyword: {}", userType, keyword);
+            Page<User> users;
+            if (keyword != null && !keyword.trim().isEmpty()) {
+                users = userRepository.findByUserTypeAndKeyword(userType, keyword.trim(), pageable);
+            } else {
+                users = userRepository.findByUserType(userType, pageable);
+            }
+            log.info("Found {} users", users.getTotalElements());
+            return users;
+        } catch (Exception e) {
+            log.error("Error fetching users", e);
+            throw new RuntimeException("获取用户列表失败: " + e.getMessage());
+        }
     }
     
     @Override
@@ -29,7 +42,14 @@ public class UserServiceImpl implements UserService {
         if (existingUser == null) {
             return Result.error("用户不存在");
         }
-        // TODO: 实现密码验证
+        
+        // TODO: 这里应该使用加密后的密码比较，暂时使用明文比较
+        if (!existingUser.getPassword().equals(user.getPassword())) {
+            return Result.error("密码错误");
+        }
+        
+        // 登录成功，清除密码后返回用户信息
+        existingUser.setPassword(null);
         return Result.success(existingUser);
     }
     
@@ -56,6 +76,12 @@ public class UserServiceImpl implements UserService {
                 user.setPassword("123456"); // 默认密码
             }
             
+            // 验证学生用户必须填写学号
+            if ("STUDENT".equals(user.getUserType()) && 
+                (user.getStudentNumber() == null || user.getStudentNumber().trim().isEmpty())) {
+                return Result.error("学生用户必须填写学号");
+            }
+            
             // 保存用户
             User savedUser = userRepository.save(user);
             log.info("Successfully added user: {}", savedUser.getUsername());
@@ -77,6 +103,11 @@ public class UserServiceImpl implements UserService {
             existingUser.setRealName(user.getRealName());
             existingUser.setEmail(user.getEmail());
             existingUser.setPhone(user.getPhone());
+            
+            // 更新学号（仅学生用户）
+            if ("STUDENT".equals(existingUser.getUserType())) {
+                existingUser.setStudentNumber(user.getStudentNumber());
+            }
             
             userRepository.save(existingUser);
             return Result.success(null);
@@ -111,6 +142,15 @@ public class UserServiceImpl implements UserService {
         } catch (Exception e) {
             log.error("重置密码失败", e);
             return Result.error("重置密码失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public Page<User> getUsersByType(String userType, Pageable pageable) {
+        try {
+            return userRepository.findByUserType(userType, pageable);
+        } catch (Exception e) {
+            throw new RuntimeException("获取用户列表失败：" + e.getMessage());
         }
     }
 } 

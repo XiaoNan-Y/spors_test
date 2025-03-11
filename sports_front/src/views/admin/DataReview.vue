@@ -62,9 +62,9 @@
         </template>
       </el-table-column>
       
-      <el-table-column label="教师姓名" prop="teacher.realName" min-width="120" align="center">
+      <el-table-column label="学生学号" prop="student.student_number" min-width="120" align="center">
         <template slot-scope="scope">
-          {{ scope.row.teacher?.realName || '-' }}
+          {{ scope.row.student?.student_number || '-' }}
         </template>
       </el-table-column>
       

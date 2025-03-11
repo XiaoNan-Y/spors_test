@@ -1,9 +1,11 @@
 package com.sports.repository;
 
 import com.sports.entity.TestRecord;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,4 +27,28 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
            "WHERE t.status = 'APPROVED' " +
            "GROUP BY t.student.id, t.student.realName")
     List<Object[]> getAverageScoreByStudent();
+
+    // 根据学号和体育项目ID查找记录
+    List<TestRecord> findByStudentNumberAndSportsItemId(String studentNumber, Long sportsItemId);
+    
+    // 根据学号查找记录
+    List<TestRecord> findByStudentNumber(String studentNumber);
+    
+    // 根据状态查找记录
+    List<TestRecord> findByStatus(String status);
+    
+    // 根据状态和体育项目ID查找记录
+    List<TestRecord> findByStatusAndSportsItemId(String status, Long sportsItemId);
+    
+    // 根据学号和状态查找记录
+    @Query("SELECT t FROM TestRecord t WHERE t.studentNumber = :studentNumber AND t.status = :status")
+    List<TestRecord> findByStudentNumberAndStatus(@Param("studentNumber") String studentNumber, @Param("status") String status);
+
+    // 根据学号和体育项目ID查询最新记录
+    @Query("SELECT t FROM TestRecord t WHERE t.studentNumber = :studentNumber AND t.sportsItemId = :sportsItemId " +
+           "ORDER BY t.testTime DESC")
+    List<TestRecord> findLatestByStudentNumberAndSportsItemId(
+        @Param("studentNumber") String studentNumber,
+        @Param("sportsItemId") Long sportsItemId,
+        Pageable pageable);
 } 

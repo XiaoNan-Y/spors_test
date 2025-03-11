@@ -2,6 +2,15 @@ import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Login from '../views/Login.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import TestRecordList from '@/views/admin/TestRecordList.vue'
+import UserList from '@/views/admin/UserList.vue'
+import Dashboard from '@/views/admin/Dashboard.vue'
+import StudentManagement from '@/views/admin/StudentManagement.vue'
+import TeacherManagement from '@/views/admin/TeacherManagement.vue'
+import SportsItems from '@/views/admin/SportsItems.vue'
+import NoticeManagement from '@/views/admin/NoticeManagement.vue'
+import Profile from '@/views/admin/Profile.vue'
+import DataReview from '@/views/admin/DataReview.vue'
 
 Vue.use(VueRouter)
 
@@ -20,37 +29,37 @@ const routes = [
       {
         path: 'dashboard',
         name: 'AdminDashboard',
-        component: () => import('../views/admin/Dashboard.vue')
+        component: Dashboard
       },
       {
         path: 'users/student',
         name: 'StudentManagement',
-        component: () => import('../views/admin/StudentManagement.vue')
+        component: StudentManagement
       },
       {
         path: 'users/teacher',
         name: 'TeacherManagement',
-        component: () => import('../views/admin/TeacherManagement.vue')
+        component: TeacherManagement
       },
       {
         path: 'sports-items',
         name: 'SportsItems',
-        component: () => import('../views/admin/SportsItems.vue')
+        component: SportsItems
       },
       {
         path: 'notices',
         name: 'NoticeManagement',
-        component: () => import('../views/admin/NoticeManagement.vue')
+        component: NoticeManagement
       },
       {
         path: 'profile',
         name: 'AdminProfile',
-        component: () => import('../views/admin/Profile.vue')
+        component: Profile
       },
       {
         path: 'data-review',
         name: 'DataReview',
-        component: () => import('../views/admin/DataReview.vue'),
+        component: DataReview,
         meta: {
           title: '数据录入与审核',
           requiresAuth: true,
@@ -58,6 +67,18 @@ const routes = [
         }
       }
     ]
+  },
+  {
+    path: '/admin/test-records',
+    name: 'TestRecordList',
+    component: TestRecordList,
+    meta: { requiresAuth: true, roles: ['ADMIN'] }
+  },
+  {
+    path: '/admin/users',
+    name: 'UserList',
+    component: UserList,
+    meta: { requiresAuth: true, roles: ['ADMIN'] }
   },
   {
     path: '/',
