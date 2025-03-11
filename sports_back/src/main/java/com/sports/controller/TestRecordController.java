@@ -150,4 +150,17 @@ public class TestRecordController {
             throw new RuntimeException("下载模板失败: " + e.getMessage());
         }
     }
+
+    @GetMapping("/history")
+    public Result getHistoryRecords(
+            @RequestParam Long studentId,
+            @RequestParam Long sportsItemId,
+            @RequestParam(required = false) Long excludeId) {
+        try {
+            List<TestRecord> records = testRecordService.getHistoryRecords(studentId, sportsItemId, excludeId);
+            return Result.success(records);
+        } catch (Exception e) {
+            return Result.error("获取历史记录失败: " + e.getMessage());
+        }
+    }
 } 

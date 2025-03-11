@@ -10,6 +10,15 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface TestRecordService {
+    /**
+     * 获取学生在某个项目的历史测试记录
+     * @param studentId 学生ID
+     * @param sportsItemId 体育项目ID
+     * @param excludeId 需要排除的记录ID（可选）
+     * @return 历史测试记录列表
+     */
+    List<TestRecord> getHistoryRecords(Long studentId, Long sportsItemId, Long excludeId);
+
     Page<TestRecord> getRecordList(String status, Long teacherId, Long sportsItemId, 
                                  LocalDate startDate, LocalDate endDate, Pageable pageable);
     

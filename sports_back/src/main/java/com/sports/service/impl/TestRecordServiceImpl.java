@@ -8,6 +8,7 @@ import com.sports.service.TestRecordService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -124,8 +125,8 @@ public class TestRecordServiceImpl implements TestRecordService {
             .orElseThrow(() -> new RuntimeException("记录不存在"));
 
         // 检查是否为待审核状态
-        if (!"PENDING".equals(record.getStatus())) {
-            throw new RuntimeException("只能审核待审核状态的记录");
+        if (!"PENDING".equals(record.getStatus()) && !"REJECTED".equals(record.getStatus())) {
+            throw new RuntimeException("只能审核待审核或已驳回状态的记录");
         }
 
         // 检查成绩是否异常
@@ -138,7 +139,7 @@ public class TestRecordServiceImpl implements TestRecordService {
         record.setStatus(status);
         record.setReviewComment(reviewComment);
         record.setReviewTime(LocalDateTime.now());
-        // TODO: 设置审核人信息
+        record.setUpdatedAt(LocalDateTime.now());
 
         return testRecordRepository.save(record);
     }
@@ -286,5 +287,27 @@ public class TestRecordServiceImpl implements TestRecordService {
         }
         
         return testRecordRepository.saveAll(records);
+    }
+
+    @Override
+    public List<TestRecord> getHistoryRecords(Long studentId, Long sportsItemId, Long excludeId) {
+        try {
+            Specification<TestRecord> spec = (root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                
+                predicates.add(cb.equal(root.get("studentId"), studentId));
+                predicates.add(cb.equal(root.get("sportsItemId"), sportsItemId));
+                
+                if (excludeId != null) {
+                    predicates.add(cb.notEqual(root.get("id"), excludeId));
+                }
+                
+                return cb.and(predicates.toArray(new Predicate[0]));
+            };
+            
+            return testRecordRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "testTime"));
+        } catch (Exception e) {
+            throw new RuntimeException("获取历史记录失败: " + e.getMessage());
+        }
     }
 } 

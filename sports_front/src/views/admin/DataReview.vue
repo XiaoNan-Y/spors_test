@@ -99,7 +99,7 @@
       <el-table-column label="操作" width="150" fixed="right" align="center">
         <template slot-scope="scope">
           <el-button 
-            v-if="scope.row.status === 'PENDING'"
+            v-if="canReview(scope.row)"
             size="mini" 
             type="primary"
             @click="handleReview(scope.row)"
@@ -260,6 +260,71 @@
         <el-button type="primary" @click="submitReview">确定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 详情对话框 -->
+    <el-dialog 
+      title="成绩详情" 
+      :visible.sync="detailDialog.visible" 
+      width="600px"
+    >
+      <div v-if="currentRecord" class="detail-container">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="学生姓名">
+            {{ currentRecord.student?.realName || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="学号">
+            {{ currentRecord.student?.username || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="测试项目">
+            {{ currentRecord.sportsItem?.name || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="测试成绩">
+            {{ currentRecord.score }} {{ currentRecord.sportsItem?.unit || '' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="测试时间">
+            {{ formatDateTime(currentRecord.testTime) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="记录教师">
+            {{ currentRecord.teacher?.realName || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="审核状态">
+            <el-tag :type="getStatusType(currentRecord.status)">
+              {{ getStatusText(currentRecord.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="审核时间">
+            {{ formatDateTime(currentRecord.reviewTime) || '-' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="审核意见" :span="2">
+            {{ currentRecord.reviewComment || '-' }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 如果需要显示历史成绩，可以添加一个表格 -->
+        <div class="history-records" v-if="historyRecords.length > 0">
+          <h3>历史成绩记录</h3>
+          <el-table :data="historyRecords" size="small" border stripe>
+            <el-table-column label="测试时间" align="center">
+              <template slot-scope="scope">
+                {{ formatDateTime(scope.row.testTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="成绩" align="center">
+              <template slot-scope="scope">
+                {{ scope.row.score }} {{ scope.row.sportsItem?.unit || '' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" align="center">
+              <template slot-scope="scope">
+                <el-tag :type="getStatusType(scope.row.status)">
+                  {{ getStatusText(scope.row.status) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -319,7 +384,11 @@ export default {
         status: [{ required: true, message: '请选择审核结果', trigger: 'change' }],
         comment: [{ required: true, message: '请输入审核意见', trigger: 'blur' }]
       },
-      studentLoading: false
+      studentLoading: false,
+      detailDialog: {
+        visible: false
+      },
+      historyRecords: []
     }
   },
   created() {
@@ -517,37 +586,64 @@ export default {
       this.reviewDialog.visible = true
     },
 
-    handleDetail(record) {
-      // 实现详情功能
+    async handleDetail(record) {
+      this.currentRecord = record
+      this.detailDialog.visible = true
+      
+      try {
+        // 获取该学生在该项目的历史成绩
+        const res = await this.$http.get('/api/admin/test-record/history', {
+          params: {
+            studentId: record.studentId,
+            sportsItemId: record.sportsItemId,
+            excludeId: record.id  // 排除当前记录
+          }
+        })
+        
+        if (res.data.code === 200) {
+          this.historyRecords = res.data.data || []
+        } else {
+          this.$message.warning('获取历史记录失败')
+          this.historyRecords = []
+        }
+      } catch (error) {
+        console.error('获取历史记录失败:', error)
+        this.$message.error('获取历史记录失败')
+        this.historyRecords = []
+      }
     },
 
     submitReview() {
-    this.$refs.reviewForm.validate(async (valid) => {
+      this.$refs.reviewForm.validate(async (valid) => {
         if (valid) {
-            try {
-                const currentUser = JSON.parse(localStorage.getItem('user'));
-                const data = {
-                    id: this.currentRecord.id,
-                    status: this.reviewForm.status,
-                    comment: this.reviewForm.comment,
-                    reviewerId: currentUser.id  // 添加审核人ID
-                }
-
-                const res = await this.$http.put('/api/admin/test-record/review', data)
-                if (res.data.code === 200) {
-                    this.$message.success('审核成功')
-                    this.reviewDialog.visible = false
-                    this.getList()
-                } else {
-                    this.$message.error(res.data.message || '审核失败')
-                }
-            } catch (error) {
-                console.error('审核失败:', error)
-                this.$message.error(error.response?.data?.message || '审核失败')
+          try {
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            const data = {
+              id: this.currentRecord.id,
+              status: this.reviewForm.status,
+              comment: this.reviewForm.comment,
+              reviewerId: currentUser.id
             }
+
+            const res = await this.$http.put('/api/admin/test-record/review', data)
+            if (res.data.code === 200) {
+              this.$message.success('审核成功')
+              this.reviewDialog.visible = false
+              this.getList()
+            } else {
+              this.$message.error(res.data.msg || '审核失败')
+            }
+          } catch (error) {
+            console.error('审核失败:', error)
+            this.$message.error(error.response?.data?.msg || '审核失败')
+          }
         }
-    })
-},
+      })
+    },
+
+    canReview(record) {
+      return record.status === 'PENDING' || record.status === 'REJECTED'
+    },
 
     searchStudents(query) {
       this.studentLoading = true
@@ -632,5 +728,19 @@ export default {
 
 .el-descriptions {
   margin: 20px 0;
+}
+
+.detail-container {
+  padding: 20px;
+}
+
+.history-records {
+  margin-top: 20px;
+}
+
+.history-records h3 {
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #606266;
 }
 </style> 
