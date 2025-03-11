@@ -16,10 +16,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/admin/test-record")
 public class TestRecordController {
+
+    private static final Logger log = LoggerFactory.getLogger(TestRecordController.class);
 
     @Autowired
     private TestRecordService testRecordService;
@@ -66,8 +70,8 @@ public class TestRecordController {
     @PostMapping
     public Result addRecord(@RequestBody Map<String, Object> params) {
         try {
-            // 添加日志
-            System.out.println("Received params: " + params);
+            // 添加日志以便调试
+            log.info("Received params for new record: {}", params);
             
             TestRecord record = new TestRecord();
             
@@ -81,15 +85,18 @@ public class TestRecordController {
             String testTimeStr = String.valueOf(params.get("testTime"));
             record.setTestTime(LocalDateTime.parse(testTimeStr, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
             
-            // 设置初始状态
+            // 设置初始状态和时间戳
             record.setStatus("PENDING");
             record.setCreatedAt(LocalDateTime.now());
             record.setUpdatedAt(LocalDateTime.now());
             
+            // 保存记录并确保事务提交
             TestRecord saved = testRecordService.save(record);
+            log.info("Successfully saved record: {}", saved);
+            
             return Result.success(saved);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error adding record:", e);
             return Result.error("添加记录失败: " + e.getMessage());
         }
     }

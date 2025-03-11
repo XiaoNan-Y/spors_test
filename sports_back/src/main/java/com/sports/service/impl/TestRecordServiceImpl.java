@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@Transactional
 public class TestRecordServiceImpl implements TestRecordService {
 
     @Autowired
@@ -94,28 +95,14 @@ public class TestRecordServiceImpl implements TestRecordService {
     }
 
     @Override
-    @Transactional
     public TestRecord save(TestRecord record) {
-        // 数据完整性检查
+        // 添加验证
         if (record.getStudentId() == null || record.getSportsItemId() == null || 
-            record.getTeacherId() == null || record.getScore() == null || 
-            record.getTestTime() == null) {
-            throw new RuntimeException("记录数据不完整");
+            record.getTeacherId() == null || record.getScore() == null) {
+            throw new IllegalArgumentException("必填字段不能为空");
         }
-
-        // 设置初始状态
-        record.setStatus("PENDING");
-        record.setCreatedAt(LocalDateTime.now());
-        record.setUpdatedAt(LocalDateTime.now());
-
-        // 检查成绩是否异常
-        boolean isAbnormal = checkAbnormalScore(record);
-        if (isAbnormal) {
-            String reason = getAbnormalReason(record);
-            // 记录异常原因，但仍然保存
-            record.setReviewComment("系统自动标记：" + reason);
-        }
-
+        
+        // 保存记录
         return testRecordRepository.save(record);
     }
 
