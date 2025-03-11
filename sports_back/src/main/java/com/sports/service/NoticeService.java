@@ -9,6 +9,12 @@ import java.util.List;
 
 public interface NoticeService {
     
+    /**
+     * 获取公告列表
+     * @param keyword 搜索关键词
+     * @param pageable 分页参数
+     * @return 分页后的公告列表
+     */
     Page<Notice> getNotices(String keyword, Pageable pageable);
     
     Result addNotice(Notice notice);

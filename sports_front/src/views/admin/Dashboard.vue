@@ -157,9 +157,9 @@ export default {
       }
     }
   },
-  created() {
-    this.fetchStats()
-    this.fetchNotices()
+  async created() {
+    await this.fetchStats()
+    await this.fetchNotices()
   },
   methods: {
     async fetchStats() {
@@ -182,13 +182,16 @@ export default {
       try {
         const res = await this.$http.get('/api/admin/notices/latest')
         if (res.data.code === 200) {
-          this.notices = res.data.data
+          this.notices = res.data.data || []
         } else {
-          throw new Error(res.data.msg)
+          console.warn('获取公告失败:', res.data.msg)
+          this.notices = []
         }
       } catch (error) {
         console.error('获取公告失败:', error)
-        this.$message.error('获取公告失败: ' + error.message)
+        this.notices = []
+        // 可以选择不显示错误提示，因为这不是核心功能
+        // this.$message.error('获取公告失败')
       }
     },
     formatDate(date) {

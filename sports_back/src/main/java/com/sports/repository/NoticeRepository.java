@@ -10,12 +10,21 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface NoticeRepository extends JpaRepository<Notice, Long> {
-    Page<Notice> findByTitleContainingAndTypeContainingOrderByCreateTimeDesc(
-        String title, String type, Pageable pageable);
+    
+    @Query("SELECT n FROM Notice n WHERE " +
+           "(:title IS NULL OR n.title LIKE %:title%) AND " +
+           "(:type IS NULL OR n.type = :type) " +
+           "ORDER BY n.createTime DESC")
+    Page<Notice> findByTitleAndType(@Param("title") String title, 
+                                   @Param("type") String type, 
+                                   Pageable pageable);
     
     List<Notice> findTop5ByStatusOrderByCreateTimeDesc(Integer status);
 
     Page<Notice> findByStatus(Integer status, Pageable pageable);
+
+    @Query("SELECT n FROM Notice n WHERE n.status = 1 ORDER BY n.createTime DESC")
+    List<Notice> findLatestNotices();
 
     @Query("SELECT n FROM Notice n WHERE " +
            "(:keyword IS NULL OR n.title LIKE %:keyword% OR n.content LIKE %:keyword%) " +

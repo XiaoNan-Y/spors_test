@@ -1,9 +1,6 @@
 package com.sports.entity;
 
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
-
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
@@ -15,28 +12,26 @@ public class Notice {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String type;  // TEST_SCHEDULE, SCORE_RELEASE, SYSTEM_MAINTENANCE, OTHER
-
-    @Column(nullable = false)
-    private String priority;  // HIGH, NORMAL, LOW
-
-    @Column(nullable = false, length = 100)
+    @Column(nullable = false, length = 200)
     private String title;
-
-    @Column(nullable = false, length = 2000)
+    
+    @Column(columnDefinition = "TEXT")
     private String content;
-
+    
+    @Column(length = 50)
+    private String type;
+    
+    @Column(length = 20)
+    private String priority;
+    
     private Integer status = 1;  // 1: 启用, 0: 禁用
 
     @Column(name = "create_by")
     private Long createBy;
-
-    @CreationTimestamp
+    
     @Column(name = "create_time")
     private LocalDateTime createTime;
-
-    @UpdateTimestamp
+    
     @Column(name = "update_time")
     private LocalDateTime updateTime;
 }

@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -24,16 +25,21 @@ public class NoticeServiceImpl implements NoticeService {
 
     @Override
     public Page<Notice> getNoticePage(String keyword, String type, int page, int size) {
-        return noticeRepository.findByTitleContainingAndTypeContainingOrderByCreateTimeDesc(
-            keyword == null ? "" : keyword,
-            type == null ? "" : type,
+        return noticeRepository.findByTitleAndType(
+            keyword,
+            type,
             PageRequest.of(page - 1, size)
         );
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<Notice> getNotices(String keyword, Pageable pageable) {
-        return noticeRepository.findByKeyword(keyword, pageable);
+        try {
+            return noticeRepository.findByKeyword(keyword, pageable);
+        } catch (Exception e) {
+            throw new RuntimeException("获取公告列表失败: " + e.getMessage());
+        }
     }
 
     @Override
@@ -41,6 +47,8 @@ public class NoticeServiceImpl implements NoticeService {
     public Result addNotice(Notice notice) {
         try {
             notice.setStatus(1); // 设置默认状态为启用
+            notice.setCreateTime(LocalDateTime.now());
+            notice.setUpdateTime(LocalDateTime.now());
             Notice savedNotice = noticeRepository.save(notice);
             return Result.success(savedNotice);
         } catch (Exception e) {
@@ -56,13 +64,14 @@ public class NoticeServiceImpl implements NoticeService {
             Notice existingNotice = noticeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("通知不存在"));
 
-            existingNotice.setType(notice.getType());
-            existingNotice.setPriority(notice.getPriority());
             existingNotice.setTitle(notice.getTitle());
             existingNotice.setContent(notice.getContent());
+            existingNotice.setType(notice.getType());
+            existingNotice.setPriority(notice.getPriority());
+            existingNotice.setUpdateTime(LocalDateTime.now());
 
             noticeRepository.save(existingNotice);
-            return Result.success(null);
+            return Result.success(existingNotice);
         } catch (Exception e) {
             log.error("更新通知失败", e);
             return Result.error("更新通知失败：" + e.getMessage());
@@ -98,8 +107,6 @@ public class NoticeServiceImpl implements NoticeService {
 
     @Override
     public List<Notice> getLatestNotices() {
-        PageRequest pageRequest = PageRequest.of(0, 5, Sort.by(Sort.Direction.DESC, "createTime"));
-        Page<Notice> noticePage = noticeRepository.findByStatus(1, pageRequest);
-        return noticePage.getContent();
+        return noticeRepository.findTop5ByStatusOrderByCreateTimeDesc(1);
     }
 } 

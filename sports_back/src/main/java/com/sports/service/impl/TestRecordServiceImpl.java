@@ -5,6 +5,19 @@ import com.sports.entity.SportsItem;
 import com.sports.repository.TestRecordRepository;
 import com.sports.repository.SportsItemRepository;
 import com.sports.service.TestRecordService;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.ss.usermodel.BorderStyle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +32,7 @@ import javax.persistence.criteria.JoinType;
 import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -244,15 +258,121 @@ public class TestRecordServiceImpl implements TestRecordService {
 
     @Override
     public void exportToExcel(HttpServletResponse response, String status, Long teacherId, Long sportsItemId) throws Exception {
-        // 设置响应头
-        response.setContentType("application/vnd.ms-excel");
-        response.setHeader("Content-Disposition", "attachment;filename=test_records.xlsx");
+        // 查询数据
+        Specification<TestRecord> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            
+            if (status != null && !status.isEmpty()) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (teacherId != null) {
+                predicates.add(cb.equal(root.get("teacherId"), teacherId));
+            }
+            if (sportsItemId != null) {
+                predicates.add(cb.equal(root.get("sportsItemId"), sportsItemId));
+            }
+            
+            return predicates.isEmpty() ? null : cb.and(predicates.toArray(new Predicate[0]));
+        };
+        
+        List<TestRecord> records = testRecordRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "testTime"));
 
-        // TODO: 实现数据导出到Excel
-        // 1. 查询符合条件的数据
-        // 2. 创建Excel工作簿
-        // 3. 写入数据
-        // 4. 输出到响应流
+        // 创建工作簿和工作表
+        XSSFWorkbook workbook = new XSSFWorkbook();
+        XSSFSheet sheet = workbook.createSheet("测试记录");
+
+        // 设置列宽
+        sheet.setColumnWidth(0, 15 * 256);  // 测试时间
+        sheet.setColumnWidth(1, 12 * 256);  // 学生姓名
+        sheet.setColumnWidth(2, 12 * 256);  // 学号
+        sheet.setColumnWidth(3, 15 * 256);  // 测试项目
+        sheet.setColumnWidth(4, 10 * 256);  // 成绩
+        sheet.setColumnWidth(5, 10 * 256);  // 状态
+        sheet.setColumnWidth(6, 12 * 256);  // 教师姓名
+        sheet.setColumnWidth(7, 15 * 256);  // 审核时间
+        sheet.setColumnWidth(8, 20 * 256);  // 审核意见
+
+        // 创建标题行样式
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        headerStyle.setBorderTop(BorderStyle.THIN);
+        headerStyle.setBorderRight(BorderStyle.THIN);
+        headerStyle.setBorderBottom(BorderStyle.THIN);
+        headerStyle.setBorderLeft(BorderStyle.THIN);
+
+        XSSFFont headerFont = workbook.createFont();
+        headerFont.setBold(true);
+        headerStyle.setFont(headerFont);
+
+        // 创建标题行
+        String[] headers = {"测试时间", "学生姓名", "学号", "测试项目", "成绩", "状态", "教师姓名", "审核时间", "审核意见"};
+        Row headerRow = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = headerRow.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(headerStyle);
+        }
+
+        // 创建数据行样式
+        CellStyle dataStyle = workbook.createCellStyle();
+        dataStyle.setAlignment(HorizontalAlignment.CENTER);
+        dataStyle.setBorderTop(BorderStyle.THIN);
+        dataStyle.setBorderRight(BorderStyle.THIN);
+        dataStyle.setBorderBottom(BorderStyle.THIN);
+        dataStyle.setBorderLeft(BorderStyle.THIN);
+
+        // 写入数据
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        int rowNum = 1;
+        for (TestRecord record : records) {
+            Row row = sheet.createRow(rowNum++);
+            
+            // 测试时间
+            row.createCell(0).setCellValue(record.getTestTime().format(formatter));
+            // 学生姓名
+            row.createCell(1).setCellValue(record.getStudent() != null ? record.getStudent().getRealName() : "");
+            // 学号
+            row.createCell(2).setCellValue(record.getStudent() != null ? record.getStudent().getUsername() : "");
+            // 测试项目
+            row.createCell(3).setCellValue(record.getSportsItem() != null ? record.getSportsItem().getName() : "");
+            // 成绩
+            row.createCell(4).setCellValue(record.getScore() != null ? record.getScore() : 0.0);
+            // 状态
+            row.createCell(5).setCellValue(getStatusText(record.getStatus()));
+            // 教师姓名
+            row.createCell(6).setCellValue(record.getTeacher() != null ? record.getTeacher().getRealName() : "");
+            // 审核时间
+            row.createCell(7).setCellValue(record.getReviewTime() != null ? record.getReviewTime().format(formatter) : "");
+            // 审核意见
+            row.createCell(8).setCellValue(record.getReviewComment() != null ? record.getReviewComment() : "");
+
+            // 应用样式
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = row.getCell(i);
+                if (cell != null) {
+                    cell.setCellStyle(dataStyle);
+                }
+            }
+        }
+
+        // 写入响应
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setHeader("Content-Disposition", "attachment; filename=test_records.xlsx");
+        workbook.write(response.getOutputStream());
+        workbook.close();
+    }
+
+    // 添加辅助方法：获取状态的中文描述
+    private String getStatusText(String status) {
+        if (status == null) return "";
+        switch (status) {
+            case "PENDING": return "待审核";
+            case "APPROVED": return "已通过";
+            case "REJECTED": return "已驳回";
+            default: return status;
+        }
     }
 
     @Override

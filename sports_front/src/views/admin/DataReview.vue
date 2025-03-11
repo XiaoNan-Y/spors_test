@@ -596,22 +596,21 @@ export default {
     },
 
     async handleExport() {
-      try {
-        const res = await this.$http.get('/api/admin/test-record/export', {
-          params: this.queryParams,
-          responseType: 'blob'
-        })
-        
-        const blob = new Blob([res.data], { type: 'application/vnd.ms-excel' })
-        const link = document.createElement('a')
-        link.href = window.URL.createObjectURL(blob)
-        link.download = '体测成绩数据.xlsx'
-        link.click()
-        window.URL.revokeObjectURL(link.href)
-      } catch (error) {
-        console.error('导出失败:', error)
-        this.$message.error('导出失败')
+      // 构建查询参数
+      const params = {
+        status: this.queryParams.status,
+        teacherId: this.queryParams.teacherId,
+        sportsItemId: this.queryParams.sportsItemId
       }
+      
+      // 构建查询字符串
+      const queryString = Object.entries(params)
+        .filter(([_, value]) => value != null && value !== '')
+        .map(([key, value]) => `${key}=${value}`)
+        .join('&')
+      
+      // 下载文件
+      window.location.href = `/api/admin/test-record/export${queryString ? '?' + queryString : ''}`
     },
 
     handleSportsItemChange(value) {
