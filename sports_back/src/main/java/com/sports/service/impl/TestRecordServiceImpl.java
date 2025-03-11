@@ -310,4 +310,24 @@ public class TestRecordServiceImpl implements TestRecordService {
             throw new RuntimeException("获取历史记录失败: " + e.getMessage());
         }
     }
+
+    @Override
+    @Transactional
+    public TestRecord modifyReview(Long id, String status, String comment, Long reviewerId) {
+        TestRecord record = testRecordRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("记录不存在"));
+
+        // 检查成绩是否异常
+        boolean isAbnormal = checkAbnormalScore(record);
+        if (isAbnormal && "APPROVED".equals(status)) {
+            throw new RuntimeException("异常成绩不能直接通过审核：" + getAbnormalReason(record));
+        }
+
+        record.setStatus(status);
+        record.setReviewComment(comment);
+        record.setReviewTime(LocalDateTime.now());
+        record.setUpdatedAt(LocalDateTime.now());
+
+        return testRecordRepository.save(record);
+    }
 } 

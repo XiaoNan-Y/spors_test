@@ -96,19 +96,37 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="150" fixed="right" align="center">
+      <el-table-column label="操作" width="140" fixed="right" align="center">
         <template slot-scope="scope">
-          <el-button 
-            v-if="canReview(scope.row)"
-            size="mini" 
-            type="primary"
-            @click="handleReview(scope.row)"
-          >审核</el-button>
-          <el-button 
-            size="mini"
-            type="info"
-            @click="handleDetail(scope.row)"
-          >详情</el-button>
+          <el-tooltip content="审核" placement="top" :disabled="!canReview(scope.row)">
+            <el-button
+              v-if="canReview(scope.row)"
+              type="primary"
+              icon="el-icon-check"
+              size="mini"
+              circle
+              @click="handleReview(scope.row)"
+            ></el-button>
+          </el-tooltip>
+          <el-tooltip content="修改" placement="top" :disabled="!canModify(scope.row)">
+            <el-button
+              v-if="canModify(scope.row)"
+              type="warning"
+              icon="el-icon-edit"
+              size="mini"
+              circle
+              @click="handleModify(scope.row)"
+            ></el-button>
+          </el-tooltip>
+          <el-tooltip content="详情" placement="top">
+            <el-button
+              type="info"
+              icon="el-icon-view"
+              size="mini"
+              circle
+              @click="handleDetail(scope.row)"
+            ></el-button>
+          </el-tooltip>
         </template>
       </el-table-column>
     </el-table>
@@ -325,6 +343,35 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 修改对话框 -->
+    <el-dialog 
+      title="修改审核状态" 
+      :visible.sync="modifyDialog.visible" 
+      width="400px"
+    >
+      <el-form :model="modifyForm" :rules="modifyRules" ref="modifyForm" label-width="80px">
+        <el-form-item label="审核状态" prop="status">
+          <el-select v-model="modifyForm.status" placeholder="请选择审核状态">
+            <el-option label="待审核" value="PENDING"></el-option>
+            <el-option label="通过" value="APPROVED"></el-option>
+            <el-option label="驳回" value="REJECTED"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="审核意见" prop="comment">
+          <el-input
+            type="textarea"
+            v-model="modifyForm.comment"
+            :rows="3"
+            placeholder="请输入审核意见"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="modifyDialog.visible = false">取 消</el-button>
+        <el-button type="primary" @click="submitModify">确 定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -388,7 +435,19 @@ export default {
       detailDialog: {
         visible: false
       },
-      historyRecords: []
+      historyRecords: [],
+      modifyDialog: {
+        visible: false
+      },
+      modifyForm: {
+        id: null,
+        status: '',
+        comment: ''
+      },
+      modifyRules: {
+        status: [{ required: true, message: '请选择审核状态', trigger: 'change' }],
+        comment: [{ required: true, message: '请输入审核意见', trigger: 'blur' }]
+      }
     }
   },
   created() {
@@ -675,6 +734,47 @@ export default {
         second: '2-digit',
         hour12: false
       })
+    },
+
+    handleModify(record) {
+      this.currentRecord = record
+      this.modifyForm.id = record.id
+      this.modifyForm.status = record.status
+      this.modifyForm.comment = record.reviewComment || ''
+      this.modifyDialog.visible = true
+    },
+
+    async submitModify() {
+      this.$refs.modifyForm.validate(async (valid) => {
+        if (valid) {
+          try {
+            const currentUser = JSON.parse(localStorage.getItem('user'))
+            const data = {
+              id: this.modifyForm.id,
+              status: this.modifyForm.status,
+              comment: this.modifyForm.comment,
+              reviewerId: currentUser.id
+            }
+
+            const res = await this.$http.put('/api/admin/test-record/modify', data)
+            if (res.data.code === 200) {
+              this.$message.success('修改成功')
+              this.modifyDialog.visible = false
+              this.getList()
+            } else {
+              this.$message.error(res.data.msg || '修改失败')
+            }
+          } catch (error) {
+            console.error('修改失败:', error)
+            this.$message.error(error.response?.data?.msg || '修改失败')
+          }
+        }
+      })
+    },
+
+    canModify(row) {
+      // 已审核的记录可以修改
+      return row.status === 'APPROVED' || row.status === 'REJECTED'
     }
   }
 }
@@ -742,5 +842,16 @@ export default {
   margin-bottom: 15px;
   font-size: 16px;
   color: #606266;
+}
+
+/* 添加按钮间距 */
+.el-button + .el-button {
+  margin-left: 8px;
+}
+
+/* 可选：鼠标悬停效果 */
+.el-button.is-circle:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s;
 }
 </style> 

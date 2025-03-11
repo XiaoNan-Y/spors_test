@@ -163,4 +163,20 @@ public class TestRecordController {
             return Result.error("获取历史记录失败: " + e.getMessage());
         }
     }
+
+    @PutMapping("/modify")
+    public Result modifyReview(@RequestBody Map<String, Object> params) {
+        try {
+            Long id = Long.valueOf(String.valueOf(params.get("id")));
+            String status = String.valueOf(params.get("status"));
+            String comment = String.valueOf(params.get("comment"));
+            Long reviewerId = Long.valueOf(String.valueOf(params.get("reviewerId")));
+        
+            TestRecord record = testRecordService.modifyReview(id, status, comment, reviewerId);
+            return Result.success(record);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("修改失败: " + e.getMessage());
+        }
+    }
 } 

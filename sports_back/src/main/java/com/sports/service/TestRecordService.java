@@ -51,4 +51,6 @@ public interface TestRecordService {
      * 批量保存测试记录
      */
     List<TestRecord> saveAll(List<TestRecord> records);
+
+    TestRecord modifyReview(Long id, String status, String comment, Long reviewerId);
 } 
