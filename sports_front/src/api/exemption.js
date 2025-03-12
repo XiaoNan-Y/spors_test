@@ -34,4 +34,20 @@ export function submitExemption(data) {
     method: 'post',
     data
   })
+}
+
+export function getExemptions(params) {
+  return request({
+    url: '/api/admin/exemptions',
+    method: 'get',
+    params
+  })
+}
+
+export function reviewExemption(id, data) {
+  return request({
+    url: `/api/admin/exemptions/${id}/review`,
+    method: 'put',
+    data
+  })
 } 

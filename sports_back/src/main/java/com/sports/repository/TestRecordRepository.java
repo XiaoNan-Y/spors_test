@@ -84,4 +84,19 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
     List<String> findDistinctClassName();
+
+    @Query("SELECT t FROM TestRecord t " +
+           "LEFT JOIN t.student s " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE (:className IS NULL OR t.className = :className) " +
+           "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(s.realName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(s.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<TestRecord> findByFiltersForTeacher(
+        @Param("className") String className,
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("keyword") String keyword,
+        Pageable pageable
+    );
 } 

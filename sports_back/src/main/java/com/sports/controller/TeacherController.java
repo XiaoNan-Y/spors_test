@@ -3,24 +3,42 @@ package com.sports.controller;
 import com.sports.common.Result;
 import com.sports.entity.SportsItem;
 import com.sports.entity.TestRecord;
+import com.sports.entity.TestExemption;
+import com.sports.repository.TestRecordRepository;
+import com.sports.repository.TestExemptionRepository;
 import com.sports.service.SportsItemService;
 import com.sports.service.TeacherService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/teacher")
+@CrossOrigin
 public class TeacherController {
 
+    private static final Logger log = LoggerFactory.getLogger(TeacherController.class);
+    
     @Autowired
     private TeacherService teacherService;
     
     @Autowired
     private SportsItemService sportsItemService;
+
+    private final TestRecordRepository testRecordRepository;
+    private final TestExemptionRepository testExemptionRepository;
+
+    public TeacherController(TestRecordRepository testRecordRepository, TestExemptionRepository testExemptionRepository) {
+        this.testRecordRepository = testRecordRepository;
+        this.testExemptionRepository = testExemptionRepository;
+    }
 
     // 获取体育项目列表
     @GetMapping("/sports-items")
@@ -104,6 +122,81 @@ public class TeacherController {
             return Result.success(null);
         } catch (Exception e) {
             return Result.error("删除成绩失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/student-records")
+    public Result getStudentRecords(
+        @RequestParam(required = false) String className,
+        @RequestParam(required = false) Long sportsItemId,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            PageRequest pageRequest = PageRequest.of(page, size);
+            Page<TestRecord> records = testRecordRepository.findByFiltersForTeacher(
+                className,
+                sportsItemId,
+                keyword,
+                pageRequest
+            );
+            
+            log.debug("Found {} records for class {}", records.getTotalElements(), className);
+            return Result.success(records);
+        } catch (Exception e) {
+            log.error("Failed to get student records", e);
+            return Result.error("获取学生成绩记录失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/exemptions")
+    public Result getExemptions(
+        @RequestParam(required = false) String className,
+        @RequestParam(required = false) String type,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        try {
+            PageRequest pageRequest = PageRequest.of(page, size);
+            Page<TestExemption> exemptions = testExemptionRepository.findByFilters(
+                className,
+                type,
+                status,
+                keyword,
+                pageRequest
+            );
+            
+            log.debug("Found {} exemptions", exemptions.getTotalElements());
+            return Result.success(exemptions);
+        } catch (Exception e) {
+            log.error("Failed to get exemptions", e);
+            return Result.error("获取免测/重测申请失败: " + e.getMessage());
+        }
+    }
+
+    @PutMapping("/exemptions/{id}/review")
+    public Result reviewExemption(
+        @PathVariable Long id,
+        @RequestBody Map<String, String> reviewData
+    ) {
+        try {
+            TestExemption exemption = testExemptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("申请记录不存在"));
+
+            exemption.setStatus(reviewData.get("status"));
+            exemption.setReviewComment(reviewData.get("comment"));
+            exemption.setReviewTime(LocalDateTime.now());
+            // TODO: 设置审核人ID
+            exemption.setReviewerId(1L);
+
+            TestExemption updated = testExemptionRepository.save(exemption);
+            return Result.success(updated);
+        } catch (Exception e) {
+            log.error("Failed to review exemption", e);
+            return Result.error("审核失败: " + e.getMessage());
         }
     }
 } 

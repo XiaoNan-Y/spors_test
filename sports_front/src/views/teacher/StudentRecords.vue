@@ -23,8 +23,12 @@
             ></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="学号">
-          <el-input v-model="queryParams.studentNumber" placeholder="请输入学号" clearable></el-input>
+        <el-form-item label="关键字">
+          <el-input 
+            v-model="queryParams.keyword" 
+            placeholder="学生姓名/学号"
+            clearable
+          ></el-input>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
@@ -152,28 +156,21 @@ export default {
   data() {
     return {
       loading: false,
-      // 查询参数
+      tableData: [],
+      total: 0,
       queryParams: {
         pageNum: 1,
         pageSize: 10,
         sportsItemId: undefined,
         className: undefined,
-        studentNumber: undefined
+        keyword: ''
       },
-      // 表格数据
-      tableData: [],
-      total: 0,
-      // 体育项目列表
       sportsItems: [],
-      // 班级列表
       classList: [],
-      // 学生列表
       studentList: [],
-      // 对话框控制
       dialog: {
         visible: false
       },
-      // 表单数据
       form: {
         id: undefined,
         studentNumber: undefined,
@@ -181,7 +178,6 @@ export default {
         sportsItemId: undefined,
         score: undefined
       },
-      // 表单验证规则
       rules: {
         studentNumber: [
           { required: true, message: '请选择学生', trigger: 'change' }
@@ -209,20 +205,34 @@ export default {
     }
   },
   created() {
-    this.getList()
-    this.getClassList()
-    this.getSportsItems()
+    this.init()
   },
   methods: {
-    // 获取列表数据
+    async init() {
+      await Promise.all([
+        this.getSportsItems(),
+        this.getClassList(),
+        this.getList()
+      ])
+    },
     async getList() {
       try {
         this.loading = true
-        const res = await getTestRecords(this.queryParams)
+        const res = await this.$http.get('/api/teacher/student-records', {
+          params: {
+            page: this.queryParams.pageNum - 1,
+            size: this.queryParams.pageSize,
+            sportsItemId: this.queryParams.sportsItemId,
+            className: this.queryParams.className,
+            keyword: this.queryParams.keyword
+          }
+        })
+        
         if (res.data.code === 200) {
-          const { content, totalElements } = res.data.data
-          this.tableData = content
-          this.total = totalElements
+          this.tableData = res.data.data.content || []
+          this.total = res.data.data.totalElements || 0
+        } else {
+          this.$message.error(res.data.message || '获取数据失败')
         }
       } catch (error) {
         console.error('获取列表失败:', error)
@@ -231,8 +241,6 @@ export default {
         this.loading = false
       }
     },
-
-    // 获取体育项目列表
     async getSportsItems() {
       try {
         const res = await getSportsItems()
@@ -244,8 +252,6 @@ export default {
         this.$message.error('获取体育项目列表失败')
       }
     },
-
-    // 获取班级列表
     async getClassList() {
       try {
         const res = await getClassList()
@@ -257,14 +263,10 @@ export default {
         this.$message.error('获取班级列表失败')
       }
     },
-
-    // 处理查询
     handleQuery() {
       this.queryParams.pageNum = 1
       this.getList()
     },
-
-    // 重置查询
     resetQuery() {
       this.$refs.queryForm.resetFields()
       this.queryParams = {
@@ -272,12 +274,10 @@ export default {
         pageSize: 10,
         sportsItemId: undefined,
         className: undefined,
-        studentNumber: undefined
+        keyword: ''
       }
       this.getList()
     },
-
-    // 处理添加
     handleAdd() {
       this.form = {
         id: undefined,
@@ -288,8 +288,6 @@ export default {
       }
       this.dialog.visible = true
     },
-
-    // 处理编辑
     handleEdit(row) {
       this.form = {
         id: row.id,
@@ -300,8 +298,6 @@ export default {
       }
       this.dialog.visible = true
     },
-
-    // 处理删除
     handleDelete(row) {
       this.$confirm('确认删除该记录吗？', '提示', {
         type: 'warning'
@@ -318,8 +314,6 @@ export default {
         }
       }).catch(() => {})
     },
-
-    // 提交表单
     submitForm() {
       this.$refs.form.validate(async (valid) => {
         if (valid) {
@@ -338,22 +332,15 @@ export default {
         }
       })
     },
-
-    // 处理分页大小变化
     handleSizeChange(val) {
       this.queryParams.pageSize = val
       this.getList()
     },
-
-    // 处理页码变化
     handleCurrentChange(val) {
       this.queryParams.pageNum = val
       this.getList()
     },
-
-    // 处理导出
     handleExport() {
-      // TODO: 实现导出功能
       this.$message.info('导出功能开发中')
     }
   }
