@@ -7,9 +7,9 @@ spring:
       mode: always      # 总是执行 SQL 初始化
       schema-locations: classpath:data.sql  # 指定 SQL 文件位置
   datasource:
-    url: jdbc:mysql://localhost:3306/sports?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root  # 替换为你的数据库用户名
-    password: root  # 替换为你的数据库密码
+    url: jdbc:mysql://localhost:3306/sports?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root  # 替换为您的MySQL用户名
+    password: root  # 替换为您的MySQL密码
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       # 连接池名称
@@ -30,7 +30,7 @@ spring:
       connection-test-query: SELECT 1
   jpa:
     hibernate:
-      ddl-auto: none  # 禁止 Hibernate 自动修改表结构
+      ddl-auto: update  # 这里使用update，这样数据库表结构会自动更新而不会删除数据
     show-sql: true
     properties:
       hibernate:

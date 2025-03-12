@@ -83,4 +83,16 @@ public class UserController {
             return Result.error("登录失败：" + e.getMessage());
         }
     }
+
+    @PutMapping("/{id}")
+    public Result updateUser(@PathVariable Long id, @RequestBody User user) {
+        try {
+            log.info("Updating user with id: {}, data: {}", id, user);
+            user.setId(id);
+            return userService.updateUser(user);
+        } catch (Exception e) {
+            log.error("Failed to update user", e);
+            return Result.error("更新用户失败：" + e.getMessage());
+        }
+    }
 } 
