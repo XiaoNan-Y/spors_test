@@ -7,14 +7,14 @@
         background-color="#304156"
         text-color="#bfcbd9"
         active-text-color="#409EFF"
-        router>
-        
+        :router="true"
+      >
         <el-menu-item index="/admin/dashboard">
           <i class="el-icon-s-home"></i>
           <span slot="title">首页</span>
         </el-menu-item>
 
-        <el-submenu index="user">
+        <el-submenu index="1">
           <template slot="title">
             <i class="el-icon-user"></i>
             <span>用户管理</span>
@@ -34,16 +34,20 @@
         </el-menu-item>
 
         <el-menu-item index="/admin/data-review">
-          <i class="el-icon-data-line"></i>
+          <i class="el-icon-document-checked"></i>
           <span slot="title">数据录入与审核</span>
         </el-menu-item>
 
-        <!-- 添加个人信息菜单项 -->
+        <!-- 添加免测/重测申请菜单项 -->
+        <el-menu-item index="/admin/exemption-review">
+          <i class="el-icon-document"></i>
+          <span slot="title">免测/重测申请</span>
+        </el-menu-item>
+
         <el-menu-item index="/admin/profile">
           <i class="el-icon-user"></i>
           <span slot="title">个人信息</span>
         </el-menu-item>
-
       </el-menu>
     </el-aside>
     
@@ -51,10 +55,12 @@
       <el-header>
         <div class="header-left">体育测试管理系统-管理员端</div>
         <div class="header-right">
-          <span>{{ username }}</span>
           <el-dropdown @command="handleCommand">
-            <i class="el-icon-setting" style="margin-right: 15px"></i>
+            <span class="el-dropdown-link">
+              {{ username }}<i class="el-icon-arrow-down el-icon--right"></i>
+            </span>
             <el-dropdown-menu slot="dropdown">
+              <el-dropdown-item command="profile">个人信息</el-dropdown-item>
               <el-dropdown-item command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </el-dropdown>

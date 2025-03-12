@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS test_record;
 DROP TABLE IF EXISTS sports_item;
 DROP TABLE IF EXISTS notice;
 DROP TABLE IF EXISTS user;
+DROP TABLE IF EXISTS test_exemption;
 
 -- 创建用户表
 CREATE TABLE IF NOT EXISTS `user` (
@@ -62,6 +63,26 @@ CREATE TABLE IF NOT EXISTS `notice` (
   `update_time` datetime NOT NULL,
   `create_by` bigint NOT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- 创建免测/重测申请表
+CREATE TABLE IF NOT EXISTS `test_exemption` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `student_number` varchar(50) NOT NULL,
+  `reason` text NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `status` varchar(50) NOT NULL,
+  `apply_time` datetime NOT NULL,
+  `teacher_review_time` datetime DEFAULT NULL,
+  `teacher_review_comment` text,
+  `admin_review_time` datetime DEFAULT NULL,
+  `admin_review_comment` text,
+  `created_at` datetime NOT NULL,
+  `updated_at` datetime NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_student_number` (`student_number`),
+  KEY `idx_type` (`type`),
+  KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- 清除现有数据
@@ -140,3 +161,62 @@ INSERT INTO notice (title, content, type, priority, status, create_time, update_
 VALUES 
 ('2024年体育测试开始', '请各位同学准时参加体育测试...', 'TEST_SCHEDULE', 'HIGH', 1, NOW(), NOW(), 1),
 ('体育馆维修通知', '体育馆将于下周进行维修...', 'SYSTEM_MAINTENANCE', 'NORMAL', 1, NOW(), NOW(), 1);
+
+-- 插入免测/重测申请测试数据
+INSERT INTO test_exemption (
+    student_number,
+    reason,
+    type,
+    status,
+    apply_time,
+    teacher_review_time,
+    teacher_review_comment,
+    admin_review_time,
+    admin_review_comment,
+    created_at,
+    updated_at
+) VALUES 
+-- 待教师审核的申请
+('2023001', '因腿部受伤需要休养两个月', 'EXEMPTION', 'PENDING_TEACHER', 
+ NOW(), NULL, NULL, NULL, NULL, NOW(), NOW()),
+
+('2023002', '上次测试时身体不适，申请重新测试', 'RETEST', 'PENDING_TEACHER',
+ NOW(), NULL, NULL, NULL, NULL, NOW(), NOW()),
+
+-- 教师已审核，待管理员审核的申请
+('2023003', '最近做了手术需要恢复', 'EXEMPTION', 'PENDING_ADMIN',
+ DATE_SUB(NOW(), INTERVAL 2 DAY), 
+ DATE_SUB(NOW(), INTERVAL 1 DAY),
+ '已查看医院证明，情况属实，建议批准', 
+ NULL, NULL, 
+ DATE_SUB(NOW(), INTERVAL 2 DAY), 
+ DATE_SUB(NOW(), INTERVAL 1 DAY)),
+
+-- 教师驳回的申请
+('2023004', '最近感冒不适', 'EXEMPTION', 'REJECTED_TEACHER',
+ DATE_SUB(NOW(), INTERVAL 3 DAY),
+ DATE_SUB(NOW(), INTERVAL 2 DAY),
+ '普通感冒不建议免测，建议调整好状态参加测试',
+ NULL, NULL,
+ DATE_SUB(NOW(), INTERVAL 3 DAY),
+ DATE_SUB(NOW(), INTERVAL 2 DAY)),
+
+-- 管理员通过的申请
+('2023005', '因参加省级比赛训练，申请延期测试', 'RETEST', 'APPROVED',
+ DATE_SUB(NOW(), INTERVAL 5 DAY),
+ DATE_SUB(NOW(), INTERVAL 4 DAY),
+ '已确认比赛通知，建议批准',
+ DATE_SUB(NOW(), INTERVAL 3 DAY),
+ '同意教师意见，准予延期测试',
+ DATE_SUB(NOW(), INTERVAL 5 DAY),
+ DATE_SUB(NOW(), INTERVAL 3 DAY)),
+
+-- 管理员驳回的申请
+('2023001', '课程时间冲突', 'RETEST', 'REJECTED',
+ DATE_SUB(NOW(), INTERVAL 6 DAY),
+ DATE_SUB(NOW(), INTERVAL 5 DAY),
+ '时间冲突可以调整，不建议批准',
+ DATE_SUB(NOW(), INTERVAL 4 DAY),
+ '同意教师意见，请调整时间参加测试',
+ DATE_SUB(NOW(), INTERVAL 6 DAY),
+ DATE_SUB(NOW(), INTERVAL 4 DAY));

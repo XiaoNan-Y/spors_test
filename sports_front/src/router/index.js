@@ -66,6 +66,12 @@ const routes = [
           requiresAuth: true,
           role: 'ADMIN'
         }
+      },
+      {
+        path: 'exemption-review',
+        name: 'ExemptionReview',
+        component: () => import('@/views/admin/ExemptionReview.vue'),
+        meta: { title: '免测/重测申请', icon: 'el-icon-document-checked' }
       }
     ]
   },

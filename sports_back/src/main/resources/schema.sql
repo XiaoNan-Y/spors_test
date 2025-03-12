@@ -60,14 +60,20 @@ CREATE TABLE IF NOT EXISTS test_record (
     FOREIGN KEY (sports_item_id) REFERENCES sports_item(id)
 );
 
--- 创建免测申请表
+-- 修改免测申请表
+DROP TABLE IF EXISTS test_exemption;
 CREATE TABLE IF NOT EXISTS test_exemption (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     student_number VARCHAR(50) NOT NULL,
     reason TEXT NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    type VARCHAR(20) NOT NULL,  -- EXEMPTION(免测) 或 RETEST(重测)
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING_TEACHER',  -- 审核状态
     apply_time DATETIME NOT NULL,
-    review_time DATETIME,
-    review_comment TEXT,
+    teacher_review_time DATETIME,
+    teacher_review_comment TEXT,
+    admin_review_time DATETIME,
+    admin_review_comment TEXT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
     FOREIGN KEY (student_number) REFERENCES user(student_number)
 ); 
