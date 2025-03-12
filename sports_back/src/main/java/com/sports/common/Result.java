@@ -5,21 +5,21 @@ import lombok.Data;
 @Data
 public class Result {
     private Integer code;
-    private String msg;
+    private String message;
     private Object data;
 
     public static Result success(Object data) {
         Result result = new Result();
         result.setCode(200);
-        result.setMsg("success");
+        result.setMessage("success");
         result.setData(data);
         return result;
     }
 
-    public static Result error(String msg) {
+    public static Result error(String message) {
         Result result = new Result();
         result.setCode(500);
-        result.setMsg(msg);
+        result.setMessage(message);
         return result;
     }
 } 

@@ -2,23 +2,26 @@ package com.sports.entity;
 
 import lombok.Data;
 import javax.persistence.*;
+import java.io.Serializable;
 
 @Data
 @Entity
 @Table(name = "sports_item")
-public class SportsItem {
+public class SportsItem implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String name;
     
+    @Column(length = 200)
     private String description;
     
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private String unit;
     
+    @Column(name = "type")
     private String type;
     
     @Column(name = "is_active")

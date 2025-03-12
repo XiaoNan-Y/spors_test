@@ -7,7 +7,7 @@ import UserList from '@/views/admin/UserList.vue'
 import Dashboard from '@/views/admin/Dashboard.vue'
 import StudentManagement from '@/views/admin/StudentManagement.vue'
 import TeacherManagement from '@/views/admin/TeacherManagement.vue'
-import SportsItems from '@/views/admin/SportsItems.vue'
+import SportsItemManagement from '@/views/admin/SportsItemManagement.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import Profile from '@/views/admin/Profile.vue'
 import DataReview from '@/views/admin/DataReview.vue'
@@ -43,8 +43,9 @@ const routes = [
       },
       {
         path: 'sports-items',
-        name: 'SportsItems',
-        component: SportsItems
+        name: 'SportsItemManagement',
+        component: SportsItemManagement,
+        meta: { requiresAuth: true, requiresAdmin: true }
       },
       {
         path: 'notices',

@@ -4,16 +4,70 @@ import com.sports.entity.SportsItem;
 import com.sports.repository.SportsItemRepository;
 import com.sports.service.SportsItemService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
+@Transactional
 public class SportsItemServiceImpl implements SportsItemService {
     
     @Autowired
     private SportsItemRepository sportsItemRepository;
+
+    @Override
+    public SportsItem save(SportsItem sportsItem) {
+        return sportsItemRepository.save(sportsItem);
+    }
+
+    @Override
+    public void delete(Long id) {
+        sportsItemRepository.deleteById(id);
+    }
+
+    @Override
+    public SportsItem update(SportsItem sportsItem) {
+        return sportsItemRepository.save(sportsItem);
+    }
+
+    @Override
+    public Optional<SportsItem> findById(Long id) {
+        return sportsItemRepository.findById(id);
+    }
+
+    @Override
+    public List<SportsItem> findAll() {
+        return sportsItemRepository.findAll();
+    }
+
+    @Override
+    public Page<SportsItem> findByKeyword(String keyword, Pageable pageable) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return sportsItemRepository.findAll(pageable);
+        }
+        return sportsItemRepository.findByKeyword(keyword, pageable);
+    }
+
+    @Override
+    public List<SportsItem> findActiveItems() {
+        return sportsItemRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public boolean updateStatus(Long id, boolean isActive) {
+        Optional<SportsItem> optionalItem = sportsItemRepository.findById(id);
+        if (optionalItem.isPresent()) {
+            SportsItem item = optionalItem.get();
+            item.setIsActive(isActive);
+            sportsItemRepository.save(item);
+            return true;
+        }
+        return false;
+    }
 
     @Override
     public List<SportsItem> getAllActiveItems() {
@@ -21,56 +75,12 @@ public class SportsItemServiceImpl implements SportsItemService {
     }
 
     @Override
-    public SportsItem getById(Long id) {
-        return sportsItemRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("体育项目不存在"));
+    public boolean existsById(Long id) {
+        return sportsItemRepository.existsById(id);
     }
 
     @Override
-    @Transactional
-    public SportsItem save(SportsItem item) {
-        return sportsItemRepository.save(item);
-    }
-
-    @Override
-    @Transactional
-    public void delete(Long id) {
+    public void deleteById(Long id) {
         sportsItemRepository.deleteById(id);
-    }
-
-    @Override
-    @Transactional
-    public void updateStatus(Long id, boolean isActive) {
-        SportsItem item = getById(id);
-        item.setIsActive(isActive);
-        sportsItemRepository.save(item);
-    }
-
-    @Override
-    public List<SportsItem> list(String keyword) {
-        if (keyword != null && !keyword.isEmpty()) {
-            return sportsItemRepository.findByNameContaining(keyword);
-        }
-        return sportsItemRepository.findAll();
-    }
-
-    @Override
-    @Transactional
-    public void update(SportsItem sportsItem) {
-        SportsItem existingItem = sportsItemRepository.findById(sportsItem.getId())
-            .orElseThrow(() -> new RuntimeException("项目不存在"));
-        
-        existingItem.setName(sportsItem.getName());
-        existingItem.setDescription(sportsItem.getDescription());
-        existingItem.setUnit(sportsItem.getUnit());
-        existingItem.setType(sportsItem.getType());
-        existingItem.setIsActive(sportsItem.getIsActive());
-        
-        sportsItemRepository.save(existingItem);
-    }
-
-    @Override
-    public List<SportsItem> findAll() {
-        return sportsItemRepository.findAll();
     }
 } 

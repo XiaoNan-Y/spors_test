@@ -7,7 +7,13 @@ import 'element-ui/lib/theme-chalk/index.css'
 import axios from 'axios'  // 直接引入 axios
 import request from '@/utils/request'
 
-Vue.use(ElementUI)
+Vue.use(ElementUI, {
+  tableOptions: {
+    mousewheel: {
+      passive: true
+    }
+  }
+})
 Vue.config.productionTip = false
 
 // 配置 axios 默认值

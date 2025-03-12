@@ -66,4 +66,22 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         @Param("sportsItemId") Long sportsItemId,
         Pageable pageable
     );
+
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
+           "LEFT JOIN t.student s " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(s.realName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(s.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<TestRecord> findAllWithFilters(
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("status") String status,
+        @Param("keyword") String keyword,
+        Pageable pageable
+    );
+
+    @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
+    List<String> findDistinctClassName();
 } 

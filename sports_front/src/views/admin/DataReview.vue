@@ -391,14 +391,16 @@ export default {
     return {
       loading: false,
       tableData: [],
+      total: 0,
       queryParams: {
         pageNum: 1,
         pageSize: 10,
+        sportsItemId: undefined,
         status: undefined,
-        teacherId: undefined,
-        sportsItemId: undefined
+        keyword: ''
       },
-      total: 0,
+      sportsItems: [],
+      classList: [],
       addDialog: {
         visible: false
       },
@@ -424,7 +426,6 @@ export default {
         ]
       },
       teachers: [],
-      sportsItems: [],
       selectedItemUnit: '',
       students: [],
       reviewDialog: {
@@ -457,75 +458,104 @@ export default {
         status: [{ required: true, message: '请选择审核状态', trigger: 'change' }],
         comment: [{ required: true, message: '请输入审核意见', trigger: 'blur' }]
       },
-      classList: []
     }
   },
   created() {
-    this.getList()
-    this.getTeachers()
-    this.getStudents()
-    this.getSportsItems()
-    this.getClassList()
+    this.init()
   },
   methods: {
+    async init() {
+      await Promise.all([
+        this.getSportsItems(),
+        this.getClassList(),
+        this.getList()
+      ])
+    },
     async getList() {
       try {
         this.loading = true
-        const params = {
-          pageNum: this.queryParams.pageNum,
-          pageSize: this.queryParams.pageSize,
-          status: this.queryParams.status,
-          sportsItemId: this.queryParams.sportsItemId
-        }
-        const res = await getTestRecords(params)
+        const res = await this.$http.get('/api/admin/data-review/list', {
+          params: {
+            page: this.queryParams.pageNum - 1,
+            size: this.queryParams.pageSize,
+            sportsItemId: this.queryParams.sportsItemId,
+            status: this.queryParams.status,
+            keyword: this.queryParams.keyword
+          }
+        })
+        console.log('Response:', res.data)
         if (res.data.code === 200) {
-          const { content, totalElements } = res.data.data
-          this.tableData = content
-          this.total = totalElements
+          this.tableData = res.data.data.content || []
+          this.total = res.data.data.totalElements || 0
         } else {
-          this.$message.error(res.data.msg || '获取数据失败')
+          this.$message.error(res.data.message || '获取数据失败')
         }
       } catch (error) {
-        console.error('获取数据失败:', error)
-        this.$message.error('获取数据失败: ' + error)
+        console.error('获取列表失败:', error)
+        this.$message.error('获取列表失败')
       } finally {
         this.loading = false
       }
     },
-
-    getStatusType(status) {
-      const types = {
-        'PENDING': 'warning',
-        'APPROVED': 'success',
-        'REJECTED': 'danger'
+    async getSportsItems() {
+      try {
+        const res = await this.$http.get('/api/admin/sports-items', {
+          params: {
+            page: 0,
+            size: 100
+          }
+        })
+        if (res.data.code === 200) {
+          this.sportsItems = res.data.data.content || []
+        }
+      } catch (error) {
+        console.error('获取体测项目列表失败:', error)
+        this.$message.error('获取体测项目列表失败')
       }
-      return types[status] || 'info'
     },
-
-    getStatusText(status) {
-      const texts = {
-        'PENDING': '待审核',
-        'APPROVED': '已通过',
-        'REJECTED': '已驳回'
+    handleQuery() {
+      this.queryParams.pageNum = 1
+      this.getList()
+    },
+    resetQuery() {
+      this.$refs.queryForm.resetFields()
+      this.queryParams = {
+        pageNum: 1,
+        pageSize: 10,
+        sportsItemId: undefined,
+        status: undefined,
+        keyword: ''
       }
-      return texts[status] || status
+      this.getList()
     },
-
     handleSizeChange(val) {
       this.queryParams.pageSize = val
       this.getList()
     },
-
     handleCurrentChange(val) {
       this.queryParams.pageNum = val
       this.getList()
     },
-
+    getStatusType(status) {
+      const statusMap = {
+        'PENDING': 'warning',
+        'APPROVED': 'success',
+        'REJECTED': 'danger'
+      }
+      return statusMap[status] || 'info'
+    },
+    getStatusText(status) {
+      const statusMap = {
+        'PENDING': '待审核',
+        'APPROVED': '已通过',
+        'REJECTED': '已驳回'
+      }
+      return statusMap[status] || '未知'
+    },
     handleAdd() {
       this.addDialog.visible = true
       this.resetForm()
     },
-
     resetForm() {
       this.$nextTick(() => {
         if (this.$refs.recordForm) {
@@ -540,11 +570,9 @@ export default {
         this.selectedItemUnit = ''
       })
     },
-
     handleDialogClosed() {
       this.resetForm()
     },
-
     submitForm() {
       this.$refs.recordForm.validate(async (valid) => {
         if (valid) {
@@ -572,7 +600,6 @@ export default {
         }
       })
     },
-
     async getTeachers() {
       try {
         const res = await this.$http.get('/api/admin/users', {
@@ -585,22 +612,6 @@ export default {
         console.error('获取教师列表失败:', error)
       }
     },
-
-    async getSportsItems() {
-      try {
-        const res = await this.$http.get('/api/admin/sports-items')
-        if (res.data.code === 200) {
-          this.sportsItems = res.data.data.filter(item => item.isActive)
-          console.log('体测项目列表:', this.sportsItems)
-        } else {
-          this.$message.error('获取体测项目失败')
-        }
-      } catch (error) {
-        console.error('获取体测项目列表失败:', error)
-        this.$message.error('获取体测项目列表失败')
-      }
-    },
-
     async getStudents() {
       try {
         const res = await this.$http.get('/api/admin/users', {
@@ -613,7 +624,6 @@ export default {
         console.error('获取学生列表失败:', error)
       }
     },
-
     async handleExport() {
       // 构建查询参数
       const params = {
@@ -631,7 +641,6 @@ export default {
       // 下载文件
       window.location.href = `/api/admin/test-record/export${queryString ? '?' + queryString : ''}`
     },
-
     handleSportsItemChange(value) {
       const selectedItem = this.sportsItems.find(item => item.id === value)
       if (selectedItem) {
@@ -642,22 +651,6 @@ export default {
       }
       this.form.score = null
     },
-
-    handleQuery() {
-      this.getList()
-    },
-
-    resetQuery() {
-      this.queryParams = {
-        pageNum: 1,
-        pageSize: 10,
-        status: undefined,
-        teacherId: undefined,
-        sportsItemId: undefined
-      }
-      this.getList()
-    },
-
     handleReview(row) {
       this.currentRecord = { ...row }; // 创建副本以避免直接修改
       this.reviewForm = {
@@ -667,7 +660,6 @@ export default {
       };
       this.reviewDialog.visible = true;
     },
-
     async handleDetail(row) {
       this.currentRecord = { ...row }; // 创建副本以避免直接修改
       this.detailDialog.visible = true;
@@ -691,7 +683,6 @@ export default {
         this.historyRecords = [];
       }
     },
-
     submitReview() {
       this.$refs.reviewForm.validate(async (valid) => {
         if (valid) {
@@ -717,11 +708,9 @@ export default {
         }
       });
     },
-
     canReview(record) {
       return record.status === 'PENDING' || record.status === 'REJECTED'
     },
-
     searchStudents(query) {
       this.studentLoading = true
       this.$http.get('/api/admin/users', {
@@ -739,7 +728,6 @@ export default {
         this.studentLoading = false
       })
     },
-
     formatDateTime(dateTime) {
       if (!dateTime) return '-'
       const date = new Date(dateTime)
@@ -753,7 +741,6 @@ export default {
         hour12: false
       })
     },
-
     handleModify(row) {
       this.currentRecord = { ...row }; // 创建副本以避免直接修改
       this.modifyForm = {
@@ -763,7 +750,6 @@ export default {
       };
       this.modifyDialog.visible = true;
     },
-
     submitModify() {
       this.$refs.modifyForm.validate(async (valid) => {
         if (valid) {
@@ -789,20 +775,19 @@ export default {
         }
       });
     },
-
     canModify(row) {
       // 已审核的记录可以修改
       return row.status === 'APPROVED' || row.status === 'REJECTED'
     },
-
     async getClassList() {
       try {
-        const res = await this.$http.get('/api/admin/class-list')
+        const res = await this.$http.get('/api/admin/classes')
         if (res.data.code === 200) {
-          this.classList = res.data.data.content
+          this.classList = res.data.data || []
         }
       } catch (error) {
         console.error('获取班级列表失败:', error)
+        this.$message.error('获取班级列表失败')
       }
     }
   }
