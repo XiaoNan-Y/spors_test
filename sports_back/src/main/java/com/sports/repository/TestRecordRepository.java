@@ -1,6 +1,7 @@
 package com.sports.repository;
 
 import com.sports.entity.TestRecord;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -42,7 +43,10 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     
     // 根据学号和状态查找记录
     @Query("SELECT t FROM TestRecord t WHERE t.studentNumber = :studentNumber AND t.status = :status")
-    List<TestRecord> findByStudentNumberAndStatus(@Param("studentNumber") String studentNumber, @Param("status") String status);
+    List<TestRecord> findByStudentNumberAndStatus(
+        @Param("studentNumber") String studentNumber, 
+        @Param("status") String status
+    );
 
     // 根据学号和体育项目ID查询最新记录
     @Query("SELECT t FROM TestRecord t WHERE t.studentNumber = :studentNumber AND t.sportsItemId = :sportsItemId " +
@@ -50,5 +54,15 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     List<TestRecord> findLatestByStudentNumberAndSportsItemId(
         @Param("studentNumber") String studentNumber,
         @Param("sportsItemId") Long sportsItemId,
-        Pageable pageable);
+        Pageable pageable
+    );
+
+    @Query("SELECT t FROM TestRecord t LEFT JOIN t.student WHERE " +
+           "(:status is null or t.status = :status) AND " +
+           "(:sportsItemId is null or t.sportsItemId = :sportsItemId)")
+    Page<TestRecord> findAllWithStudent(
+        @Param("status") String status,
+        @Param("sportsItemId") Long sportsItemId,
+        Pageable pageable
+    );
 } 

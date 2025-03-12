@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `email` varchar(100) DEFAULT NULL,
   `phone` varchar(20) DEFAULT NULL,
   `student_number` varchar(50) DEFAULT NULL,
+  `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_username` (`username`),
   KEY `idx_student_number` (`student_number`),
@@ -63,27 +64,28 @@ CREATE TABLE IF NOT EXISTS `notice` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 插入初始管理员用户
-INSERT INTO `user` (username, password, user_type, real_name, email, phone)
-SELECT 'admin', '123456', 'ADMIN', '系统管理员', 'admin@test.com', '13800000000'
-WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE username = 'admin');
+-- 清除现有数据
+DELETE FROM user;
 
--- 插入测试用户数据
-INSERT INTO `user` (username, password, user_type, real_name, email, phone, student_number)
-SELECT 'test_student1', '123456', 'STUDENT', '测试学生1', 'student1@test.com', '13800000001', 'S001'
-WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE username = 'test_student1');
+-- 插入管理员用户
+INSERT INTO user (username, password, real_name, user_type, email, phone, created_at)
+VALUES ('admin', '123456', '系统管理员', 'ADMIN', 'admin@example.com', '13800000000', NOW());
 
-INSERT INTO `user` (username, password, user_type, real_name, email, phone, student_number)
-SELECT 'test_student2', '123456', 'STUDENT', '测试学生2', 'student2@test.com', '13800000002', 'S002'
-WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE username = 'test_student2');
+-- 插入教师用户
+INSERT INTO user (username, password, real_name, user_type, email, phone, created_at)
+VALUES 
+('teacher1', '123456', '张老师', 'TEACHER', 'teacher1@example.com', '13811111111', NOW()),
+('teacher2', '123456', '李老师', 'TEACHER', 'teacher2@example.com', '13822222222', NOW()),
+('teacher3', '123456', '王老师', 'TEACHER', 'teacher3@example.com', '13833333333', NOW());
 
-INSERT INTO `user` (username, password, user_type, real_name, email, phone)
-SELECT 'test_teacher1', '123456', 'TEACHER', '测试教师1', 'teacher1@test.com', '13800000003'
-WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE username = 'test_teacher1');
-
-INSERT INTO `user` (username, password, user_type, real_name, email, phone)
-SELECT 'test_teacher2', '123456', 'TEACHER', '测试教师2', 'teacher2@test.com', '13800000004'
-WHERE NOT EXISTS (SELECT 1 FROM `user` WHERE username = 'test_teacher2');
+-- 插入学生用户
+INSERT INTO user (username, password, real_name, user_type, student_number, email, phone, created_at)
+VALUES 
+('student1', '123456', '张三', 'STUDENT', '2023001', 'student1@example.com', '13844444444', NOW()),
+('student2', '123456', '李四', 'STUDENT', '2023002', 'student2@example.com', '13855555555', NOW()),
+('student3', '123456', '王五', 'STUDENT', '2023003', 'student3@example.com', '13866666666', NOW()),
+('student4', '123456', '赵六', 'STUDENT', '2023004', 'student4@example.com', '13877777777', NOW()),
+('student5', '123456', '孙七', 'STUDENT', '2023005', 'student5@example.com', '13888888888', NOW());
 
 -- 插入体育项目数据
 INSERT INTO sports_item (name, description, unit, type, is_active)
@@ -98,6 +100,14 @@ INSERT INTO sports_item (name, description, unit, type, is_active)
 SELECT '引体向上', '单杠引体向上测试', '个', '力量', true
 WHERE NOT EXISTS (SELECT 1 FROM sports_item WHERE name = '引体向上');
 
+INSERT INTO sports_item (name, description, unit, type, is_active)
+SELECT '仰卧起坐', '腰腹力量测试', '个', '力量', true
+WHERE NOT EXISTS (SELECT 1 FROM sports_item WHERE name = '仰卧起坐');
+
+INSERT INTO sports_item (name, description, unit, type, is_active)
+SELECT '800/1000米耐力跑', '耐力跑测试', '秒', '田径', true
+WHERE NOT EXISTS (SELECT 1 FROM sports_item WHERE name = '800/1000米耐力跑');
+
 -- 插入测试记录
 INSERT INTO test_record (
     student_number, 
@@ -111,19 +121,19 @@ INSERT INTO test_record (
     updated_at
 ) VALUES 
 -- 100米跑测试记录
-('S001', 1, 13.5, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
-('S001', 1, 14.2, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
-('S002', 1, 12.8, NOW(), 'REJECTED', '成绩异常，需要重新测试', NOW(), NOW(), NOW()),
+('2023001', 1, 13.5, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
+('2023001', 1, 14.2, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
+('2023002', 1, 12.8, NOW(), 'REJECTED', '成绩异常，需要重新测试', NOW(), NOW(), NOW()),
 
 -- 立定跳远测试记录
-('S001', 2, 2.3, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
-('S002', 2, 2.1, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
-('S002', 2, 2.5, NOW(), 'APPROVED', '成绩正常，表现优秀', NOW(), NOW(), NOW()),
+('2023001', 2, 2.3, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
+('2023002', 2, 2.1, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
+('2023003', 2, 2.5, NOW(), 'APPROVED', '成绩正常，表现优秀', NOW(), NOW(), NOW()),
 
 -- 引体向上测试记录
-('S001', 3, 12, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
-('S002', 3, 15, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
-('S002', 3, 8, NOW(), 'APPROVED', '成绩正常，继续努力', NOW(), NOW(), NOW());
+('2023001', 3, 12, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
+('2023002', 3, 15, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
+('2023003', 3, 8, NOW(), 'APPROVED', '成绩正常，继续努力', NOW(), NOW(), NOW());
 
 -- 插入通知公告
 INSERT INTO notice (title, content, type, priority, status, create_time, update_time, create_by)

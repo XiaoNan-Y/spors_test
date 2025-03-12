@@ -62,9 +62,9 @@
         </template>
       </el-table-column>
       
-      <el-table-column label="学生学号" prop="student.student_number" min-width="120" align="center">
+      <el-table-column label="学生学号" prop="studentNumber" min-width="120" align="center">
         <template slot-scope="scope">
-          {{ scope.row.student?.student_number || '-' }}
+          {{ scope.row.student?.studentNumber || '-' }}
         </template>
       </el-table-column>
       
@@ -376,6 +376,16 @@
 </template>
 
 <script>
+import { 
+  getTestRecords, 
+  addTestRecord, 
+  reviewTestRecord,
+  getHistoryRecords,
+  exportRecords,
+  downloadTemplate,
+  modifyReview
+} from '@/api/testRecord'
+
 export default {
   name: 'DataReview',
   data() {
@@ -458,38 +468,46 @@ export default {
   },
   methods: {
     async getList() {
-      this.loading = true
       try {
-        const res = await this.$http.get('/api/admin/test-record/review', {
-          params: this.queryParams
-        })
+        this.loading = true
+        const params = {
+          pageNum: this.queryParams.pageNum,
+          pageSize: this.queryParams.pageSize,
+          status: this.queryParams.status,
+          sportsItemId: this.queryParams.sportsItemId
+        }
+        const res = await getTestRecords(params)
         if (res.data.code === 200) {
-          this.tableData = res.data.data.content
-          this.total = res.data.data.totalElements
+          const { content, totalElements } = res.data.data
+          this.tableData = content
+          this.total = totalElements
+        } else {
+          this.$message.error(res.data.msg || '获取数据失败')
         }
       } catch (error) {
         console.error('获取数据失败:', error)
-        this.$message.error('获取数据失败')
+        this.$message.error('获取数据失败: ' + error)
+      } finally {
+        this.loading = false
       }
-      this.loading = false
     },
 
     getStatusType(status) {
       const types = {
-        PENDING: 'warning',
-        APPROVED: 'success',
-        REJECTED: 'danger'
+        'PENDING': 'warning',
+        'APPROVED': 'success',
+        'REJECTED': 'danger'
       }
       return types[status] || 'info'
     },
 
     getStatusText(status) {
       const texts = {
-        PENDING: '待审核',
-        APPROVED: '已通过',
-        REJECTED: '已驳回'
+        'PENDING': '待审核',
+        'APPROVED': '已通过',
+        'REJECTED': '已驳回'
       }
-      return texts[status] || '未知'
+      return texts[status] || status
     },
 
     handleSizeChange(val) {
@@ -538,7 +556,7 @@ export default {
               teacherId: JSON.parse(localStorage.getItem('user')).id
             }
 
-            const res = await this.$http.post('/api/admin/test-record', data)
+            const res = await addTestRecord(data)
             if (res.data.code === 200) {
               this.$message.success('成绩录入成功')
               this.addDialog.visible = false
@@ -650,12 +668,10 @@ export default {
       
       try {
         // 获取该学生在该项目的历史成绩
-        const res = await this.$http.get('/api/admin/test-record/history', {
-          params: {
-            studentId: record.studentId,
-            sportsItemId: record.sportsItemId,
-            excludeId: record.id  // 排除当前记录
-          }
+        const res = await getHistoryRecords({
+          studentId: record.studentId,
+          sportsItemId: record.sportsItemId,
+          excludeId: record.id  // 排除当前记录
         })
         
         if (res.data.code === 200) {
@@ -683,7 +699,7 @@ export default {
               reviewerId: currentUser.id
             }
 
-            const res = await this.$http.put('/api/admin/test-record/review', data)
+            const res = await reviewTestRecord(data)
             if (res.data.code === 200) {
               this.$message.success('审核成功')
               this.reviewDialog.visible = false
@@ -755,7 +771,7 @@ export default {
               reviewerId: currentUser.id
             }
 
-            const res = await this.$http.put('/api/admin/test-record/modify', data)
+            const res = await modifyReview(data)
             if (res.data.code === 200) {
               this.$message.success('修改成功')
               this.modifyDialog.visible = false

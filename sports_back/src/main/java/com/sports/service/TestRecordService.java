@@ -19,14 +19,13 @@ public interface TestRecordService {
      */
     List<TestRecord> getHistoryRecords(String studentNumber, Long sportsItemId, Long excludeId);
 
-    Page<TestRecord> getRecordList(String status, Long sportsItemId, 
-                                 LocalDate startDate, LocalDate endDate, Pageable pageable);
+    Page<TestRecord> getRecordList(String status, Long sportsItemId, Pageable pageable);
     
     TestRecord save(TestRecord record);
     
     TestRecord updateRecord(TestRecord record);
     
-    TestRecord reviewRecord(Long id, String status, String comment, Long reviewerId);
+    TestRecord reviewRecord(Long id, String status, String reviewComment, Long reviewerId);
     
     boolean checkAbnormalScore(TestRecord record);
     

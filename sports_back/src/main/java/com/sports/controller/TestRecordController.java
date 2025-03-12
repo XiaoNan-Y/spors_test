@@ -3,174 +3,147 @@ package com.sports.controller;
 import com.sports.common.Result;
 import com.sports.entity.TestRecord;
 import com.sports.service.TestRecordService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/admin/test-record")
 public class TestRecordController {
-
+    
     private static final Logger log = LoggerFactory.getLogger(TestRecordController.class);
-
+    
     @Autowired
     private TestRecordService testRecordService;
 
-    @GetMapping("/review")
-    public Result getRecordList(
+    @GetMapping
+    public Result getList(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long sportsItemId,
             @RequestParam(defaultValue = "1") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         try {
-            log.debug("Fetching test records with status: {}, sportsItemId: {}", 
-                      status, sportsItemId);
-                  
-            Page<TestRecord> records = testRecordService.getRecordList(
-                status, sportsItemId, null, null,
+            Page<TestRecord> page = testRecordService.getRecordList(
+                status, 
+                sportsItemId,
                 PageRequest.of(pageNum - 1, pageSize)
             );
-            
-            log.debug("Found {} records", records.getTotalElements());
-            return Result.success(records);
+            return Result.success(page);
         } catch (Exception e) {
-            log.error("Error fetching test records", e);
-            return Result.error("获取记录列表失败: " + e.getMessage());
-        }
-    }
-
-
-    @PutMapping("/review")
-    public Result reviewRecord(@RequestBody Map<String, Object> params) {
-        try {
-            Long id = Long.valueOf(String.valueOf(params.get("id")));
-            String status = String.valueOf(params.get("status"));
-            String comment = String.valueOf(params.get("comment"));
-            // 从当前登录用户中获取审核人ID，或从请求参数中获取
-            Long reviewerId = Long.valueOf(String.valueOf(params.get("reviewerId"))); // 添加审核人ID
-        
-            TestRecord record = testRecordService.reviewRecord(id, status, comment, reviewerId);
-            return Result.success(record);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("审核失败: " + e.getMessage());
+            log.error("获取测试记录列表失败", e);
+            return Result.error("获取测试记录列表失败：" + e.getMessage());
         }
     }
 
     @PostMapping
-    public ResponseEntity<?> createRecord(@RequestBody TestRecord record) {
+    public Result add(@RequestBody TestRecord record) {
         try {
-            // 确保设置了必要的字段
-            if (record.getStudentNumber() == null || record.getSportsItemId() == null) {
-                return ResponseEntity.badRequest().body("学号和体测项目ID不能为空");
-            }
-
-            record.setStatus("PENDING");  // 设置初始状态为待审核
+            // 设置初始状态和时间
+            record.setStatus("PENDING");
+            record.setTestTime(LocalDateTime.now());
             record.setCreatedAt(LocalDateTime.now());
             record.setUpdatedAt(LocalDateTime.now());
             
-            TestRecord savedRecord = testRecordService.save(record);
-            return ResponseEntity.ok(savedRecord);
+            TestRecord saved = testRecordService.save(record);
+            return Result.success(saved);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("创建记录失败: " + e.getMessage());
+            log.error("添加测试记录失败", e);
+            return Result.error("添加测试记录失败：" + e.getMessage());
         }
     }
 
-    @PostMapping("/check-abnormal")
-    public Result checkAbnormalScore(@RequestBody TestRecord record) {
+    @PutMapping("/review")
+    public Result review(@RequestBody TestRecord record) {
         try {
-            boolean isAbnormal = testRecordService.checkAbnormalScore(record);
-            String reason = isAbnormal ? testRecordService.getAbnormalReason(record) : null;
-            return Result.success(new HashMap<String, Object>() {{
-                put("isAbnormal", isAbnormal);
-                put("reason", reason);
-            }});
+            TestRecord reviewed = testRecordService.reviewRecord(
+                record.getId(),
+                record.getStatus(),
+                record.getReviewComment(),
+                1L  // TODO: 从认证信息中获取reviewerId
+            );
+            return Result.success(reviewed);
         } catch (Exception e) {
-            return Result.error("检查异常失败: " + e.getMessage());
+            log.error("审核测试记录失败", e);
+            return Result.error("审核测试记录失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/history")
+    public Result getHistory(
+            @RequestParam String studentNumber,
+            @RequestParam Long sportsItemId,
+            @RequestParam(required = false) Long excludeId) {
+        try {
+            List<TestRecord> history = testRecordService.getHistoryRecords(
+                studentNumber,
+                sportsItemId,
+                excludeId
+            );
+            return Result.success(history);
+        } catch (Exception e) {
+            log.error("获取历史记录失败", e);
+            return Result.error("获取历史记录失败：" + e.getMessage());
         }
     }
 
     @PostMapping("/import")
     public Result importData(@RequestParam("file") MultipartFile file) {
         try {
-            List<TestRecord> records = testRecordService.importFromExcel(file);
-            return Result.success(records);
+            List<TestRecord> imported = testRecordService.importFromExcel(file);
+            return Result.success(imported);
         } catch (Exception e) {
-            return Result.error("导入失败: " + e.getMessage());
+            log.error("导入数据失败", e);
+            return Result.error("导入数据失败：" + e.getMessage());
         }
     }
 
     @GetMapping("/export")
-    public void exportData(HttpServletResponse response,
-                          @RequestParam(required = false) String status,
-                          @RequestParam(required = false) Long sportsItemId) {
+    public void exportData(
+            HttpServletResponse response,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long sportsItemId) throws IOException {
         try {
             testRecordService.exportToExcel(response, status, sportsItemId);
         } catch (Exception e) {
-            throw new RuntimeException("导出失败: " + e.getMessage());
-        }
-    }
-
-    @PutMapping("/{id}")
-    public Result updateRecord(@PathVariable Long id, @RequestBody TestRecord record) {
-        try {
-            record.setId(id);
-            TestRecord updated = testRecordService.updateRecord(record);
-            return Result.success(updated);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("修改失败: " + e.getMessage());
+            log.error("导出数据失败", e);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":500,\"msg\":\"导出失败：" + e.getMessage() + "\"}");
         }
     }
 
     @GetMapping("/template")
-    public void downloadTemplate(HttpServletResponse response) {
+    public void downloadTemplate(HttpServletResponse response) throws IOException {
         try {
             testRecordService.generateTemplate(response);
         } catch (Exception e) {
-            throw new RuntimeException("下载模板失败: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/history")
-    public ResponseEntity<?> getHistoryRecords(
-            @RequestParam String studentNumber,
-            @RequestParam Long sportsItemId,
-            @RequestParam(required = false) Long excludeId) {
-        try {
-            List<TestRecord> records = testRecordService.getHistoryRecords(studentNumber, sportsItemId, excludeId);
-            return ResponseEntity.ok(records);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("获取历史记录失败：" + e.getMessage());
+            log.error("下载模板失败", e);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":500,\"msg\":\"下载模板失败：" + e.getMessage() + "\"}");
         }
     }
 
     @PutMapping("/modify")
-    public Result modifyReview(@RequestBody Map<String, Object> params) {
+    public Result modifyReview(@RequestBody TestRecord record) {
         try {
-            Long id = Long.valueOf(String.valueOf(params.get("id")));
-            String status = String.valueOf(params.get("status"));
-            String comment = String.valueOf(params.get("comment"));
-            Long reviewerId = Long.valueOf(String.valueOf(params.get("reviewerId")));
-        
-            TestRecord record = testRecordService.modifyReview(id, status, comment, reviewerId);
-            return Result.success(record);
+            TestRecord modified = testRecordService.modifyReview(
+                record.getId(),
+                record.getStatus(),
+                record.getReviewComment(),
+                1L  // TODO: 从认证信息中获取reviewerId
+            );
+            return Result.success(modified);
         } catch (Exception e) {
-            e.printStackTrace();
-            return Result.error("修改失败: " + e.getMessage());
+            log.error("修改审核记录失败", e);
+            return Result.error("修改审核记录失败：" + e.getMessage());
         }
     }
 } 

@@ -4,8 +4,8 @@ server:
 spring:
   sql:
     init:
-      mode: always      # 总是执行 SQL 初始化
-      schema-locations: classpath:data.sql  # 指定 SQL 文件位置
+      mode: never      # 改为 never，这样不会执行 SQL 初始化
+      # schema-locations: classpath:data.sql  # 注释掉或删除这行
   datasource:
     url: jdbc:mysql://localhost:3306/sports?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root  # 替换为您的MySQL用户名
@@ -30,12 +30,11 @@ spring:
       connection-test-query: SELECT 1
   jpa:
     hibernate:
-      ddl-auto: update  # 这里使用update，这样数据库表结构会自动更新而不会删除数据
+      ddl-auto: update  # 保持为 update，这样只会更新表结构，不会删除数据
     show-sql: true
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.MySQL8Dialect
     database-platform: org.hibernate.dialect.MySQL8Dialect
 
 logging:

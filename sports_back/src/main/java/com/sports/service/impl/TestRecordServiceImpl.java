@@ -36,10 +36,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @Transactional
 public class TestRecordServiceImpl implements TestRecordService {
+
+    private static final Logger log = LoggerFactory.getLogger(TestRecordServiceImpl.class);
 
     @Autowired
     private TestRecordRepository testRecordRepository;
@@ -48,43 +52,11 @@ public class TestRecordServiceImpl implements TestRecordService {
     private SportsItemRepository sportsItemRepository;
 
     @Override
-    public Page<TestRecord> getRecordList(String status, Long sportsItemId,
-                                        LocalDate startDate, LocalDate endDate, Pageable pageable) {
+    public Page<TestRecord> getRecordList(String status, Long sportsItemId, Pageable pageable) {
         try {
-            Specification<TestRecord> spec = (root, query, cb) -> {
-                List<Predicate> predicates = new ArrayList<>();
-                
-                // 添加关联查询
-                root.fetch("student", JoinType.LEFT);
-                root.fetch("sportsItem", JoinType.LEFT);
-                
-                if (status != null && !status.isEmpty()) {
-                    predicates.add(cb.equal(root.get("status"), status));
-                }
-                
-                if (sportsItemId != null) {
-                    predicates.add(cb.equal(root.get("sportsItemId"), sportsItemId));
-                }
-                
-                if (startDate != null) {
-                    predicates.add(cb.greaterThanOrEqualTo(
-                        root.get("testTime"), startDate.atStartOfDay()));
-                }
-                
-                if (endDate != null) {
-                    predicates.add(cb.lessThan(
-                        root.get("testTime"), endDate.plusDays(1).atStartOfDay()));
-                }
-                
-                // 处理 distinct 去重
-                query.distinct(true);
-                
-                return predicates.isEmpty() ? null : 
-                       cb.and(predicates.toArray(new Predicate[0]));
-            };
-            
-            return testRecordRepository.findAll(spec, pageable);
+            return testRecordRepository.findAllWithStudent(status, sportsItemId, pageable);
         } catch (Exception e) {
+            log.error("获取记录列表失败", e);
             throw new RuntimeException("获取记录列表失败: " + e.getMessage());
         }
     }
