@@ -1,10 +1,11 @@
 -- 首先删除具有外键引用的表
 DROP TABLE IF EXISTS test_record;
+DROP TABLE IF EXISTS test_exemption;
 DROP TABLE IF EXISTS notice;
 
 -- 然后删除被引用的表
-DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS sports_item;
+DROP TABLE IF EXISTS user;
 
 -- 创建用户表
 CREATE TABLE IF NOT EXISTS user (
@@ -13,8 +14,10 @@ CREATE TABLE IF NOT EXISTS user (
     password VARCHAR(100) NOT NULL,
     user_type VARCHAR(20) NOT NULL,
     real_name VARCHAR(50),
+    student_number VARCHAR(50),
     email VARCHAR(100),
-    phone VARCHAR(20)
+    phone VARCHAR(20),
+    created_at DATETIME NOT NULL
 );
 
 -- 创建体育项目表
@@ -44,17 +47,27 @@ CREATE TABLE IF NOT EXISTS notice (
 -- 创建测试记录表
 CREATE TABLE IF NOT EXISTS test_record (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    student_id BIGINT NOT NULL,           -- 学生ID
-    teacher_id BIGINT NOT NULL,           -- 教师ID
-    sports_item_id BIGINT NOT NULL,       -- 体测项目ID
-    score DOUBLE NOT NULL,                -- 测试成绩
-    test_time DATETIME NOT NULL,          -- 测试时间
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',  -- 状态（待审核/已通过/已驳回）
-    review_comment TEXT,                  -- 审核意见
-    review_time DATETIME,                 -- 审核时间
-    created_at DATETIME NOT NULL,         -- 创建时间
-    updated_at DATETIME NOT NULL,         -- 更新时间
-    FOREIGN KEY (student_id) REFERENCES user(id),
-    FOREIGN KEY (teacher_id) REFERENCES user(id),
+    student_number VARCHAR(50) NOT NULL,
+    sports_item_id BIGINT NOT NULL,
+    score DOUBLE NOT NULL,
+    test_time DATETIME NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    review_comment TEXT,
+    review_time DATETIME,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    FOREIGN KEY (student_number) REFERENCES user(student_number),
     FOREIGN KEY (sports_item_id) REFERENCES sports_item(id)
+);
+
+-- 创建免测申请表
+CREATE TABLE IF NOT EXISTS test_exemption (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    student_number VARCHAR(50) NOT NULL,
+    reason TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    apply_time DATETIME NOT NULL,
+    review_time DATETIME,
+    review_comment TEXT,
+    FOREIGN KEY (student_number) REFERENCES user(student_number)
 ); 
