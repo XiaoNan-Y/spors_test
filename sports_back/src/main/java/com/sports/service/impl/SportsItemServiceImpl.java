@@ -16,6 +16,37 @@ public class SportsItemServiceImpl implements SportsItemService {
     private SportsItemRepository sportsItemRepository;
 
     @Override
+    public List<SportsItem> getAllActiveItems() {
+        return sportsItemRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public SportsItem getById(Long id) {
+        return sportsItemRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("体育项目不存在"));
+    }
+
+    @Override
+    @Transactional
+    public SportsItem save(SportsItem item) {
+        return sportsItemRepository.save(item);
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        sportsItemRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void updateStatus(Long id, boolean isActive) {
+        SportsItem item = getById(id);
+        item.setIsActive(isActive);
+        sportsItemRepository.save(item);
+    }
+
+    @Override
     public List<SportsItem> list(String keyword) {
         if (keyword != null && !keyword.isEmpty()) {
             return sportsItemRepository.findByNameContaining(keyword);
@@ -24,17 +55,11 @@ public class SportsItemServiceImpl implements SportsItemService {
     }
 
     @Override
-    public void add(SportsItem sportsItem) {
-        sportsItemRepository.save(sportsItem);
-    }
-
-    @Override
     @Transactional
     public void update(SportsItem sportsItem) {
         SportsItem existingItem = sportsItemRepository.findById(sportsItem.getId())
             .orElseThrow(() -> new RuntimeException("项目不存在"));
         
-        // 更新字段
         existingItem.setName(sportsItem.getName());
         existingItem.setDescription(sportsItem.getDescription());
         existingItem.setUnit(sportsItem.getUnit());
@@ -45,25 +70,7 @@ public class SportsItemServiceImpl implements SportsItemService {
     }
 
     @Override
-    public void delete(Long id) {
-        sportsItemRepository.deleteById(id);
-    }
-
-    @Override
-    public void updateStatus(Long id, Boolean isActive) {
-        SportsItem item = sportsItemRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("项目不存在"));
-        item.setIsActive(isActive);
-        sportsItemRepository.save(item);
-    }
-
-    @Override
     public List<SportsItem> findAll() {
         return sportsItemRepository.findAll();
-    }
-
-    @Override
-    public List<SportsItem> findByIsActiveTrue() {
-        return sportsItemRepository.findByIsActiveTrue();
     }
 } 

@@ -88,6 +88,43 @@ const routes = [
     meta: { requiresAuth: true, roles: ['ADMIN'] }
   },
   {
+    path: '/teacher',
+    component: () => import('@/layouts/TeacherLayout'),
+    meta: { requiresAuth: true, role: 'TEACHER' },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'TeacherDashboard',
+        component: () => import('@/views/teacher/Dashboard'),
+        meta: { title: '首页' }
+      },
+      {
+        path: 'class-stats',
+        name: 'ClassStats',
+        component: () => import('@/views/teacher/ClassStats'),
+        meta: { title: '班级成绩统计' }
+      },
+      {
+        path: 'student-records',
+        name: 'StudentRecords',
+        component: () => import('@/views/teacher/StudentRecords'),
+        meta: { title: '学生成绩管理' }
+      },
+      {
+        path: 'exemption-review',
+        name: 'TeacherExemptionReview',
+        component: () => import('@/views/teacher/ExemptionReview'),
+        meta: { title: '免测/重测审核' }
+      },
+      {
+        path: 'profile',
+        name: 'TeacherProfile',
+        component: () => import('@/views/profile/index'),
+        meta: { title: '个人信息' }
+      }
+    ]
+  },
+  {
     path: '/',
     redirect: '/login'
   }
