@@ -83,6 +83,8 @@ public class TestRecordController {
             @RequestParam Long sportsItemId,
             @RequestParam(required = false) Long excludeId) {
         try {
+            log.info("Getting history records for student: {}, item: {}, exclude: {}", 
+                    studentNumber, sportsItemId, excludeId);
             List<TestRecord> history = testRecordService.getHistoryRecords(
                 studentNumber,
                 sportsItemId,

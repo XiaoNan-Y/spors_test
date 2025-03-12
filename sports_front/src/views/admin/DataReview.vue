@@ -58,19 +58,19 @@
       
       <el-table-column label="学生姓名" prop="student.realName" min-width="120" align="center">
         <template slot-scope="scope">
-          {{ scope.row.student?.realName || '-' }}
+          {{ scope.row.student ? scope.row.student.realName : '-' }}
         </template>
       </el-table-column>
       
       <el-table-column label="学生学号" prop="studentNumber" min-width="120" align="center">
         <template slot-scope="scope">
-          {{ scope.row.student?.studentNumber || '-' }}
+          {{ scope.row.student ? scope.row.student.studentNumber : '-' }}
         </template>
       </el-table-column>
       
       <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center">
         <template slot-scope="scope">
-          {{ scope.row.sportsItem?.name || '-' }}
+          {{ scope.row.sportsItem ? scope.row.sportsItem.name : '-' }}
         </template>
       </el-table-column>
       
@@ -243,18 +243,12 @@
     >
       <div class="review-info" v-if="currentRecord">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="学生">{{ currentRecord.student.realName }}</el-descriptions-item>
-          <el-descriptions-item label="测试项目">{{ currentRecord.sportsItem.name }}</el-descriptions-item>
-          <el-descriptions-item label="测试成绩">
-            {{ currentRecord.score }}{{ currentRecord.sportsItem.unit }}
-          </el-descriptions-item>
-          <el-descriptions-item label="测试时间">
-            {{ formatDateTime(currentRecord.testTime) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="录入教师">{{ currentRecord.teacher.realName }}</el-descriptions-item>
-          <el-descriptions-item label="录入时间">
-            {{ formatDateTime(currentRecord.createdAt) }}
-          </el-descriptions-item>
+          <el-descriptions-item label="学生">{{ currentRecord.student ? currentRecord.student.realName : '-' }} ({{ currentRecord.studentNumber || '-' }})</el-descriptions-item>
+          <el-descriptions-item label="测试项目">{{ currentRecord.sportsItem ? currentRecord.sportsItem.name : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="测试成绩">{{ currentRecord.score || '-' }} {{ currentRecord.sportsItem ? currentRecord.sportsItem.unit : '' }}</el-descriptions-item>
+          <el-descriptions-item label="测试时间">{{ formatDateTime(currentRecord.testTime) }}</el-descriptions-item>
+          <el-descriptions-item label="录入教师">{{ currentRecord.teacher ? currentRecord.teacher.realName : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="录入时间">{{ formatDateTime(currentRecord.createdAt) }}</el-descriptions-item>
         </el-descriptions>
       </div>
       <el-form :model="reviewForm" ref="reviewForm" :rules="reviewRules" class="review-form">
@@ -288,22 +282,22 @@
       <div v-if="currentRecord" class="detail-container">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="学生姓名">
-            {{ currentRecord.student?.realName || '-' }}
+            {{ currentRecord.student ? currentRecord.student.realName : '-' }} ({{ currentRecord.studentNumber || '-' }})
           </el-descriptions-item>
           <el-descriptions-item label="学号">
-            {{ currentRecord.student?.username || '-' }}
+            {{ currentRecord.student ? currentRecord.student.username : '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="测试项目">
-            {{ currentRecord.sportsItem?.name || '-' }}
+            {{ currentRecord.sportsItem ? currentRecord.sportsItem.name : '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="测试成绩">
-            {{ currentRecord.score }} {{ currentRecord.sportsItem?.unit || '' }}
+            {{ currentRecord.score || '-' }} {{ currentRecord.sportsItem ? currentRecord.sportsItem.unit : '' }}
           </el-descriptions-item>
           <el-descriptions-item label="测试时间">
             {{ formatDateTime(currentRecord.testTime) }}
           </el-descriptions-item>
           <el-descriptions-item label="记录教师">
-            {{ currentRecord.teacher?.realName || '-' }}
+            {{ currentRecord.teacher ? currentRecord.teacher.realName : '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="审核状态">
             <el-tag :type="getStatusType(currentRecord.status)">
@@ -329,7 +323,7 @@
             </el-table-column>
             <el-table-column label="成绩" align="center">
               <template slot-scope="scope">
-                {{ scope.row.score }} {{ scope.row.sportsItem?.unit || '' }}
+                {{ scope.row.score || '-' }} {{ scope.row.sportsItem ? scope.row.sportsItem.unit : '' }}
               </template>
             </el-table-column>
             <el-table-column label="状态" align="center">
@@ -350,6 +344,11 @@
       :visible.sync="modifyDialog.visible" 
       width="400px"
     >
+      <div class="review-info">
+        <p>学生：{{ currentRecord ? currentRecord.student ? currentRecord.student.realName : '-' : '-' }} ({{ currentRecord ? currentRecord.studentNumber : '-' }})</p>
+        <p>项目：{{ currentRecord ? currentRecord.sportsItem ? currentRecord.sportsItem.name : '-' : '-' }}</p>
+        <p>成绩：{{ currentRecord ? currentRecord.score : '-' }} {{ currentRecord ? currentRecord.sportsItem ? currentRecord.sportsItem.unit : '' : '' }}</p>
+      </div>
       <el-form :model="modifyForm" :rules="modifyRules" ref="modifyForm" label-width="80px">
         <el-form-item label="审核状态" prop="status">
           <el-select v-model="modifyForm.status" placeholder="请选择审核状态">
@@ -657,33 +656,37 @@ export default {
       this.getList()
     },
 
-    handleReview(record) {
-      this.currentRecord = record
-      this.reviewDialog.visible = true
+    handleReview(row) {
+      this.currentRecord = { ...row }; // 创建副本以避免直接修改
+      this.reviewForm = {
+        id: row.id,
+        status: '',
+        comment: ''
+      };
+      this.reviewDialog.visible = true;
     },
 
-    async handleDetail(record) {
-      this.currentRecord = record
-      this.detailDialog.visible = true
+    async handleDetail(row) {
+      this.currentRecord = { ...row }; // 创建副本以避免直接修改
+      this.detailDialog.visible = true;
       
       try {
-        // 获取该学生在该项目的历史成绩
         const res = await getHistoryRecords({
-          studentId: record.studentId,
-          sportsItemId: record.sportsItemId,
-          excludeId: record.id  // 排除当前记录
-        })
+          studentNumber: row.studentNumber,
+          sportsItemId: row.sportsItemId,
+          excludeId: row.id
+        });
         
         if (res.data.code === 200) {
-          this.historyRecords = res.data.data || []
+          this.historyRecords = res.data.data;
         } else {
-          this.$message.warning('获取历史记录失败')
-          this.historyRecords = []
+          this.$message.warning(res.data.msg || '获取历史记录失败');
+          this.historyRecords = [];
         }
       } catch (error) {
-        console.error('获取历史记录失败:', error)
-        this.$message.error('获取历史记录失败')
-        this.historyRecords = []
+        console.error('获取历史记录失败:', error);
+        this.$message.error('获取历史记录失败');
+        this.historyRecords = [];
       }
     },
 
@@ -691,28 +694,26 @@ export default {
       this.$refs.reviewForm.validate(async (valid) => {
         if (valid) {
           try {
-            const currentUser = JSON.parse(localStorage.getItem('user'));
             const data = {
               id: this.currentRecord.id,
               status: this.reviewForm.status,
-              comment: this.reviewForm.comment,
-              reviewerId: currentUser.id
-            }
+              reviewComment: this.reviewForm.comment
+            };
 
-            const res = await reviewTestRecord(data)
+            const res = await reviewTestRecord(data);
             if (res.data.code === 200) {
-              this.$message.success('审核成功')
-              this.reviewDialog.visible = false
-              this.getList()
+              this.$message.success('审核成功');
+              this.reviewDialog.visible = false;
+              this.getList();
             } else {
-              this.$message.error(res.data.msg || '审核失败')
+              this.$message.error(res.data.msg || '审核失败');
             }
           } catch (error) {
-            console.error('审核失败:', error)
-            this.$message.error(error.response?.data?.msg || '审核失败')
+            console.error('审核失败:', error);
+            this.$message.error('审核失败');
           }
         }
-      })
+      });
     },
 
     canReview(record) {
@@ -751,40 +752,40 @@ export default {
       })
     },
 
-    handleModify(record) {
-      this.currentRecord = record
-      this.modifyForm.id = record.id
-      this.modifyForm.status = record.status
-      this.modifyForm.comment = record.reviewComment || ''
-      this.modifyDialog.visible = true
+    handleModify(row) {
+      this.currentRecord = { ...row }; // 创建副本以避免直接修改
+      this.modifyForm = {
+        id: row.id,
+        status: row.status,
+        comment: row.reviewComment || ''
+      };
+      this.modifyDialog.visible = true;
     },
 
-    async submitModify() {
+    submitModify() {
       this.$refs.modifyForm.validate(async (valid) => {
         if (valid) {
           try {
-            const currentUser = JSON.parse(localStorage.getItem('user'))
             const data = {
-              id: this.modifyForm.id,
+              id: this.currentRecord.id,
               status: this.modifyForm.status,
-              comment: this.modifyForm.comment,
-              reviewerId: currentUser.id
-            }
+              reviewComment: this.modifyForm.comment
+            };
 
-            const res = await modifyReview(data)
+            const res = await modifyReview(data);
             if (res.data.code === 200) {
-              this.$message.success('修改成功')
-              this.modifyDialog.visible = false
-              this.getList()
+              this.$message.success('修改成功');
+              this.modifyDialog.visible = false;
+              this.getList();
             } else {
-              this.$message.error(res.data.msg || '修改失败')
+              this.$message.error(res.data.msg || '修改失败');
             }
           } catch (error) {
-            console.error('修改失败:', error)
-            this.$message.error(error.response?.data?.msg || '修改失败')
+            console.error('修改失败:', error);
+            this.$message.error('修改失败');
           }
         }
-      })
+      });
     },
 
     canModify(row) {

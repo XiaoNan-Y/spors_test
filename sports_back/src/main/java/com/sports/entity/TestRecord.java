@@ -20,17 +20,15 @@ public class TestRecord implements Serializable {
     @Column(name = "student_number")
     private String studentNumber;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "student_number", referencedColumnName = "student_number", insertable = false, updatable = false)
+    private User student;
+
     @Column(name = "sports_item_id")
     private Long sportsItemId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_number", referencedColumnName = "student_number", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private User student;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sports_item_id", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "sports_item_id", referencedColumnName = "id", insertable = false, updatable = false)
     private SportsItem sportsItem;
 
     private Double score;

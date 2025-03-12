@@ -59,7 +59,8 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     @Query("SELECT t FROM TestRecord t LEFT JOIN t.student WHERE " +
            "(:status is null or t.status = :status) AND " +
-           "(:sportsItemId is null or t.sportsItemId = :sportsItemId)")
+           "(:sportsItemId is null or t.sportsItemId = :sportsItemId) " +
+           "ORDER BY t.studentNumber, t.testTime DESC")
     Page<TestRecord> findAllWithStudent(
         @Param("status") String status,
         @Param("sportsItemId") Long sportsItemId,
