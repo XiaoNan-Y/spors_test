@@ -50,15 +50,15 @@ CREATE TABLE IF NOT EXISTS test_record (
     student_number VARCHAR(50) NOT NULL,
     sports_item_id BIGINT NOT NULL,
     score DOUBLE NOT NULL,
-    test_time DATETIME NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    class_name VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL,
     review_comment TEXT,
-    review_time DATETIME,
+    review_time DATETIME DEFAULT NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME NOT NULL,
     FOREIGN KEY (student_number) REFERENCES user(student_number),
     FOREIGN KEY (sports_item_id) REFERENCES sports_item(id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- 修改免测申请表
 DROP TABLE IF EXISTS test_exemption;

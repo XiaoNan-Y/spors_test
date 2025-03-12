@@ -35,8 +35,8 @@ public class TestRecord implements Serializable {
 
     private String status;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime testTime;
+    @Column(name = "class_name")
+    private String className;
 
     @Column(name = "review_comment")
     private String reviewComment;

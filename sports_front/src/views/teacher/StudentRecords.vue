@@ -57,17 +57,13 @@
       
       <el-table-column label="学号" prop="studentNumber" min-width="120" align="center"></el-table-column>
       
+      <el-table-column label="班级" prop="className" min-width="120" align="center"></el-table-column>
+      
       <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center"></el-table-column>
       
       <el-table-column label="成绩" min-width="120" align="center">
         <template slot-scope="scope">
           {{ scope.row.score }}{{ scope.row.sportsItem ? scope.row.sportsItem.unit : '' }}
-        </template>
-      </el-table-column>
-      
-      <el-table-column label="测试时间" min-width="160" align="center">
-        <template slot-scope="scope">
-          {{ formatDateTime(scope.row.testTime) }}
         </template>
       </el-table-column>
       
@@ -113,6 +109,16 @@
             ></el-option>
           </el-select>
         </el-form-item>
+        <el-form-item label="班级" prop="className">
+          <el-select v-model="form.className" placeholder="请选择班级" style="width: 100%">
+            <el-option
+              v-for="className in classList"
+              :key="className"
+              :label="className"
+              :value="className"
+            ></el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="测试项目" prop="sportsItemId">
           <el-select v-model="form.sportsItemId" placeholder="请选择项目">
             <el-option
@@ -127,14 +133,6 @@
           <el-input v-model.number="form.score" type="number">
             <template slot="append">{{ selectedItemUnit }}</template>
           </el-input>
-        </el-form-item>
-        <el-form-item label="测试时间" prop="testTime">
-          <el-date-picker
-            v-model="form.testTime"
-            type="datetime"
-            placeholder="选择测试时间"
-            value-format="yyyy-MM-dd HH:mm:ss"
-          ></el-date-picker>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -179,14 +177,17 @@ export default {
       form: {
         id: undefined,
         studentNumber: undefined,
+        className: undefined,
         sportsItemId: undefined,
-        score: undefined,
-        testTime: undefined
+        score: undefined
       },
       // 表单验证规则
       rules: {
         studentNumber: [
           { required: true, message: '请选择学生', trigger: 'change' }
+        ],
+        className: [
+          { required: true, message: '请选择班级', trigger: 'change' }
         ],
         sportsItemId: [
           { required: true, message: '请选择测试项目', trigger: 'change' }
@@ -194,9 +195,6 @@ export default {
         score: [
           { required: true, message: '请输入成绩', trigger: 'blur' },
           { type: 'number', message: '成绩必须为数字值', trigger: 'blur' }
-        ],
-        testTime: [
-          { required: true, message: '请选择测试时间', trigger: 'change' }
         ]
       }
     }
@@ -260,12 +258,6 @@ export default {
       }
     },
 
-    // 格式化日期时间
-    formatDateTime(datetime) {
-      if (!datetime) return '-'
-      return new Date(datetime).toLocaleString()
-    },
-
     // 处理查询
     handleQuery() {
       this.queryParams.pageNum = 1
@@ -290,9 +282,9 @@ export default {
       this.form = {
         id: undefined,
         studentNumber: undefined,
+        className: undefined,
         sportsItemId: undefined,
-        score: undefined,
-        testTime: undefined
+        score: undefined
       }
       this.dialog.visible = true
     },
@@ -302,9 +294,9 @@ export default {
       this.form = {
         id: row.id,
         studentNumber: row.studentNumber,
+        className: row.className,
         sportsItemId: row.sportsItemId,
-        score: row.score,
-        testTime: row.testTime
+        score: row.score
       }
       this.dialog.visible = true
     },

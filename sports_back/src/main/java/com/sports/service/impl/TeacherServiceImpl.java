@@ -81,7 +81,7 @@ public class TeacherServiceImpl implements TeacherService {
         // TODO: 验证记录是否属于该教师负责的班级
         
         existing.setScore(record.getScore());
-        existing.setTestTime(record.getTestTime());
+        existing.setClassName(record.getClassName());
         existing.setUpdatedAt(LocalDateTime.now());
         
         return testRecordRepository.save(existing);

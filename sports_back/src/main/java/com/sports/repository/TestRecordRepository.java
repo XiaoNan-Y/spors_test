@@ -50,7 +50,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     // 根据学号和体育项目ID查询最新记录
     @Query("SELECT t FROM TestRecord t WHERE t.studentNumber = :studentNumber AND t.sportsItemId = :sportsItemId " +
-           "ORDER BY t.testTime DESC")
+           "ORDER BY t.createdAt DESC")
     List<TestRecord> findLatestByStudentNumberAndSportsItemId(
         @Param("studentNumber") String studentNumber,
         @Param("sportsItemId") Long sportsItemId,
@@ -60,7 +60,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     @Query("SELECT t FROM TestRecord t LEFT JOIN t.student WHERE " +
            "(:status is null or t.status = :status) AND " +
            "(:sportsItemId is null or t.sportsItemId = :sportsItemId) " +
-           "ORDER BY t.studentNumber, t.testTime DESC")
+           "ORDER BY t.studentNumber, t.createdAt DESC")
     Page<TestRecord> findAllWithStudent(
         @Param("status") String status,
         @Param("sportsItemId") Long sportsItemId,

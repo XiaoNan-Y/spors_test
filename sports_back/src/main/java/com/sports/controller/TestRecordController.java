@@ -49,7 +49,6 @@ public class TestRecordController {
         try {
             // 设置初始状态和时间
             record.setStatus("PENDING");
-            record.setTestTime(LocalDateTime.now());
             record.setCreatedAt(LocalDateTime.now());
             record.setUpdatedAt(LocalDateTime.now());
             

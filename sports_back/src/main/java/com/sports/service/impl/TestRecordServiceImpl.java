@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.io.IOException;
 
 @Service
 @Transactional
@@ -63,13 +64,14 @@ public class TestRecordServiceImpl implements TestRecordService {
 
     @Override
     public TestRecord save(TestRecord record) {
-        // 添加验证
+        // 验证必填字段
         if (record.getStudentNumber() == null || record.getSportsItemId() == null || 
-            record.getScore() == null) {
+            record.getScore() == null || record.getClassName() == null) {
             throw new IllegalArgumentException("必填字段不能为空");
         }
         
-        // 保存记录
+        record.setCreatedAt(LocalDateTime.now());
+        record.setUpdatedAt(LocalDateTime.now());
         return testRecordRepository.save(record);
     }
 
@@ -80,7 +82,7 @@ public class TestRecordServiceImpl implements TestRecordService {
             .orElseThrow(() -> new RuntimeException("记录不存在"));
             
         existing.setScore(record.getScore());
-        existing.setTestTime(record.getTestTime());
+        existing.setClassName(record.getClassName());  // 更新班级信息而不是测试时间
         existing.setUpdatedAt(LocalDateTime.now());
         
         return testRecordRepository.save(existing);
@@ -211,73 +213,69 @@ public class TestRecordServiceImpl implements TestRecordService {
     }
 
     @Override
-    public void exportToExcel(HttpServletResponse response, String status, Long sportsItemId) throws Exception {
-        // 查询数据
-        Specification<TestRecord> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            
-            if (status != null && !status.isEmpty()) {
-                predicates.add(cb.equal(root.get("status"), status));
-            }
-            if (sportsItemId != null) {
-                predicates.add(cb.equal(root.get("sportsItemId"), sportsItemId));
-            }
-            
-            return predicates.isEmpty() ? null : cb.and(predicates.toArray(new Predicate[0]));
-        };
-        
-        List<TestRecord> records = testRecordRepository.findAll(spec, Sort.by(Sort.Direction.DESC, "testTime"));
+    public void exportToExcel(HttpServletResponse response, String status, Long sportsItemId) throws IOException {
+        List<TestRecord> records;
+        if (status != null && sportsItemId != null) {
+            records = testRecordRepository.findByStatusAndSportsItemId(status, sportsItemId);
+        } else if (status != null) {
+            records = testRecordRepository.findByStatus(status);
+        } else if (sportsItemId != null) {
+            records = testRecordRepository.findAll(
+                (root, query, cb) -> cb.equal(root.get("sportsItemId"), sportsItemId)
+            );
+        } else {
+            records = testRecordRepository.findAll();
+        }
 
-        // 创建工作簿和工作表
         XSSFWorkbook workbook = new XSSFWorkbook();
         XSSFSheet sheet = workbook.createSheet("测试记录");
 
-        // 设置列宽
-        sheet.setColumnWidth(0, 15 * 256);  // 测试时间
-        sheet.setColumnWidth(1, 12 * 256);  // 学生姓名
-        sheet.setColumnWidth(2, 12 * 256);  // 学号
-        sheet.setColumnWidth(3, 15 * 256);  // 测试项目
-        sheet.setColumnWidth(4, 10 * 256);  // 成绩
-        sheet.setColumnWidth(5, 10 * 256);  // 状态
-        sheet.setColumnWidth(6, 20 * 256);  // 审核意见
-
         // 创建标题行
         Row headerRow = sheet.createRow(0);
-        String[] headers = {"测试时间", "学生姓名", "学号", "测试项目", "成绩", "状态", "审核意见"};
-        for (int i = 0; i < headers.length; i++) {
+        String[] columns = {"学号", "姓名", "班级", "测试项目", "成绩", "状态", "审核意见", "创建时间"};
+        
+        // 设置标题行样式
+        CellStyle headerStyle = workbook.createCellStyle();
+        headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        headerStyle.setAlignment(HorizontalAlignment.CENTER);
+        
+        // 写入标题
+        for (int i = 0; i < columns.length; i++) {
             Cell cell = headerRow.createCell(i);
-            cell.setCellValue(headers[i]);
+            cell.setCellValue(columns[i]);
+            cell.setCellStyle(headerStyle);
         }
 
         // 写入数据
         int rowNum = 1;
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         for (TestRecord record : records) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(record.getTestTime().format(formatter));
+            row.createCell(0).setCellValue(record.getStudentNumber());
             row.createCell(1).setCellValue(record.getStudent() != null ? record.getStudent().getRealName() : "");
-            row.createCell(2).setCellValue(record.getStudentNumber());
+            row.createCell(2).setCellValue(record.getClassName());
             row.createCell(3).setCellValue(record.getSportsItem() != null ? record.getSportsItem().getName() : "");
             row.createCell(4).setCellValue(record.getScore());
-            row.createCell(5).setCellValue(getStatusText(record.getStatus()));
-            row.createCell(6).setCellValue(record.getReviewComment() != null ? record.getReviewComment() : "");
+            row.createCell(5).setCellValue(record.getStatus());
+            row.createCell(6).setCellValue(record.getReviewComment());
+            row.createCell(7).setCellValue(
+                record.getCreatedAt() != null ? 
+                record.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : ""
+            );
         }
 
-        // 写入响应
+        // 自动调整列宽
+        for (int i = 0; i < columns.length; i++) {
+            sheet.autoSizeColumn(i);
+        }
+
+        // 设置响应头
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=test_records.xlsx");
+
+        // 写入响应
         workbook.write(response.getOutputStream());
         workbook.close();
-    }
-
-    private String getStatusText(String status) {
-        if (status == null) return "";
-        switch (status) {
-            case "PENDING": return "待审核";
-            case "APPROVED": return "已通过";
-            case "REJECTED": return "已驳回";
-            default: return status;
-        }
     }
 
     @Override
@@ -298,8 +296,7 @@ public class TestRecordServiceImpl implements TestRecordService {
         // 批量保存前进行数据验证
         for (TestRecord record : records) {
             if (record.getStudentNumber() == null || record.getSportsItemId() == null || 
-                record.getScore() == null || 
-                record.getTestTime() == null) {
+                record.getScore() == null || record.getClassName() == null) {
                 throw new RuntimeException("记录数据不完整");
             }
 

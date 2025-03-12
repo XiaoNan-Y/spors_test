@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS `test_record` (
   `student_number` varchar(50) NOT NULL,
   `sports_item_id` bigint NOT NULL,
   `score` double NOT NULL,
-  `test_time` datetime NOT NULL,
+  `class_name` varchar(50) NOT NULL,
   `status` varchar(20) NOT NULL,
   `review_comment` text,
   `review_time` datetime DEFAULT NULL,
@@ -48,7 +48,9 @@ CREATE TABLE IF NOT EXISTS `test_record` (
   PRIMARY KEY (`id`),
   KEY `idx_student_number` (`student_number`),
   KEY `idx_sports_item_id` (`sports_item_id`),
-  KEY `idx_status` (`status`)
+  KEY `idx_status` (`status`),
+  FOREIGN KEY (`student_number`) REFERENCES `user` (`student_number`),
+  FOREIGN KEY (`sports_item_id`) REFERENCES `sports_item` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- 创建通知公告表
@@ -134,7 +136,7 @@ INSERT INTO test_record (
     student_number, 
     sports_item_id, 
     score, 
-    test_time, 
+    class_name, 
     status, 
     review_comment, 
     review_time, 
@@ -142,19 +144,19 @@ INSERT INTO test_record (
     updated_at
 ) VALUES 
 -- 100米跑测试记录
-('2023001', 1, 13.5, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
-('2023001', 1, 14.2, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
-('2023002', 1, 12.8, NOW(), 'REJECTED', '成绩异常，需要重新测试', NOW(), NOW(), NOW()),
+('2023001', 1, 13.5, '计科1班', 'PENDING', NULL, NULL, NOW(), NOW()),
+('2023001', 1, 14.2, '计科1班', 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
+('2023002', 1, 12.8, '计科2班', 'REJECTED', '成绩异常，需要重新测试', NOW(), NOW(), NOW()),
 
 -- 立定跳远测试记录
-('2023001', 2, 2.3, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
-('2023002', 2, 2.1, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
-('2023003', 2, 2.5, NOW(), 'APPROVED', '成绩正常，表现优秀', NOW(), NOW(), NOW()),
+('2023001', 2, 2.3, '计科1班', 'PENDING', NULL, NULL, NOW(), NOW()),
+('2023002', 2, 2.1, '计科2班', 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
+('2023003', 2, 2.5, '软工1班', 'APPROVED', '成绩正常，表现优秀', NOW(), NOW(), NOW()),
 
 -- 引体向上测试记录
-('2023001', 3, 12, NOW(), 'PENDING', NULL, NULL, NOW(), NOW()),
-('2023002', 3, 15, NOW(), 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
-('2023003', 3, 8, NOW(), 'APPROVED', '成绩正常，继续努力', NOW(), NOW(), NOW());
+('2023001', 3, 12, '计科1班', 'PENDING', NULL, NULL, NOW(), NOW()),
+('2023002', 3, 15, '计科2班', 'APPROVED', '成绩正常，通过审核', NOW(), NOW(), NOW()),
+('2023003', 3, 8, '软工1班', 'APPROVED', '成绩正常，继续努力', NOW(), NOW(), NOW());
 
 -- 插入通知公告
 INSERT INTO notice (title, content, type, priority, status, create_time, update_time, create_by)

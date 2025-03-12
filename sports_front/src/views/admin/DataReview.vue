@@ -68,6 +68,12 @@
         </template>
       </el-table-column>
       
+      <el-table-column label="班级" prop="className" min-width="120" align="center">
+        <template slot-scope="scope">
+          {{ scope.row.className }}
+        </template>
+      </el-table-column>
+      
       <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center">
         <template slot-scope="scope">
           {{ scope.row.sportsItem ? scope.row.sportsItem.name : '-' }}
@@ -82,12 +88,6 @@
         </template>
       </el-table-column>
       
-      <el-table-column label="测试时间" min-width="160" align="center">
-        <template slot-scope="scope">
-          {{ formatDateTime(scope.row.testTime) }}
-        </template>
-      </el-table-column>
-
       <el-table-column label="状态" width="100" align="center">
         <template slot-scope="scope">
           <el-tag :type="getStatusType(scope.row.status)">
@@ -215,16 +215,16 @@
         </div>
       </el-form-item>
 
-      <!-- 测试时间选择 -->
-      <el-form-item label="测试时间" prop="testTime">
-        <el-date-picker
-          v-model="form.testTime"
-          type="datetime"
-          placeholder="选择测试时间"
-          format="yyyy-MM-dd HH:mm"
-          value-format="yyyy-MM-dd HH:mm:ss"
-          style="width: 100%"
-        ></el-date-picker>
+      <!-- 班级选择 -->
+      <el-form-item label="班级" prop="className">
+        <el-select v-model="form.className" placeholder="请选择班级" style="width: 100%">
+          <el-option
+            v-for="className in classList"
+            :key="className"
+            :label="className"
+            :value="className"
+          ></el-option>
+        </el-select>
       </el-form-item>
     </el-form>
 
@@ -246,7 +246,7 @@
           <el-descriptions-item label="学生">{{ currentRecord.student ? currentRecord.student.realName : '-' }} ({{ currentRecord.studentNumber || '-' }})</el-descriptions-item>
           <el-descriptions-item label="测试项目">{{ currentRecord.sportsItem ? currentRecord.sportsItem.name : '-' }}</el-descriptions-item>
           <el-descriptions-item label="测试成绩">{{ currentRecord.score || '-' }} {{ currentRecord.sportsItem ? currentRecord.sportsItem.unit : '' }}</el-descriptions-item>
-          <el-descriptions-item label="测试时间">{{ formatDateTime(currentRecord.testTime) }}</el-descriptions-item>
+          <el-descriptions-item label="班级">{{ currentRecord.className || '-' }}</el-descriptions-item>
           <el-descriptions-item label="录入教师">{{ currentRecord.teacher ? currentRecord.teacher.realName : '-' }}</el-descriptions-item>
           <el-descriptions-item label="录入时间">{{ formatDateTime(currentRecord.createdAt) }}</el-descriptions-item>
         </el-descriptions>
@@ -287,14 +287,14 @@
           <el-descriptions-item label="学号">
             {{ currentRecord.student ? currentRecord.student.username : '-' }}
           </el-descriptions-item>
+          <el-descriptions-item label="班级">
+            {{ currentRecord.className || '-' }}
+          </el-descriptions-item>
           <el-descriptions-item label="测试项目">
             {{ currentRecord.sportsItem ? currentRecord.sportsItem.name : '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="测试成绩">
             {{ currentRecord.score || '-' }} {{ currentRecord.sportsItem ? currentRecord.sportsItem.unit : '' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="测试时间">
-            {{ formatDateTime(currentRecord.testTime) }}
           </el-descriptions-item>
           <el-descriptions-item label="记录教师">
             {{ currentRecord.teacher ? currentRecord.teacher.realName : '-' }}
@@ -406,7 +406,7 @@ export default {
         studentId: null,
         sportsItemId: null,
         score: null,
-        testTime: null
+        className: null
       },
       rules: {
         studentId: [
@@ -419,8 +419,8 @@ export default {
           { required: true, message: '请输入测试成绩', trigger: 'blur' },
           { type: 'number', message: '成绩必须为数字', trigger: 'blur' }
         ],
-        testTime: [
-          { required: true, message: '请选择测试时间', trigger: 'change' }
+        className: [
+          { required: true, message: '请选择班级', trigger: 'change' }
         ]
       },
       teachers: [],
@@ -456,7 +456,8 @@ export default {
       modifyRules: {
         status: [{ required: true, message: '请选择审核状态', trigger: 'change' }],
         comment: [{ required: true, message: '请输入审核意见', trigger: 'blur' }]
-      }
+      },
+      classList: []
     }
   },
   created() {
@@ -464,6 +465,7 @@ export default {
     this.getTeachers()
     this.getStudents()
     this.getSportsItems()
+    this.getClassList()
   },
   methods: {
     async getList() {
@@ -533,7 +535,7 @@ export default {
           studentId: null,
           sportsItemId: null,
           score: null,
-          testTime: null
+          className: null
         }
         this.selectedItemUnit = ''
       })
@@ -551,7 +553,7 @@ export default {
               studentId: this.form.studentId,
               sportsItemId: this.form.sportsItemId,
               score: Number(this.form.score),
-              testTime: this.form.testTime,
+              className: this.form.className,
               teacherId: JSON.parse(localStorage.getItem('user')).id
             }
 
@@ -791,6 +793,17 @@ export default {
     canModify(row) {
       // 已审核的记录可以修改
       return row.status === 'APPROVED' || row.status === 'REJECTED'
+    },
+
+    async getClassList() {
+      try {
+        const res = await this.$http.get('/api/admin/class-list')
+        if (res.data.code === 200) {
+          this.classList = res.data.data.content
+        }
+      } catch (error) {
+        console.error('获取班级列表失败:', error)
+      }
     }
   }
 }
