@@ -22,4 +22,8 @@ public interface UserService {
     Result resetPassword(Long id);
     
     Page<User> getUsersByType(String userType, Pageable pageable);
+    
+    User getUserById(Long id);
+    
+    Result updateProfile(User user);
 } 

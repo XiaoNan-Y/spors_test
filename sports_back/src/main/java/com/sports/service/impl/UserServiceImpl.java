@@ -55,10 +55,24 @@ public class UserServiceImpl implements UserService {
     
     @Override
     public Result changePassword(Long userId, String oldPassword, String newPassword) {
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new RuntimeException("用户不存在"));
-        // TODO: 实现密码修改
-        return Result.success(null);
+        try {
+            User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            // 验证旧密码
+            if (!user.getPassword().equals(oldPassword)) {
+                return Result.error("原密码错误");
+            }
+            
+            // 更新密码
+            user.setPassword(newPassword);
+            userRepository.save(user);
+            
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("修改密码失败", e);
+            return Result.error("修改密码失败：" + e.getMessage());
+        }
     }
     
     @Override
@@ -151,6 +165,31 @@ public class UserServiceImpl implements UserService {
             return userRepository.findByUserType(userType, pageable);
         } catch (Exception e) {
             throw new RuntimeException("获取用户列表失败：" + e.getMessage());
+        }
+    }
+
+    @Override
+    public User getUserById(Long id) {
+        return userRepository.findById(id).orElse(null);
+    }
+    
+    @Override
+    @Transactional
+    public Result updateProfile(User user) {
+        try {
+            User existingUser = userRepository.findById(user.getId())
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            // 只更新允许修改的字段
+            existingUser.setRealName(user.getRealName());
+            existingUser.setEmail(user.getEmail());
+            existingUser.setPhone(user.getPhone());
+            
+            userRepository.save(existingUser);
+            return Result.success(null);
+        } catch (Exception e) {
+            log.error("更新个人信息失败", e);
+            return Result.error("更新个人信息失败：" + e.getMessage());
         }
     }
 } 

@@ -53,8 +53,9 @@ const routes = [
       },
       {
         path: 'profile',
-        name: 'AdminProfile',
-        component: Profile
+        name: 'Profile',
+        component: () => import('@/views/profile/index'),
+        meta: { title: '个人信息', icon: 'el-icon-user' }
       },
       {
         path: 'data-review',

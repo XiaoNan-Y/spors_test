@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -93,6 +95,59 @@ public class UserController {
         } catch (Exception e) {
             log.error("Failed to update user", e);
             return Result.error("更新用户失败：" + e.getMessage());
+        }
+    }
+
+    // 获取个人信息
+    @GetMapping("/profile")
+    public Result getProfile() {
+        try {
+            // 从当前登录用户中获取用户ID
+            // 这里暂时从localStorage中获取，之后可以改用Spring Security
+            Long userId = 1L; // 测试用，实际应该从认证信息中获取
+            User user = userService.getUserById(userId);
+            if (user != null) {
+                // 清除敏感信息
+                user.setPassword(null);
+                return Result.success(user);
+            }
+            return Result.error("用户不存在");
+        } catch (Exception e) {
+            log.error("获取个人信息失败", e);
+            return Result.error("获取个人信息失败：" + e.getMessage());
+        }
+    }
+
+    // 更新个人信息
+    @PutMapping("/profile")
+    public Result updateProfile(@RequestBody User user) {
+        try {
+            // 从当前登录用户中获取用户ID
+            Long userId = 1L; // 测试用，实际应该从认证信息中获取
+            user.setId(userId);
+            return userService.updateProfile(user);
+        } catch (Exception e) {
+            log.error("更新个人信息失败", e);
+            return Result.error("更新个人信息失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/change-password")
+    public Result changePassword(@RequestBody Map<String, String> params) {
+        try {
+            // 从当前登录用户中获取用户ID
+            Long userId = 1L; // 测试用，实际应该从认证信息中获取
+            String oldPassword = params.get("oldPassword");
+            String newPassword = params.get("newPassword");
+            
+            if (oldPassword == null || newPassword == null) {
+                return Result.error("密码不能为空");
+            }
+            
+            return userService.changePassword(userId, oldPassword, newPassword);
+        } catch (Exception e) {
+            log.error("修改密码失败", e);
+            return Result.error("修改密码失败：" + e.getMessage());
         }
     }
 } 
