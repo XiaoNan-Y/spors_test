@@ -133,22 +133,28 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
     List<String> findDistinctClassNames();
 
-    @Query("SELECT t.className, " +
-           "COUNT(t) as totalCount, " +
-           "AVG(t.score) as avgScore, " +
-           "SUM(CASE WHEN t.score >= COALESCE(si.excellentScore, 0) THEN 1 ELSE 0 END) as excellentCount, " +
-           "SUM(CASE WHEN t.score >= COALESCE(si.passScore, 0) THEN 1 ELSE 0 END) as passCount " +
-           "FROM TestRecord t " +
-           "LEFT JOIN t.sportsItem si " +
-           "WHERE t.status = 'APPROVED' " +
-           "AND t.score IS NOT NULL " +
-           "AND (:className IS NULL OR :className = '' OR t.className = :className) " +
-           "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
-           "GROUP BY t.className " +
-           "HAVING COUNT(t) > 0")
+    @Query("SELECT tr.className, " +
+           "COUNT(tr) as totalCount, " +
+           "AVG(tr.score) as avgScore, " +
+           "COUNT(CASE " +
+           "    WHEN si.id IN (1, 5) AND tr.score <= si.excellentScore THEN 1 " +
+           "    WHEN si.id NOT IN (1, 5) AND tr.score >= si.excellentScore THEN 1 " +
+           "    ELSE NULL END) as excellentCount, " +
+           "COUNT(CASE " +
+           "    WHEN si.id IN (1, 5) AND tr.score <= si.passScore THEN 1 " +
+           "    WHEN si.id NOT IN (1, 5) AND tr.score >= si.passScore THEN 1 " +
+           "    ELSE NULL END) as passCount " +
+           "FROM TestRecord tr " +
+           "LEFT JOIN tr.sportsItem si " +
+           "WHERE (:className IS NULL OR :className = '' OR tr.className = :className) " +
+           "AND (:sportsItemId IS NULL OR tr.sportsItemId = :sportsItemId) " +
+           "AND (:status IS NULL OR :status = '' OR tr.status = :status) " +
+           "AND tr.score IS NOT NULL " +
+           "GROUP BY tr.className")
     List<Object[]> getClassStatistics(
         @Param("className") String className,
-        @Param("sportsItemId") Long sportsItemId
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("status") String status
     );
 
     @Query("SELECT t FROM TestRecord t " +

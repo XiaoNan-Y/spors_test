@@ -504,31 +504,48 @@ public class TeacherController {
     @GetMapping("/statistics/class")
     public Result getClassStatistics(
         @RequestParam(required = false) String className,
-        @RequestParam(required = false) Long sportsItemId
+        @RequestParam(required = false) Long sportsItemId,
+        @RequestParam(required = false) String status
     ) {
         try {
-            log.info("Getting class statistics: className={}, sportsItemId={}", className, sportsItemId);
+            log.info("开始获取班级统计数据: className={}, sportsItemId={}, status={}", 
+                className, sportsItemId, status);
             
-            // 使用 service 层的方法来获取统计数据
-            List<Object[]> rawStats = testRecordRepository.getClassStatistics(className, sportsItemId);
-            log.info("Raw statistics data size: {}", rawStats.size());
+            // 先检查数据库中是否有记录
+            long totalRecords = testRecordRepository.count();
+            long approvedRecords = testRecordRepository.countByStatus("APPROVED");
+            log.info("数据库中总记录数: {}, 已审核记录数: {}", totalRecords, approvedRecords);
+            
+            // 使用 repository 层的方法来获取统计数据
+            List<Object[]> rawStats = testRecordRepository.getClassStatistics(
+                className, 
+                sportsItemId,
+                status == null ? "APPROVED" : status  // 默认统计已审核通过的记录
+            );
+            log.info("获取到原始统计数据: {} 条记录", rawStats.size());
+            
+            // 打印每一行数据
+            rawStats.forEach(row -> {
+                log.debug("统计数据行: className={}, totalCount={}, avgScore={}, excellentCount={}, passCount={}", 
+                    row[0], row[1], row[2], row[3], row[4]);
+            });
             
             // 手动转换数据
             List<ClassStatisticsDTO> stats = rawStats.stream()
                 .map(row -> {
-                    log.info("Processing row: className={}, totalCount={}, avgScore={}, excellentCount={}, passCount={}", 
-                        row[0], row[1], row[2], row[3], row[4]);
-                    return new ClassStatisticsDTO(
-                        (String) row[0],      // className
-                        (Long) row[1],        // totalCount
-                        (Double) row[2],      // averageScore
-                        (Long) row[3],        // excellentCount
-                        (Long) row[4]         // passCount
+                    ClassStatisticsDTO dto = new ClassStatisticsDTO(
+                        (String) row[0],                  // className
+                        ((Number) row[1]).longValue(),    // totalCount
+                        ((Number) row[2]).doubleValue(),  // averageScore
+                        ((Number) row[3]).longValue(),    // excellentCount
+                        ((Number) row[4]).longValue()     // passCount
                     );
+                    log.debug("转换后的DTO: {}", dto);
+                    return dto;
                 })
                 .collect(Collectors.toList());
             
-            log.info("Converted statistics size: {}", stats.size());
+            log.info("返回 {} 条统计记录", stats.size());
             return Result.success(stats);
             
         } catch (Exception e) {

@@ -384,14 +384,15 @@ public class TestRecordServiceImpl implements TestRecordService {
         try {
             log.info("Getting class statistics: className={}, sportsItemId={}", className, sportsItemId);
             
-            List<Object[]> rawStats = testRecordRepository.getClassStatistics(className, sportsItemId);
+            List<Object[]> rawStats = testRecordRepository.getClassStatistics(className, sportsItemId, "APPROVED");
+            
             return rawStats.stream()
                 .map(row -> new ClassStatisticsDTO(
-                    (String) row[0],      // className
-                    (Long) row[1],        // totalCount
-                    (Double) row[2],      // averageScore
-                    (Long) row[3],        // excellentCount
-                    (Long) row[4]         // passCount
+                    (String) row[0],                  // className
+                    ((Number) row[1]).longValue(),    // totalCount
+                    ((Number) row[2]).doubleValue(),  // averageScore
+                    ((Number) row[3]).longValue(),    // excellentCount
+                    ((Number) row[4]).longValue()     // passCount
                 ))
                 .collect(Collectors.toList());
         } catch (Exception e) {
