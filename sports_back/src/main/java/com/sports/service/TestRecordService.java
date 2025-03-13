@@ -1,6 +1,7 @@
 package com.sports.service;
 
 import com.sports.entity.TestRecord;
+import com.sports.dto.ClassStatisticsDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
@@ -60,4 +61,6 @@ public interface TestRecordService {
     Page<TestRecord> getTestRecords(String className, Long sportsItemId, 
                                    String status, String studentNumber, 
                                    Pageable pageable);
+
+    List<ClassStatisticsDTO> getClassStatistics(String className, Long sportsItemId);
 } 

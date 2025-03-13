@@ -27,6 +27,12 @@ public class SportsItem implements Serializable {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "excellent_score")
+    private Double excellentScore;  // 优秀分数线
+
+    @Column(name = "pass_score")
+    private Double passScore;      // 及格分数线
+
     public SportsItem() {
     }
 

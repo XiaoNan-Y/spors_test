@@ -2,6 +2,7 @@ package com.sports.service.impl;
 
 import com.sports.entity.TestRecord;
 import com.sports.entity.SportsItem;
+import com.sports.dto.ClassStatisticsDTO;
 import com.sports.repository.TestRecordRepository;
 import com.sports.repository.SportsItemRepository;
 import com.sports.service.TestRecordService;
@@ -39,6 +40,7 @@ import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -374,6 +376,27 @@ public class TestRecordServiceImpl implements TestRecordService {
         } catch (Exception e) {
             log.error("Error getting test records", e);
             throw new RuntimeException("获取测试记录失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<ClassStatisticsDTO> getClassStatistics(String className, Long sportsItemId) {
+        try {
+            log.info("Getting class statistics: className={}, sportsItemId={}", className, sportsItemId);
+            
+            List<Object[]> rawStats = testRecordRepository.getClassStatistics(className, sportsItemId);
+            return rawStats.stream()
+                .map(row -> new ClassStatisticsDTO(
+                    (String) row[0],      // className
+                    (Long) row[1],        // totalCount
+                    (Double) row[2],      // averageScore
+                    (Long) row[3],        // excellentCount
+                    (Long) row[4]         // passCount
+                ))
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("获取班级统计数据失败", e);
+            throw new RuntimeException("获取班级统计数据失败: " + e.getMessage());
         }
     }
 } 

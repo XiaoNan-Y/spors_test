@@ -33,6 +33,8 @@ import java.util.stream.Collectors;
 
 import javax.persistence.criteria.Predicate;
 
+import com.sports.dto.ClassStatisticsDTO;
+
 @RestController
 @RequestMapping("/api/teacher")
 @CrossOrigin
@@ -500,6 +502,53 @@ public class TeacherController {
         } catch (Exception e) {
             log.error("导出失败", e);
             throw new RuntimeException("导出失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/statistics/class")
+    public Result getClassStatistics(
+        @RequestParam(required = false) String className,
+        @RequestParam(required = false) Long sportsItemId
+    ) {
+        try {
+            log.info("Getting class statistics: className={}, sportsItemId={}", className, sportsItemId);
+            
+            // 使用 service 层的方法来获取统计数据
+            List<Object[]> rawStats = testRecordRepository.getClassStatistics(className, sportsItemId);
+            log.info("Raw statistics data size: {}", rawStats.size());
+            
+            // 手动转换数据
+            List<ClassStatisticsDTO> stats = rawStats.stream()
+                .map(row -> {
+                    log.info("Processing row: className={}, totalCount={}, avgScore={}, excellentCount={}, passCount={}", 
+                        row[0], row[1], row[2], row[3], row[4]);
+                    return new ClassStatisticsDTO(
+                        (String) row[0],      // className
+                        (Long) row[1],        // totalCount
+                        (Double) row[2],      // averageScore
+                        (Long) row[3],        // excellentCount
+                        (Long) row[4]         // passCount
+                    );
+                })
+                .collect(Collectors.toList());
+            
+            log.info("Converted statistics size: {}", stats.size());
+            return Result.success(stats);
+            
+        } catch (Exception e) {
+            log.error("获取班级统计数据失败", e);
+            return Result.error("获取班级统计数据失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/statistics/student/{studentNumber}")
+    public Result getStudentStatistics(@PathVariable String studentNumber) {
+        try {
+            List<TestRecord> records = testRecordRepository.findStudentRecords(studentNumber);
+            return Result.success(records);
+        } catch (Exception e) {
+            log.error("获取学生统计数据失败", e);
+            return Result.error("获取学生统计数据失败: " + e.getMessage());
         }
     }
 

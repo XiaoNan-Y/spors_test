@@ -83,9 +83,6 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         Pageable pageable
     );
 
-    @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
-    List<String> findDistinctClassNames();
-
     @Query("SELECT DISTINCT t FROM TestRecord t " +
            "LEFT JOIN t.sportsItem " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
@@ -131,4 +128,31 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         @Param("studentNumber") String studentNumber,
         Pageable pageable
     );
+
+    @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
+    List<String> findDistinctClassNames();
+
+    @Query("SELECT t.className, " +
+           "COUNT(t) as totalCount, " +
+           "AVG(t.score) as avgScore, " +
+           "SUM(CASE WHEN t.score >= COALESCE(si.excellentScore, 0) THEN 1 ELSE 0 END) as excellentCount, " +
+           "SUM(CASE WHEN t.score >= COALESCE(si.passScore, 0) THEN 1 ELSE 0 END) as passCount " +
+           "FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE t.status = 'APPROVED' " +
+           "AND t.score IS NOT NULL " +
+           "AND (:className IS NULL OR :className = '' OR t.className = :className) " +
+           "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
+           "GROUP BY t.className " +
+           "HAVING COUNT(t) > 0")
+    List<Object[]> getClassStatistics(
+        @Param("className") String className,
+        @Param("sportsItemId") Long sportsItemId
+    );
+
+    @Query("SELECT t FROM TestRecord t " +
+           "WHERE t.studentNumber = :studentNumber " +
+           "AND t.status = 'APPROVED' " +
+           "ORDER BY t.createdAt DESC")
+    List<TestRecord> findStudentRecords(@Param("studentNumber") String studentNumber);
 } 

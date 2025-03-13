@@ -34,17 +34,17 @@
       <el-table-column prop="totalCount" label="总人数" />
       <el-table-column prop="averageScore" label="平均分">
         <template slot-scope="scope">
-          {{ scope.row.averageScore ? scope.row.averageScore.toFixed(2) : '0.00' }}
+          {{ scope.row.averageScore.toFixed(2) }}
         </template>
       </el-table-column>
       <el-table-column prop="excellentRate" label="优秀率">
         <template slot-scope="scope">
-          {{ scope.row.excellentRate ? scope.row.excellentRate.toFixed(2) : '0.00' }}%
+          {{ scope.row.excellentRate.toFixed(2) }}%
         </template>
       </el-table-column>
-      <el-table-column prop="passRate" label="及格率">
+      <el-table-column prop="passRate" label="合格率">
         <template slot-scope="scope">
-          {{ scope.row.passRate ? scope.row.passRate.toFixed(2) : '0.00' }}%
+          {{ scope.row.passRate.toFixed(2) }}%
         </template>
       </el-table-column>
     </el-table>
@@ -53,7 +53,7 @@
 
 <script>
 export default {
-  name: 'ClassStats',
+  name: 'ClassStatistics',
   data() {
     return {
       loading: false,
@@ -79,7 +79,6 @@ export default {
           this.classNames = response.data.data
         }
       } catch (error) {
-        console.error('获取班级列表失败:', error)
         this.$message.error('获取班级列表失败')
       }
     },
@@ -90,7 +89,6 @@ export default {
           this.sportsItems = response.data.data
         }
       } catch (error) {
-        console.error('获取体育项目列表失败:', error)
         this.$message.error('获取体育项目列表失败')
       }
     },
@@ -103,7 +101,6 @@ export default {
             sportsItemId: this.filterForm.sportsItemId || ''
           }
         })
-        console.log('Statistics response:', response.data)
         if (response.data.code === 200) {
           this.statistics = response.data.data
         } else {
