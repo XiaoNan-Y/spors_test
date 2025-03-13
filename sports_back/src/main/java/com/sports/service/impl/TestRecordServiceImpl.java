@@ -352,4 +352,28 @@ public class TestRecordServiceImpl implements TestRecordService {
 
         return testRecordRepository.save(record);
     }
+
+    @Override
+    public Page<TestRecord> getTestRecords(String className, Long sportsItemId, 
+                                         String status, String studentNumber, 
+                                         Pageable pageable) {
+        try {
+            log.info("Getting test records with filters: className={}, sportsItemId={}, status={}, studentNumber={}", 
+                     className, sportsItemId, status, studentNumber);
+                     
+            Page<TestRecord> records = testRecordRepository.findByFilters(
+                className,
+                sportsItemId,
+                status,
+                studentNumber,
+                pageable
+            );
+            
+            log.debug("Found {} records", records.getTotalElements());
+            return records;
+        } catch (Exception e) {
+            log.error("Error getting test records", e);
+            throw new RuntimeException("获取测试记录失败: " + e.getMessage());
+        }
+    }
 } 

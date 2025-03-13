@@ -84,50 +84,31 @@ public class TeacherController {
     // 获取成绩记录列表
     @GetMapping("/test-records")
     public Result getTestRecords(
-            @RequestParam(required = false) Long sportsItemId,
-            @RequestParam(required = false) String className,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
+        @RequestParam(required = false) String className,
+        @RequestParam(required = false) Long sportsItemId,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String studentNumber,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
         try {
-            log.info("开始查询学生成绩记录");
-            log.debug("查询参数: sportsItemId={}, className={}, keyword={}, pageNum={}, pageSize={}", 
-                sportsItemId, className, keyword, pageNum, pageSize);
-
-            PageRequest pageRequest = PageRequest.of(pageNum, pageSize);
-            
-            Page<TestRecord> records = testRecordRepository.findByFiltersForTeacher(
+            log.info("Getting test records with filters: className={}, sportsItemId={}, status={}, studentNumber={}, page={}, size={}", 
+                     className, sportsItemId, status, studentNumber, page, size);
+                 
+            PageRequest pageRequest = PageRequest.of(page, size);
+            Page<TestRecord> records = testRecordRepository.findByFilters(
                 className,
                 sportsItemId,
-                keyword,
+                status,
+                studentNumber,
                 pageRequest
             );
-
-            log.info("查询结果: 总条数={}, 当前页数据量={}", 
-                records.getTotalElements(), records.getContent().size());
-
-            // 转换为简单的数据传输对象
-            Page<Map<String, Object>> simplifiedRecords = records.map(record -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("id", record.getId());
-                map.put("studentName", record.getStudentName());
-                map.put("studentNumber", record.getStudentNumber());
-                map.put("className", record.getClassName());
-                map.put("sportsItemId", record.getSportsItemId());
-                map.put("sportsItem", record.getSportsItem());
-                map.put("score", record.getScore());
-                map.put("status", record.getStatus());
-                map.put("reviewComment", record.getReviewComment());
-                map.put("reviewTime", record.getReviewTime());
-                map.put("createdAt", record.getCreatedAt());
-                map.put("updatedAt", record.getUpdatedAt());
-                return map;
-            });
-
-            return Result.success(simplifiedRecords);
+            
+            log.info("Found {} records", records.getTotalElements());
+            return Result.success(records);
         } catch (Exception e) {
-            log.error("获取学生成绩记录失败", e);
-            return Result.error("获取学生成绩记录失败: " + e.getMessage());
+            log.error("获取成绩列表失败", e);
+            return Result.error("获取成绩列表失败：" + e.getMessage());
         }
     }
 
@@ -236,56 +217,16 @@ public class TeacherController {
             log.debug("查询参数: className={}, sportsItemId={}, keyword={}, page={}, size={}", 
                 className, sportsItemId, keyword, page, size);
 
-            // 先获取所有记录，检查数据
-            List<TestRecord> allRecords = testRecordRepository.findAll();
-            log.info("数据库中总记录数: {}", allRecords.size());
-            if (!allRecords.isEmpty()) {
-                TestRecord sample = allRecords.get(0);
-                log.debug("示例记录: id={}, className={}, studentName={}, studentNumber={}, score={}", 
-                    sample.getId(), sample.getClassName(), sample.getStudentName(), 
-                    sample.getStudentNumber(), sample.getScore());
-            }
-
             PageRequest pageRequest = PageRequest.of(page, size);
-            
-            // 使用简单的动态查询
-            Page<TestRecord> records = testRecordRepository.findAll((root, query, cb) -> {
-                List<Predicate> predicates = new ArrayList<>();
-                
-                if (className != null && !className.trim().isEmpty()) {
-                    predicates.add(cb.equal(root.get("className"), className.trim()));
-                    log.debug("添加班级筛选条件: {}", className.trim());
-                }
-                
-                if (sportsItemId != null) {
-                    predicates.add(cb.equal(root.get("sportsItemId"), sportsItemId));
-                    log.debug("添加体育项目筛选条件: {}", sportsItemId);
-                }
-                
-                if (keyword != null && !keyword.trim().isEmpty()) {
-                    String likePattern = "%" + keyword.trim() + "%";
-                    predicates.add(cb.or(
-                        cb.like(root.get("studentName"), likePattern),
-                        cb.like(root.get("studentNumber"), likePattern)
-                    ));
-                    log.debug("添加关键字筛选条件: {}", likePattern);
-                }
-                
-                return predicates.isEmpty() ? null : cb.and(predicates.toArray(new Predicate[0]));
-            }, pageRequest);
+            Page<TestRecord> records = testRecordRepository.findByFiltersForTeacher(
+                className,
+                sportsItemId,
+                keyword,
+                pageRequest
+            );
 
-            log.info("查询结果: 总条数={}, 当前页数据量={}", 
+            log.info("查询结果: 总记录数={}, 当前页记录数={}", 
                 records.getTotalElements(), records.getContent().size());
-
-            if (!records.getContent().isEmpty()) {
-                records.getContent().forEach(record -> {
-                    log.debug("查询到记录: id={}, className={}, studentName={}, studentNumber={}, score={}", 
-                        record.getId(), record.getClassName(), record.getStudentName(), 
-                        record.getStudentNumber(), record.getScore());
-                });
-            } else {
-                log.warn("未找到符合条件的记录");
-            }
 
             return Result.success(records);
         } catch (Exception e) {

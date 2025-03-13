@@ -2,37 +2,38 @@
   <div class="student-records">
     <!-- 搜索筛选区 -->
     <div class="filter-section">
-      <el-form :inline="true" :model="queryParams" ref="queryForm">
+      <el-form :inline="true" :model="filterForm">
+        <el-form-item label="班级">
+          <el-select v-model="filterForm.className" placeholder="选择班级" clearable>
+            <el-option
+              v-for="className in classNames"
+              :key="className"
+              :label="className"
+              :value="className">
+            </el-option>
+          </el-select>
+        </el-form-item>
         <el-form-item label="测试项目">
-          <el-select v-model="queryParams.sportsItemId" placeholder="选择测试项目" clearable>
+          <el-select v-model="filterForm.sportsItemId" placeholder="选择测试项目" clearable>
             <el-option
               v-for="item in sportsItems"
               :key="item.id"
               :label="item.name"
-              :value="item.id"
-            ></el-option>
+              :value="item.id">
+            </el-option>
           </el-select>
-        </el-form-item>
-        <el-form-item label="班级">
-          <el-select v-model="queryParams.className" placeholder="选择班级" clearable>
-            <el-option
-              v-for="className in classList"
-              :key="className"
-              :label="className"
-              :value="className"
-            ></el-option>
-          </el-select>
-        </el-form-item>
-        <el-form-item label="关键字">
-          <el-input 
-            v-model="queryParams.keyword" 
-            placeholder="学生姓名/学号"
-            clearable
-          ></el-input>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleQuery">查询</el-button>
-          <el-button @click="resetQuery">重置</el-button>
+          <el-input
+            v-model="filterForm.keyword"
+            placeholder="输入学号或姓名搜索"
+            clearable
+            @keyup.enter.native="handleSearch">
+          </el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -50,7 +51,7 @@
     <!-- 数据表格 -->
     <el-table
       v-loading="loading"
-      :data="tableData"
+      :data="records"
       border
       stripe
       style="width: 100%"
@@ -120,9 +121,9 @@
       <el-pagination
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        :current-page="queryParams.pageNum"
+        :current-page="currentPage"
         :page-sizes="[10, 20, 50, 100]"
-        :page-size="queryParams.pageSize"
+        :page-size="pageSize"
         layout="total, sizes, prev, pager, next, jumper"
         :total="total"
       ></el-pagination>
@@ -144,7 +145,7 @@
         <el-form-item label="班级" prop="className">
           <el-select v-model="form.className" placeholder="请选择班级" style="width: 100%">
             <el-option
-              v-for="className in classList"
+              v-for="className in classNames"
               :key="className"
               :label="className"
               :value="className"
@@ -184,17 +185,17 @@ export default {
   data() {
     return {
       loading: false,
-      tableData: [],
+      records: [],
       total: 0,
-      queryParams: {
-        className: '',
-        sportsItemId: null,
-        keyword: '',
-        pageNum: 1,
-        pageSize: 10
-      },
+      currentPage: 1,
+      pageSize: 10,
+      classNames: [],
       sportsItems: [],
-      classList: [],
+      filterForm: {
+        className: '',
+        sportsItemId: '',
+        keyword: ''
+      },
       studentList: [],
       dialog: {
         visible: false
@@ -233,73 +234,82 @@ export default {
     }
   },
   created() {
-    this.init()
+    this.loadClassNames()
+    this.loadSportsItems()
+    this.loadRecords()
   },
   methods: {
-    async init() {
-      await Promise.all([
-        this.getSportsItems(),
-        this.getClassList(),
-        this.getList()
-      ])
-    },
-    async getList() {
+    async loadClassNames() {
       try {
-        this.loading = true;
-        const res = await this.$http.get('/api/teacher/test-records', {
-          params: this.queryParams
-        });
-        
-        if (res.data.code === 200) {
-          console.log('获取到的数据:', res.data.data);
-          this.tableData = res.data.data.content;
-          this.total = res.data.data.totalElements;
-        } else {
-          this.$message.error(res.data.message || '获取列表失败');
-        }
-      } catch (error) {
-        console.error('获取列表失败:', error);
-        this.$message.error('获取列表失败');
-      } finally {
-        this.loading = false;
-      }
-    },
-    async getSportsItems() {
-      try {
-        const res = await getSportsItems()
-        if (res.data.code === 200) {
-          this.sportsItems = res.data.data
-        }
-      } catch (error) {
-        console.error('获取体育项目列表失败:', error)
-        this.$message.error('获取体育项目列表失败')
-      }
-    },
-    async getClassList() {
-      try {
-        const res = await getClassList()
-        if (res.data.code === 200) {
-          this.classList = res.data.data
+        const response = await this.$axios.get('/api/teacher/classes')
+        if (response.data.code === 200) {
+          this.classNames = response.data.data
         }
       } catch (error) {
         console.error('获取班级列表失败:', error)
         this.$message.error('获取班级列表失败')
       }
     },
-    handleQuery() {
-      this.queryParams.pageNum = 1
-      this.getList()
+    async loadSportsItems() {
+      try {
+        const response = await this.$axios.get('/api/teacher/sports-items')
+        if (response.data.code === 200) {
+          this.sportsItems = response.data.data
+        }
+      } catch (error) {
+        console.error('获取体育项目列表失败:', error)
+        this.$message.error('获取体育项目列表失败')
+      }
     },
-    resetQuery() {
-      this.$refs.queryForm.resetFields()
-      this.queryParams = {
-        pageNum: 1,
-        pageSize: 10,
-        sportsItemId: undefined,
-        className: undefined,
+    async loadRecords() {
+      this.loading = true;
+      try {
+        const params = {
+          className: this.filterForm.className || '',
+          sportsItemId: this.filterForm.sportsItemId || '',
+          status: '',
+          studentNumber: '',
+          page: this.currentPage - 1,
+          size: this.pageSize
+        };
+        
+        console.log('发送请求参数:', params);
+        
+        const response = await this.$axios.get('/api/teacher/test-records', { params });
+        
+        if (response.data.code === 200) {
+          this.records = response.data.data.content;
+          this.total = response.data.data.totalElements;
+          console.log('获取到的数据:', this.records);
+        } else {
+          this.$message.error(response.data.message || '获取数据失败');
+        }
+      } catch (error) {
+        console.error('获取记录失败:', error);
+        this.$message.error('获取记录失败');
+      } finally {
+        this.loading = false;
+      }
+    },
+    handleSearch() {
+      this.currentPage = 1
+      this.loadRecords()
+    },
+    handleReset() {
+      this.filterForm = {
+        className: '',
+        sportsItemId: '',
         keyword: ''
       }
-      this.getList()
+      this.handleSearch()
+    },
+    handleSizeChange(val) {
+      this.pageSize = val
+      this.loadRecords()
+    },
+    handleCurrentChange(val) {
+      this.currentPage = val
+      this.loadRecords()
     },
     handleAdd() {
       this.form = {
@@ -329,7 +339,7 @@ export default {
           const res = await deleteTestRecord(row.id)
           if (res.data.code === 200) {
             this.$message.success('删除成功')
-            this.getList()
+            this.loadRecords()
           }
         } catch (error) {
           console.error('删除失败:', error)
@@ -351,7 +361,7 @@ export default {
             if (res.data.code === 200) {
               this.$message.success(this.form.id ? '修改成功' : '添加成功');
               this.dialog.visible = false;
-              this.getList();
+              this.loadRecords();
             } else {
               this.$message.error(res.data.message || '操作失败');
             }
@@ -362,23 +372,15 @@ export default {
         }
       });
     },
-    handleSizeChange(val) {
-      this.queryParams.pageSize = val
-      this.getList()
-    },
-    handleCurrentChange(val) {
-      this.queryParams.pageNum = val
-      this.getList()
-    },
     async handleExport() {
       try {
         this.$message.info('正在导出数据，请稍候...');
         
         const res = await this.$http.get('/api/teacher/test-records/export', {
           params: {
-            sportsItemId: this.queryParams.sportsItemId,
-            className: this.queryParams.className,
-            keyword: this.queryParams.keyword
+            sportsItemId: this.filterForm.sportsItemId,
+            className: this.filterForm.className,
+            keyword: this.filterForm.keyword
           },
           responseType: 'blob'  // 重要：指定响应类型为blob
         });

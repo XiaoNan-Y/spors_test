@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.util.List;
 
@@ -85,7 +86,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
     List<String> findDistinctClassNames();
 
-    @Query("SELECT t FROM TestRecord t " +
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
            "LEFT JOIN t.sportsItem " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
            "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
@@ -112,5 +113,21 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         @Param("className") String className,
         @Param("sportsItemId") Long sportsItemId,
         @Param("keyword") String keyword
+    );
+
+    @EntityGraph(value = "TestRecord.withSportsItem")
+    @Query("SELECT DISTINCT tr FROM TestRecord tr " +
+           "LEFT JOIN tr.sportsItem si " +
+           "WHERE (:className IS NULL OR :className = '' OR tr.className = :className) " +
+           "AND (:sportsItemId IS NULL OR tr.sportsItemId = :sportsItemId) " +
+           "AND (:status IS NULL OR :status = '' OR tr.status = :status) " +
+           "AND (:studentNumber IS NULL OR :studentNumber = '' OR tr.studentNumber = :studentNumber) " +
+           "ORDER BY tr.createdAt DESC")
+    Page<TestRecord> findByFilters(
+        @Param("className") String className,
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("status") String status,
+        @Param("studentNumber") String studentNumber,
+        Pageable pageable
     );
 } 

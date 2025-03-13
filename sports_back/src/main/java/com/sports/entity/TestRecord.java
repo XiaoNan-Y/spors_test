@@ -10,6 +10,10 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "test_record")
+@NamedEntityGraph(
+    name = "TestRecord.withSportsItem",
+    attributeNodes = @NamedAttributeNode("sportsItem")
+)
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class TestRecord implements Serializable {
     private static final long serialVersionUID = 1L;

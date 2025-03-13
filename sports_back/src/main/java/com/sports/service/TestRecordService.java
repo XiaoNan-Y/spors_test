@@ -9,6 +9,10 @@ import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 public interface TestRecordService {
     /**
      * 获取学生在某个项目的历史测试记录
@@ -52,4 +56,8 @@ public interface TestRecordService {
     List<TestRecord> saveAll(List<TestRecord> records);
 
     TestRecord modifyReview(Long id, String status, String comment, Long reviewerId);
+
+    Page<TestRecord> getTestRecords(String className, Long sportsItemId, 
+                                   String status, String studentNumber, 
+                                   Pageable pageable);
 } 
