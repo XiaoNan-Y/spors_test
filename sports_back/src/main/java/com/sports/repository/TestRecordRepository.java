@@ -99,8 +99,8 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         Pageable pageable
     );
 
-    @Query("SELECT t FROM TestRecord t " +
-           "LEFT JOIN t.sportsItem " +
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
+           "LEFT JOIN FETCH t.sportsItem si " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
            "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
            "AND (:keyword IS NULL OR :keyword = '' OR " +

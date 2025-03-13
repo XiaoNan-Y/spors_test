@@ -406,21 +406,28 @@ public class TeacherController {
     }
 
     @GetMapping("/test-records/export")
+    @Transactional(readOnly = true)
     public ResponseEntity<byte[]> exportTestRecords(
-            @RequestParam(required = false) Long sportsItemId,
             @RequestParam(required = false) String className,
+            @RequestParam(required = false) Long sportsItemId,
             @RequestParam(required = false) String keyword) {
-        try {
-            log.info("开始导出学生成绩记录");
-            log.debug("导出参数: sportsItemId={}, className={}, keyword={}", 
-                sportsItemId, className, keyword);
+        log.info("开始导出学生成绩记录");
+        log.debug("导出参数: className={}, sportsItemId={}, keyword={}", 
+            className, sportsItemId, keyword);
 
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            
             // 查询数据
             List<TestRecord> records = testRecordRepository.findByFiltersForExport(
                 className, sportsItemId, keyword);
+            
+            if (records.isEmpty()) {
+                throw new RuntimeException("没有找到符合条件的记录");
+            }
+            
+            log.info("查询到 {} 条记录准备导出", records.size());
 
-            // 创建工作簿
-            Workbook workbook = new XSSFWorkbook();
             Sheet sheet = workbook.createSheet("学生成绩记录");
 
             // 创建标题行
@@ -431,18 +438,10 @@ public class TeacherController {
             };
             
             // 设置列宽
-            sheet.setColumnWidth(0, 2500);  // 序号
-            sheet.setColumnWidth(1, 4000);  // 学号
-            sheet.setColumnWidth(2, 4000);  // 学生姓名
-            sheet.setColumnWidth(3, 4000);  // 班级
-            sheet.setColumnWidth(4, 4000);  // 测试项目
-            sheet.setColumnWidth(5, 3000);  // 成绩
-            sheet.setColumnWidth(6, 2500);  // 单位
-            sheet.setColumnWidth(7, 3000);  // 状态
-            sheet.setColumnWidth(8, 8000);  // 审核意见
-            sheet.setColumnWidth(9, 6000);  // 审核时间
-            sheet.setColumnWidth(10, 6000); // 创建时间
-            sheet.setColumnWidth(11, 6000); // 更新时间
+            int[] columnWidths = {2500, 4000, 4000, 4000, 4000, 3000, 2500, 3000, 8000, 6000, 6000, 6000};
+            for (int i = 0; i < columnWidths.length; i++) {
+                sheet.setColumnWidth(i, columnWidths[i]);
+            }
 
             // 创建标题样式
             CellStyle headerStyle = workbook.createCellStyle();
@@ -457,47 +456,66 @@ public class TeacherController {
                 cell.setCellStyle(headerStyle);
             }
 
+            // 创建数据样式
+            CellStyle dataStyle = workbook.createCellStyle();
+            dataStyle.setAlignment(HorizontalAlignment.CENTER);
+
             // 填充数据
             int rowNum = 1;
             for (TestRecord record : records) {
                 Row row = sheet.createRow(rowNum++);
-                row.createCell(0).setCellValue(rowNum - 1);
-                row.createCell(1).setCellValue(record.getStudentNumber());
-                row.createCell(2).setCellValue(record.getStudentName());
-                row.createCell(3).setCellValue(record.getClassName());
-                row.createCell(4).setCellValue(record.getSportsItem() != null ? 
-                    record.getSportsItem().getName() : "");
-                row.createCell(5).setCellValue(record.getScore());
-                row.createCell(6).setCellValue(record.getSportsItem() != null ? 
-                    record.getSportsItem().getUnit() : "");
-                row.createCell(7).setCellValue(getStatusText(record.getStatus()));
-                row.createCell(8).setCellValue(record.getReviewComment());
-                row.createCell(9).setCellValue(formatDateTime(record.getReviewTime()));
-                row.createCell(10).setCellValue(formatDateTime(record.getCreatedAt()));
-                row.createCell(11).setCellValue(formatDateTime(record.getUpdatedAt()));
+                
+                // 使用数组来简化单元格赋值
+                Object[] rowData = {
+                    rowNum - 1,
+                    record.getStudentNumber(),
+                    record.getStudentName(),
+                    record.getClassName(),
+                    record.getSportsItem() != null ? record.getSportsItem().getName() : "",
+                    record.getScore(),
+                    record.getSportsItem() != null ? record.getSportsItem().getUnit() : "",
+                    getStatusText(record.getStatus()),
+                    record.getReviewComment(),
+                    formatDateTime(record.getReviewTime()),
+                    formatDateTime(record.getCreatedAt()),
+                    formatDateTime(record.getUpdatedAt())
+                };
+                
+                // 填充每个单元格
+                for (int i = 0; i < rowData.length; i++) {
+                    Cell cell = row.createCell(i);
+                    if (rowData[i] != null) {
+                        if (rowData[i] instanceof Number) {
+                            cell.setCellValue(((Number) rowData[i]).doubleValue());
+                        } else {
+                            cell.setCellValue(rowData[i].toString());
+                        }
+                    }
+                    cell.setCellStyle(dataStyle);
+                }
             }
 
-            // 导出文件
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            // 写入文件
             workbook.write(outputStream);
-            workbook.close();
+            byte[] content = outputStream.toByteArray();
 
             // 设置响应头
             HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
             String fileName = String.format("学生成绩记录_%s.xlsx", 
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
             headers.setContentDispositionFormData("attachment", 
                 new String(fileName.getBytes("UTF-8"), "ISO-8859-1"));
 
+            log.info("导出成功，文件名: {}", fileName);
             return ResponseEntity
                 .ok()
                 .headers(headers)
-                .body(outputStream.toByteArray());
+                .body(content);
 
         } catch (Exception e) {
             log.error("导出失败", e);
-            throw new RuntimeException("导出失败：" + e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
     }
 

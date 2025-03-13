@@ -397,36 +397,20 @@ export default {
       try {
         this.$message.info('正在导出数据，请稍候...');
         
-        const res = await this.$http.get('/api/teacher/test-records/export', {
-          params: {
-            sportsItemId: this.filterForm.sportsItemId,
-            className: this.filterForm.className,
-            keyword: this.filterForm.keyword
-          },
-          responseType: 'blob'  // 重要：指定响应类型为blob
+        // 构建完整的URL，包含查询参数
+        const params = new URLSearchParams({
+          className: this.filterForm.className || '',
+          sportsItemId: this.filterForm.sportsItemId || '',
+          keyword: this.filterForm.keyword || ''
         });
         
-        // 创建下载链接
-        const blob = new Blob([res.data], { 
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-        });
-        const link = document.createElement('a');
-        link.href = window.URL.createObjectURL(blob);
+        // 直接使用window.open下载文件
+        window.open(`/api/teacher/test-records/export?${params.toString()}`);
         
-        // 生成文件名
-        const now = new Date();
-        const fileName = `学生成绩记录_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.xlsx`;
-        link.setAttribute('download', fileName);
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(link.href);
-        
-        this.$message.success('导出成功');
+        this.$message.success('导出请求已发送，请等待浏览器下载');
       } catch (error) {
         console.error('导出失败:', error);
-        this.$message.error('导出失败');
+        this.$message.error('导出失败: ' + (error.message || '未知错误'));
       }
     }
   }
