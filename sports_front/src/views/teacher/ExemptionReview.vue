@@ -50,7 +50,7 @@
       style="width: 100%"
     >
       <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
-      <el-table-column label="学生姓名" prop="student.realName" min-width="100" align="center"></el-table-column>
+      <el-table-column label="学生姓名" prop="studentName" min-width="100" align="center"></el-table-column>
       <el-table-column label="学号" prop="studentNumber" min-width="120" align="center"></el-table-column>
       <el-table-column label="班级" prop="className" min-width="100" align="center"></el-table-column>
       <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center"></el-table-column>
@@ -204,12 +204,12 @@ export default {
       tableData: [],
       total: 0,
       queryParams: {
+        type: '',
+        status: '',
+        className: '',
+        keyword: '',
         pageNum: 1,
-        pageSize: 10,
-        type: undefined,
-        status: undefined,
-        className: undefined,
-        keyword: ''
+        pageSize: 10
       },
       classList: [],
       reviewDialog: {
@@ -255,21 +255,11 @@ export default {
       try {
         this.loading = true
         const res = await this.$http.get('/api/teacher/exemptions', {
-          params: {
-            page: this.queryParams.pageNum - 1,
-            size: this.queryParams.pageSize,
-            type: this.queryParams.type,
-            status: this.queryParams.status,
-            className: this.queryParams.className,
-            keyword: this.queryParams.keyword
-          }
+          params: this.queryParams
         })
-        
         if (res.data.code === 200) {
-          this.tableData = res.data.data.content || []
-          this.total = res.data.data.totalElements || 0
-        } else {
-          this.$message.error(res.data.message || '获取数据失败')
+          this.tableData = res.data.data.content
+          this.total = res.data.data.totalElements
         }
       } catch (error) {
         console.error('获取列表失败:', error)
@@ -298,9 +288,9 @@ export default {
       this.queryParams = {
         pageNum: 1,
         pageSize: 10,
-        type: undefined,
-        status: undefined,
-        className: undefined,
+        type: '',
+        status: '',
+        className: '',
         keyword: ''
       }
       this.getList()

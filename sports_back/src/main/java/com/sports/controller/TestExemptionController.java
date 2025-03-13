@@ -11,7 +11,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -47,6 +49,24 @@ public class TestExemptionController {
                 className, type, status, studentNumber, keyword, 
                 PageRequest.of(pageNum, pageSize));
             
+            // 转换为简单的数据传输对象，确保包含学生姓名
+            Page<Map<String, Object>> simplifiedRecords = exemptions.map(exemption -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", exemption.getId());
+                map.put("studentName", exemption.getStudentName());  // 确保包含学生姓名
+                map.put("studentNumber", exemption.getStudentNumber());
+                map.put("className", exemption.getClassName());
+                map.put("type", exemption.getType());
+                map.put("reason", exemption.getReason());
+                map.put("status", exemption.getStatus());
+                map.put("teacherReviewComment", exemption.getTeacherReviewComment());
+                map.put("teacherReviewTime", exemption.getTeacherReviewTime());
+                map.put("adminReviewComment", exemption.getAdminReviewComment());
+                map.put("adminReviewTime", exemption.getAdminReviewTime());
+                map.put("createdAt", exemption.getCreatedAt());
+                return map;
+            });
+            
             log.info("查询结果: 总条数={}, 当前页数据量={}", 
                 exemptions.getTotalElements(), exemptions.getContent().size());
             
@@ -64,7 +84,7 @@ public class TestExemptionController {
                 }
             }
             
-            return Result.success(exemptions);
+            return Result.success(simplifiedRecords);
         } catch (Exception e) {
             log.error("查询免测申请列表失败", e);
             return Result.error("获取申请列表失败：" + e.getMessage());

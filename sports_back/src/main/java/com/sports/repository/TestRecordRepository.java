@@ -86,6 +86,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     List<String> findDistinctClassNames();
 
     @Query("SELECT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
            "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
            "AND (:keyword IS NULL OR :keyword = '' OR " +
@@ -100,6 +101,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     );
 
     @Query("SELECT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
            "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
            "AND (:keyword IS NULL OR :keyword = '' OR " +

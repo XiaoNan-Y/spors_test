@@ -57,15 +57,43 @@
     >
       <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
       
-      <el-table-column label="学生姓名" prop="studentName" min-width="120" align="center"></el-table-column>
+      <el-table-column 
+        label="学生姓名" 
+        prop="studentName" 
+        min-width="100" 
+        align="center"
+        :show-overflow-tooltip="true"
+      ></el-table-column>
       
-      <el-table-column label="学号" prop="studentNumber" min-width="120" align="center"></el-table-column>
+      <el-table-column 
+        label="学号" 
+        prop="studentNumber" 
+        min-width="120" 
+        align="center"
+      ></el-table-column>
       
-      <el-table-column label="班级" prop="className" min-width="120" align="center"></el-table-column>
+      <el-table-column 
+        label="班级" 
+        prop="className" 
+        min-width="120" 
+        align="center"
+      ></el-table-column>
       
-      <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center"></el-table-column>
+      <el-table-column 
+        label="测试项目" 
+        min-width="120" 
+        align="center"
+      >
+        <template slot-scope="scope">
+          {{ scope.row.sportsItem ? scope.row.sportsItem.name : '' }}
+        </template>
+      </el-table-column>
       
-      <el-table-column label="成绩" min-width="120" align="center">
+      <el-table-column 
+        label="成绩" 
+        min-width="120" 
+        align="center"
+      >
         <template slot-scope="scope">
           {{ scope.row.score }}{{ scope.row.sportsItem ? scope.row.sportsItem.unit : '' }}
         </template>
@@ -218,21 +246,16 @@ export default {
     async getList() {
       try {
         this.loading = true;
-        const res = await this.$http.get('/api/teacher/student-records', {
-          params: {
-            className: this.queryParams.className,
-            sportsItemId: this.queryParams.sportsItemId,
-            keyword: this.queryParams.keyword,
-            page: this.queryParams.pageNum - 1,  // 注意这里需要减1，因为后端从0开始计数
-            size: this.queryParams.pageSize
-          }
+        const res = await this.$http.get('/api/teacher/test-records', {
+          params: this.queryParams
         });
         
         if (res.data.code === 200) {
+          console.log('获取到的数据:', res.data.data);
           this.tableData = res.data.data.content;
           this.total = res.data.data.totalElements;
         } else {
-          this.$message.error(res.data.message || '获取数据失败');
+          this.$message.error(res.data.message || '获取列表失败');
         }
       } catch (error) {
         console.error('获取列表失败:', error);
@@ -318,19 +341,26 @@ export default {
       this.$refs.form.validate(async (valid) => {
         if (valid) {
           try {
-            const submitFunc = this.form.id ? updateTestRecord : addTestRecord
-            const res = await submitFunc(this.form.id, this.form)
+            const url = this.form.id ? 
+              `/api/teacher/test-records/${this.form.id}` : 
+              '/api/teacher/test-records';
+            const method = this.form.id ? 'put' : 'post';
+            
+            const res = await this.$http[method](url, this.form);
+            
             if (res.data.code === 200) {
-              this.$message.success(this.form.id ? '修改成功' : '添加成功')
-              this.dialog.visible = false
-              this.getList()
+              this.$message.success(this.form.id ? '修改成功' : '添加成功');
+              this.dialog.visible = false;
+              this.getList();
+            } else {
+              this.$message.error(res.data.message || '操作失败');
             }
           } catch (error) {
-            console.error('提交失败:', error)
-            this.$message.error('提交失败')
+            console.error('提交失败:', error);
+            this.$message.error('提交失败: ' + (error.response?.data?.message || error.message));
           }
         }
-      })
+      });
     },
     handleSizeChange(val) {
       this.queryParams.pageSize = val

@@ -63,11 +63,21 @@ public class TestRecord implements Serializable {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (student != null) {
+            this.studentName = student.getRealName();
+            this.studentNumber = student.getStudentNumber();
+            this.className = student.getClassName();
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+        if (student != null) {
+            this.studentName = student.getRealName();
+            this.studentNumber = student.getStudentNumber();
+            this.className = student.getClassName();
+        }
     }
 
     public Long getSportsItemId() {

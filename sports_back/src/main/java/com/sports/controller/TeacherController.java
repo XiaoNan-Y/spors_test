@@ -4,8 +4,10 @@ import com.sports.common.Result;
 import com.sports.entity.SportsItem;
 import com.sports.entity.TestRecord;
 import com.sports.entity.TestExemption;
+import com.sports.entity.Student;
 import com.sports.repository.TestRecordRepository;
 import com.sports.repository.TestExemptionRepository;
+import com.sports.repository.StudentRepository;
 import com.sports.service.SportsItemService;
 import com.sports.service.TeacherService;
 import org.apache.poi.ss.usermodel.*;
@@ -46,10 +48,12 @@ public class TeacherController {
 
     private final TestRecordRepository testRecordRepository;
     private final TestExemptionRepository testExemptionRepository;
+    private final StudentRepository studentRepository;
 
-    public TeacherController(TestRecordRepository testRecordRepository, TestExemptionRepository testExemptionRepository) {
+    public TeacherController(TestRecordRepository testRecordRepository, TestExemptionRepository testExemptionRepository, StudentRepository studentRepository) {
         this.testRecordRepository = testRecordRepository;
         this.testExemptionRepository = testExemptionRepository;
+        this.studentRepository = studentRepository;
     }
 
     // 获取体育项目列表
@@ -90,10 +94,8 @@ public class TeacherController {
             log.debug("查询参数: sportsItemId={}, className={}, keyword={}, pageNum={}, pageSize={}", 
                 sportsItemId, className, keyword, pageNum, pageSize);
 
-            // 创建分页请求
             PageRequest pageRequest = PageRequest.of(pageNum, pageSize);
             
-            // 使用 findByFiltersForTeacher 方法
             Page<TestRecord> records = testRecordRepository.findByFiltersForTeacher(
                 className,
                 sportsItemId,
@@ -112,6 +114,7 @@ public class TeacherController {
                 map.put("studentNumber", record.getStudentNumber());
                 map.put("className", record.getClassName());
                 map.put("sportsItemId", record.getSportsItemId());
+                map.put("sportsItem", record.getSportsItem());
                 map.put("score", record.getScore());
                 map.put("status", record.getStatus());
                 map.put("reviewComment", record.getReviewComment());
@@ -132,11 +135,35 @@ public class TeacherController {
     @PostMapping("/test-records")
     public Result addTestRecord(@RequestBody TestRecord record) {
         try {
-            // TODO: 从认证信息中获取教师ID
-            Long teacherId = 1L;
-            TestRecord saved = teacherService.addTestRecord(teacherId, record);
+            log.info("开始录入成绩");
+            log.debug("录入数据: {}", record);
+            
+            // 从学号查询学生信息并设置相关字段
+            Student student = studentRepository.findByStudentNumber(record.getStudentNumber())
+                .orElseThrow(() -> new RuntimeException("未找到学生信息"));
+            
+            // 设置学生相关信息
+            record.setStudent(student);
+            record.setStudentName(student.getRealName());  // 直接设置学生姓名
+            record.setClassName(student.getClassName());
+            record.setStudentNumber(student.getStudentNumber());
+            
+            // 设置默认状态
+            if (record.getStatus() == null) {
+                record.setStatus("PENDING");
+            }
+            
+            // 设置时间
+            LocalDateTime now = LocalDateTime.now();
+            record.setCreatedAt(now);
+            record.setUpdatedAt(now);
+            
+            TestRecord saved = testRecordRepository.save(record);
+            log.info("成绩录入成功，ID={}, 学生姓名={}", saved.getId(), saved.getStudentName());
+            
             return Result.success(saved);
         } catch (Exception e) {
+            log.error("录入成绩失败", e);
             return Result.error("录入成绩失败：" + e.getMessage());
         }
     }
@@ -145,13 +172,41 @@ public class TeacherController {
     @PutMapping("/test-records/{id}")
     public Result updateTestRecord(@PathVariable Long id, @RequestBody TestRecord record) {
         try {
-            // TODO: 从认证信息中获取教师ID
-            Long teacherId = 1L;
+            log.info("开始更新成绩记录");
+            log.debug("更新数据: id={}, record={}", id, record);
+            
+            TestRecord existing = testRecordRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("记录不存在"));
+            
+            // 如果学号变更，需要重新获取学生信息
+            if (!existing.getStudentNumber().equals(record.getStudentNumber())) {
+                Student student = studentRepository.findByStudentNumber(record.getStudentNumber())
+                    .orElseThrow(() -> new RuntimeException("未找到学生信息"));
+                
+                record.setStudent(student);
+                record.setStudentName(student.getRealName());  // 确保设置学生姓名
+                record.setClassName(student.getClassName());
+                record.setStudentNumber(student.getStudentNumber());
+            } else {
+                // 保持原有学生信息
+                record.setStudentName(existing.getStudentName());
+                record.setClassName(existing.getClassName());
+                record.setStudentNumber(existing.getStudentNumber());
+                record.setStudent(existing.getStudent());
+            }
+            
+            // 保持其他字段
             record.setId(id);
-            TestRecord updated = teacherService.updateTestRecord(teacherId, record);
+            record.setCreatedAt(existing.getCreatedAt());
+            record.setUpdatedAt(LocalDateTime.now());
+            
+            TestRecord updated = testRecordRepository.save(record);
+            log.info("成绩更新成功，学生姓名={}", updated.getStudentName());
+            
             return Result.success(updated);
         } catch (Exception e) {
-            return Result.error("修改成绩失败：" + e.getMessage());
+            log.error("更新成绩失败", e);
+            return Result.error("更新成绩失败：" + e.getMessage());
         }
     }
 
