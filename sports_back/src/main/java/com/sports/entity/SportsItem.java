@@ -12,10 +12,10 @@ public class SportsItem implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false, length = 50)
+    @Column(length = 50)
     private String name;
     
-    @Column(length = 200)
+    @Column(length = 500)
     private String description;
     
     @Column(nullable = false, length = 20)

@@ -2,71 +2,109 @@ package com.sports.controller;
 
 import com.sports.common.Result;
 import com.sports.entity.TestExemption;
-import com.sports.service.TestExemptionService;
+import com.sports.repository.TestExemptionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/exemptions")
+@CrossOrigin
 public class TestExemptionController {
 
+    private static final Logger log = LoggerFactory.getLogger(TestExemptionController.class);
+
     @Autowired
-    private TestExemptionService testExemptionService;
+    private TestExemptionRepository exemptionRepository;
 
     @GetMapping
     public Result getList(
+            @RequestParam(required = false) String className,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String studentNumber,
-            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int pageNum,
             @RequestParam(defaultValue = "10") int pageSize) {
         try {
-            Page<TestExemption> page = testExemptionService.getExemptionList(
-                type, status, studentNumber, PageRequest.of(pageNum - 1, pageSize)
-            );
-            return Result.success(page);
+            log.info("开始查询免测申请列表");
+            log.debug("查询参数详情:");
+            log.debug("- className=[{}], length={}", className, className != null ? className.length() : 0);
+            log.debug("- type=[{}], length={}", type, type != null ? type.length() : 0);
+            log.debug("- status=[{}], length={}", status, status != null ? status.length() : 0);
+            log.debug("- studentNumber=[{}], length={}", studentNumber, studentNumber != null ? studentNumber.length() : 0);
+            log.debug("- keyword=[{}], length={}", keyword, keyword != null ? keyword.length() : 0);
+            log.debug("- pageNum={}, pageSize={}", pageNum, pageSize);
+            
+            Page<TestExemption> exemptions = exemptionRepository.findByFilters(
+                className, type, status, studentNumber, keyword, 
+                PageRequest.of(pageNum, pageSize));
+            
+            log.info("查询结果: 总条数={}, 当前页数据量={}", 
+                exemptions.getTotalElements(), exemptions.getContent().size());
+            
+            if (exemptions.isEmpty()) {
+                log.warn("查询结果为空，检查数据库中是否存在数据");
+                long total = exemptionRepository.countAll();
+                log.info("数据库中总记录数: {}", total);
+                
+                if (total > 0) {
+                    log.warn("数据库中有数据但查询结果为空，可能是查询条件限制导致");
+                    // 打印一条原始数据作为参考
+                    exemptionRepository.findAll(PageRequest.of(0, 1))
+                        .getContent()
+                        .forEach(e -> log.debug("数据库样本数据: {}", e));
+                }
+            }
+            
+            return Result.success(exemptions);
         } catch (Exception e) {
-            return Result.error("获取列表失败：" + e.getMessage());
+            log.error("查询免测申请列表失败", e);
+            return Result.error("获取申请列表失败：" + e.getMessage());
         }
     }
 
-    @PostMapping("/student")
-    public Result submitApplication(@RequestBody TestExemption exemption) {
+    @GetMapping("/classes")
+    public Result getClassList() {
         try {
-            TestExemption saved = testExemptionService.submitApplication(exemption);
-            return Result.success(saved);
+            List<String> classNames = exemptionRepository.findDistinctClassNames()
+                .stream()
+                .distinct()
+                .filter(className -> className != null && !className.isEmpty())
+                .sorted()
+                .collect(Collectors.toList());
+            return Result.success(classNames);
         } catch (Exception e) {
-            return Result.error("提交申请失败：" + e.getMessage());
+            return Result.error("获取班级列表失败：" + e.getMessage());
         }
     }
 
-    @PutMapping("/teacher/review")
-    public Result teacherReview(@RequestBody TestExemption exemption) {
+    @PutMapping("/{id}/review")
+    public Result review(
+            @PathVariable Long id,
+            @RequestBody TestExemption exemption) {
         try {
-            TestExemption reviewed = testExemptionService.teacherReview(
-                exemption.getId(),
-                exemption.getStatus(),
-                exemption.getTeacherReviewComment()
-            );
-            return Result.success(reviewed);
-        } catch (Exception e) {
-            return Result.error("教师审核失败：" + e.getMessage());
-        }
-    }
+            TestExemption existing = exemptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("申请不存在"));
 
-    @PutMapping("/admin/review")
-    public Result adminReview(@RequestBody TestExemption exemption) {
-        try {
-            TestExemption reviewed = testExemptionService.adminReview(
-                exemption.getId(),
-                exemption.getStatus(),
-                exemption.getAdminReviewComment()
-            );
-            return Result.success(reviewed);
+            existing.setStatus(exemption.getStatus());
+            existing.setReviewComment(exemption.getReviewComment());
+            existing.setReviewerId(exemption.getReviewerId());
+            existing.setReviewerName(exemption.getReviewerName());
+            existing.setReviewTime(LocalDateTime.now());
+            existing.setUpdateTime(LocalDateTime.now());
+
+            exemptionRepository.save(existing);
+            return Result.success(existing);
         } catch (Exception e) {
-            return Result.error("管理员审核失败：" + e.getMessage());
+            return Result.error("审核失败：" + e.getMessage());
         }
     }
 } 

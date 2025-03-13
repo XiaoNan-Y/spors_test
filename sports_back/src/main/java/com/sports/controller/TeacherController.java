@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/teacher")
@@ -53,12 +54,15 @@ public class TeacherController {
 
     // 获取教师负责的班级列表
     @GetMapping("/classes")
-    public Result getClasses() {
+    public Result getClassList() {
         try {
-            // TODO: 从认证信息中获取教师ID
-            Long teacherId = 1L;
-            List<String> classes = teacherService.getTeacherClasses(teacherId);
-            return Result.success(classes);
+            List<String> classNames = testExemptionRepository.findDistinctClassNames()
+                .stream()
+                .distinct()
+                .filter(className -> className != null && !className.isEmpty())
+                .sorted()
+                .collect(Collectors.toList());
+            return Result.success(classNames);
         } catch (Exception e) {
             return Result.error("获取班级列表失败：" + e.getMessage());
         }
@@ -151,52 +155,53 @@ public class TeacherController {
     }
 
     @GetMapping("/exemptions")
-    public Result getExemptions(
-        @RequestParam(required = false) String className,
-        @RequestParam(required = false) String type,
-        @RequestParam(required = false) String status,
-        @RequestParam(required = false) String keyword,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size
-    ) {
+    public Result getExemptionList(
+            @RequestParam(required = false) String className,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            PageRequest pageRequest = PageRequest.of(page, size);
+            log.debug("查询参数: className={}, type={}, status={}, keyword={}, page={}, size={}",
+                className, type, status, keyword, page, size);
+            
             Page<TestExemption> exemptions = testExemptionRepository.findByFilters(
                 className,
                 type,
                 status,
+                null,
                 keyword,
-                pageRequest
+                PageRequest.of(page, size)
             );
             
-            log.debug("Found {} exemptions", exemptions.getTotalElements());
+            log.debug("查询结果: 总数={}, 当前页数据量={}", 
+                exemptions.getTotalElements(), exemptions.getContent().size());
+            
             return Result.success(exemptions);
         } catch (Exception e) {
-            log.error("Failed to get exemptions", e);
-            return Result.error("获取免测/重测申请失败: " + e.getMessage());
+            log.error("获取申请列表失败", e);
+            return Result.error("获取申请列表失败：" + e.getMessage());
         }
     }
 
     @PutMapping("/exemptions/{id}/review")
     public Result reviewExemption(
-        @PathVariable Long id,
-        @RequestBody Map<String, String> reviewData
-    ) {
+            @PathVariable Long id,
+            @RequestBody TestExemption exemption) {
         try {
-            TestExemption exemption = testExemptionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("申请记录不存在"));
+            TestExemption existing = testExemptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("申请不存在"));
 
-            exemption.setStatus(reviewData.get("status"));
-            exemption.setReviewComment(reviewData.get("comment"));
-            exemption.setReviewTime(LocalDateTime.now());
-            // TODO: 设置审核人ID
-            exemption.setReviewerId(1L);
+            existing.setStatus(exemption.getStatus());
+            existing.setTeacherReviewComment(exemption.getTeacherReviewComment());
+            existing.setTeacherReviewTime(LocalDateTime.now());
+            existing.setUpdateTime(LocalDateTime.now());
 
-            TestExemption updated = testExemptionRepository.save(exemption);
-            return Result.success(updated);
+            testExemptionRepository.save(existing);
+            return Result.success(existing);
         } catch (Exception e) {
-            log.error("Failed to review exemption", e);
-            return Result.error("审核失败: " + e.getMessage());
+            return Result.error("审核失败：" + e.getMessage());
         }
     }
 } 

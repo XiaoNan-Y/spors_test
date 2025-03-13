@@ -11,11 +11,9 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="选择状态" clearable>
-            <el-option label="待教师审核" value="PENDING_TEACHER"></el-option>
-            <el-option label="待管理员审核" value="PENDING_ADMIN"></el-option>
+            <el-option label="待审核" value="PENDING"></el-option>
             <el-option label="已通过" value="APPROVED"></el-option>
-            <el-option label="教师驳回" value="REJECTED_TEACHER"></el-option>
-            <el-option label="最终驳回" value="REJECTED"></el-option>
+            <el-option label="已驳回" value="REJECTED"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="班级">
@@ -52,7 +50,7 @@
     >
       <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
       
-      <el-table-column label="学生姓名" prop="student.realName" min-width="100" align="center"></el-table-column>
+      <el-table-column label="学生姓名" prop="studentName" min-width="100" align="center"></el-table-column>
       
       <el-table-column label="学号" prop="studentNumber" min-width="120" align="center"></el-table-column>
       
@@ -82,9 +80,33 @@
         </template>
       </el-table-column>
       
-      <el-table-column label="教师审核意见" prop="teacherReviewComment" min-width="200" align="center" show-overflow-tooltip></el-table-column>
+      <el-table-column label="教师审核意见" prop="teacherReviewComment" min-width="200" align="center" show-overflow-tooltip>
+        <template slot-scope="scope">
+          <template v-if="scope.row.teacherReviewComment">
+            <el-tooltip :content="scope.row.teacherReviewComment" placement="top">
+              <div>
+                {{ scope.row.teacherReviewComment }}
+                <div class="review-time">{{ formatDateTime(scope.row.teacherReviewTime) }}</div>
+              </div>
+            </el-tooltip>
+          </template>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       
-      <el-table-column label="管理员审核意见" prop="adminReviewComment" min-width="200" align="center" show-overflow-tooltip></el-table-column>
+      <el-table-column label="管理员审核意见" prop="adminReviewComment" min-width="200" align="center" show-overflow-tooltip>
+        <template slot-scope="scope">
+          <template v-if="scope.row.adminReviewComment">
+            <el-tooltip :content="scope.row.adminReviewComment" placement="top">
+              <div>
+                {{ scope.row.adminReviewComment }}
+                <div class="review-time">{{ formatDateTime(scope.row.adminReviewTime) }}</div>
+              </div>
+            </el-tooltip>
+          </template>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
       
       <el-table-column label="操作" align="center" width="200">
         <template slot-scope="scope">
@@ -123,25 +145,28 @@
       width="500px"
     >
       <div class="review-info">
-        <p>学生：{{ currentRecord?.student?.realName }} ({{ currentRecord?.studentNumber }})</p>
+        <p>学生：{{ currentRecord?.studentName }} ({{ currentRecord?.studentNumber }})</p>
         <p>班级：{{ currentRecord?.className }}</p>
         <p>申请类型：{{ currentRecord?.type === 'EXEMPTION' ? '免测申请' : '重测申请' }}</p>
         <p>申请原因：{{ currentRecord?.reason }}</p>
-        <p v-if="currentRecord?.teacherReviewComment">教师审核意见：{{ currentRecord.teacherReviewComment }}</p>
+        <template v-if="currentRecord?.teacherReviewComment">
+          <p>教师审核意见：{{ currentRecord.teacherReviewComment }}</p>
+          <p>教师审核时间：{{ formatDateTime(currentRecord.teacherReviewTime) }}</p>
+        </template>
       </div>
-      <el-form :model="reviewForm" ref="reviewForm" :rules="reviewRules" label-width="100px">
+      <el-form :model="reviewForm" :rules="reviewRules" ref="reviewForm" label-width="100px">
         <el-form-item label="审核结果" prop="status">
           <el-radio-group v-model="reviewForm.status">
             <el-radio label="APPROVED">通过</el-radio>
             <el-radio label="REJECTED">驳回</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="审核意见" prop="comment">
+        <el-form-item :label="isTeacher ? '教师意见' : '管理员意见'" prop="comment">
           <el-input
             type="textarea"
             v-model="reviewForm.comment"
             :rows="3"
-            placeholder="请输入审核意见"
+            :placeholder="isTeacher ? '请输入教师审核意见' : '请输入管理员审核意见'"
           ></el-input>
         </el-form-item>
       </el-form>
@@ -206,7 +231,6 @@ export default {
         pageSize: 10,
         type: '',
         status: '',
-        studentNumber: '',
         className: '',
         keyword: ''
       },
@@ -256,18 +280,45 @@ export default {
   methods: {
     // 获取列表数据
     async getList() {
-      this.loading = true
       try {
-        const res = await getExemptionList(this.queryParams)
+        this.loading = true;
+        console.log('开始获取数据，参数:', {
+          pageNum: this.queryParams.pageNum,
+          pageSize: this.queryParams.pageSize,
+          type: this.queryParams.type,
+          status: this.queryParams.status,
+          className: this.queryParams.className,
+          keyword: this.queryParams.keyword
+        });
+
+        const res = await this.$http.get('/api/exemptions', {
+          params: {
+            pageNum: this.queryParams.pageNum - 1,
+            pageSize: this.queryParams.pageSize,
+            type: this.queryParams.type,
+            status: this.queryParams.status,
+            className: this.queryParams.className,
+            keyword: this.queryParams.keyword
+          }
+        });
+        
+        console.log('接口响应数据完整内容:', res.data);
         if (res.data.code === 200) {
-          this.tableData = res.data.data.content
-          this.total = res.data.data.totalElements
+          console.log('分页数据:', res.data.data);
+          console.log('内容数据:', res.data.data.content);
+          this.tableData = res.data.data.content || [];
+          this.total = res.data.data.totalElements || 0;
+          console.log('设置后的表格数据:', this.tableData);
+          console.log('数据总数:', this.total);
+        } else {
+          this.$message.error(res.data.message || '获取数据失败');
         }
       } catch (error) {
-        console.error('获取列表失败:', error)
-        this.$message.error('获取列表失败')
+        console.error('获取列表失败:', error);
+        this.$message.error('获取列表失败');
+      } finally {
+        this.loading = false;
       }
-      this.loading = false
     },
 
     // 查询按钮点击
@@ -282,7 +333,6 @@ export default {
       this.queryParams = {
         type: '',
         status: '',
-        studentNumber: '',
         className: '',
         keyword: '',
         pageNum: 1,
@@ -307,9 +357,7 @@ export default {
     // 获取状态类型
     getStatusType(status) {
       const statusMap = {
-        'PENDING_TEACHER': 'warning',
-        'REJECTED_TEACHER': 'danger',
-        'PENDING_ADMIN': 'info',
+        'PENDING': 'warning',
         'APPROVED': 'success',
         'REJECTED': 'danger'
       }
@@ -319,9 +367,7 @@ export default {
     // 获取状态文本
     getStatusText(status) {
       const statusMap = {
-        'PENDING_TEACHER': '待教师审核',
-        'REJECTED_TEACHER': '教师已驳回',
-        'PENDING_ADMIN': '待管理员审核',
+        'PENDING': '待审核',
         'APPROVED': '已通过',
         'REJECTED': '已驳回'
       }
@@ -330,11 +376,7 @@ export default {
 
     // 是否可以审核
     canReview(row) {
-      if (this.isTeacher) {
-        return row.status === 'PENDING_TEACHER'
-      } else {
-        return row.status === 'PENDING_ADMIN'
-      }
+      return row.status === 'PENDING'
     },
 
     // 审核按钮点击
@@ -399,9 +441,9 @@ export default {
     // 获取班级列表
     async getClassList() {
       try {
-        const res = await getExemptionList({ pageNum: 1, pageSize: 100, type: 'EXEMPTION' })
+        const res = await this.$http.get('/api/exemptions/classes')
         if (res.data.code === 200) {
-          this.classList = res.data.data.content.map(item => item.className)
+          this.classList = res.data.data || []
         }
       } catch (error) {
         console.error('获取班级列表失败:', error)
@@ -439,5 +481,23 @@ export default {
 
 .el-descriptions {
   margin: 20px 0;
+}
+
+.review-time {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+}
+
+.review-info {
+  background-color: #f5f7fa;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.review-info p {
+  margin: 5px 0;
+  line-height: 1.5;
 }
 </style> 
