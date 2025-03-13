@@ -21,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
@@ -121,15 +122,14 @@ public class TeacherController {
             log.info("开始录入成绩");
             log.debug("录入数据: {}", record);
             
-            // 从学号查询学生信息并设置相关字段
+            // 从学号查询学生信息
             Student student = studentRepository.findByStudentNumber(record.getStudentNumber())
                 .orElseThrow(() -> new RuntimeException("未找到学生信息"));
             
             // 设置学生相关信息
-            record.setStudent(student);
-            record.setStudentName(student.getRealName());  // 直接设置学生姓名
-            record.setClassName(student.getClassName());
             record.setStudentNumber(student.getStudentNumber());
+            record.setStudentName(student.getRealName());
+            record.setClassName(student.getClassName());
             
             // 设置默认状态
             if (record.getStatus() == null) {
@@ -153,43 +153,39 @@ public class TeacherController {
 
     // 修改成绩
     @PutMapping("/test-records/{id}")
+    @Transactional
     public Result updateTestRecord(@PathVariable Long id, @RequestBody TestRecord record) {
         try {
-            log.info("开始更新成绩记录");
-            log.debug("更新数据: id={}, record={}", id, record);
+            log.info("开始更新成绩记录, id={}", id);
             
+            // 1. 获取现有记录，使用 EntityGraph 确保关联实体被加载
             TestRecord existing = testRecordRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("记录不存在"));
+                .orElseThrow(() -> new RuntimeException("成绩记录不存在"));
             
-            // 如果学号变更，需要重新获取学生信息
-            if (!existing.getStudentNumber().equals(record.getStudentNumber())) {
-                Student student = studentRepository.findByStudentNumber(record.getStudentNumber())
-                    .orElseThrow(() -> new RuntimeException("未找到学生信息"));
-                
-                record.setStudent(student);
-                record.setStudentName(student.getRealName());  // 确保设置学生姓名
-                record.setClassName(student.getClassName());
-                record.setStudentNumber(student.getStudentNumber());
-            } else {
-                // 保持原有学生信息
-                record.setStudentName(existing.getStudentName());
-                record.setClassName(existing.getClassName());
-                record.setStudentNumber(existing.getStudentNumber());
-                record.setStudent(existing.getStudent());
-            }
+            // 2. 只更新必要的字段
+            existing.setScore(record.getScore());
+            existing.setSportsItemId(record.getSportsItemId());
+            existing.setStatus("PENDING");
+            existing.setUpdatedAt(LocalDateTime.now());
             
-            // 保持其他字段
-            record.setId(id);
-            record.setCreatedAt(existing.getCreatedAt());
-            record.setUpdatedAt(LocalDateTime.now());
+            // 3. 保存更新
+            TestRecord updated = testRecordRepository.save(existing);
             
-            TestRecord updated = testRecordRepository.save(record);
-            log.info("成绩更新成功，学生姓名={}", updated.getStudentName());
+            // 4. 构造返回数据，只包含必要字段
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", updated.getId());
+            response.put("studentNumber", updated.getStudentNumber());
+            response.put("studentName", updated.getStudentName());
+            response.put("className", updated.getClassName());
+            response.put("sportsItemId", updated.getSportsItemId());
+            response.put("score", updated.getScore());
+            response.put("status", updated.getStatus());
+            response.put("updatedAt", updated.getUpdatedAt());
             
-            return Result.success(updated);
+            return Result.success(response);
         } catch (Exception e) {
-            log.error("更新成绩失败", e);
-            return Result.error("更新成绩失败：" + e.getMessage());
+            log.error("更新成绩失败: {}", e.getMessage());
+            return Result.error("更新成绩失败: " + e.getMessage());
         }
     }
 

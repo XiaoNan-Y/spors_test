@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, JpaSpecificationExecutor<TestRecord> {
@@ -155,4 +156,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
            "AND t.status = 'APPROVED' " +
            "ORDER BY t.createdAt DESC")
     List<TestRecord> findStudentRecords(@Param("studentNumber") String studentNumber);
+
+    @EntityGraph(attributePaths = {"sportsItem", "student"})
+    Optional<TestRecord> findWithDetailsById(Long id);
 } 

@@ -27,66 +27,58 @@ public class TestRecord implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private Student student;
+    @Column(name = "student_number", length = 50)
+    private String studentNumber;
 
     @Column(name = "sports_item_id")
     private Long sportsItemId;
+
+    @Column(nullable = false)
+    private Double score;
+
+    @Column(name = "class_name", length = 50)
+    private String className;
+
+    @Column(length = 20)
+    private String status;
+
+    @Column(name = "review_comment")
+    private String reviewComment;
+
+    @Column(name = "review_time")
+    private LocalDateTime reviewTime;
+
+    @Column(name = "student_name", length = 20)
+    private String studentName;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_number", referencedColumnName = "student_number", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private User student;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sports_item_id", insertable = false, updatable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private SportsItem sportsItem;
 
-    @Column(length = 20)
-    private String className;
-
-    @Column(length = 20)
-    private String studentName;
-
-    @Column(length = 20)
-    private String studentNumber;
-
-    private Double score;
-
-    private String status;
-
-    @Column(name = "review_comment")
-    private String reviewComment;
-
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    @Column(name = "review_time")
-    private LocalDateTime reviewTime;
-
-    @Column(name = "created_at")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime updatedAt;
-
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (student != null) {
-            this.studentName = student.getRealName();
-            this.studentNumber = student.getStudentNumber();
-            this.className = student.getClassName();
+        if (status == null) {
+            status = "PENDING";
         }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-        if (student != null) {
-            this.studentName = student.getRealName();
-            this.studentNumber = student.getStudentNumber();
-            this.className = student.getClassName();
-        }
     }
 
     public Long getSportsItemId() {
@@ -105,19 +97,24 @@ public class TestRecord implements Serializable {
         this.studentNumber = studentNumber;
     }
 
-    public Student getStudent() {
-        return student;
-    }
-
-    public void setStudent(Student student) {
-        this.student = student;
-    }
-
     public SportsItem getSportsItem() {
         return sportsItem;
     }
 
     public void setSportsItem(SportsItem sportsItem) {
         this.sportsItem = sportsItem;
+    }
+
+    public User getStudent() {
+        return student;
+    }
+
+    public void setStudent(User student) {
+        this.student = student;
+        if (student != null) {
+            this.studentNumber = student.getStudentNumber();
+            this.studentName = student.getRealName();
+            this.className = student.getClassName();
+        }
     }
 } 

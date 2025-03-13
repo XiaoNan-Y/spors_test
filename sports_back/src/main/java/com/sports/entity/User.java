@@ -38,6 +38,9 @@ public class User implements Serializable {
     @Column(name = "student_number", length = 50)
     private String studentNumber;
 
+    @Column(name = "class_name")
+    private String className;
+
     public User() {
     }
 
@@ -51,6 +54,14 @@ public class User implements Serializable {
 
     public void setStudentNumber(String studentNumber) {
         this.studentNumber = studentNumber;
+    }
+
+    public String getClassName() {
+        return className;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
     }
 
     // 用户类型常量

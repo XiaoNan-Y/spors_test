@@ -130,7 +130,7 @@
     </div>
 
     <!-- 添加/编辑对话框 -->
-    <el-dialog :title="dialogTitle" :visible.sync="dialog.visible" width="500px">
+    <el-dialog :title="dialog.title" :visible.sync="dialog.visible" width="500px">
       <el-form :model="form" :rules="rules" ref="form" label-width="100px">
         <el-form-item label="学生" prop="studentNumber">
           <el-select v-model="form.studentNumber" placeholder="请选择学生" filterable>
@@ -198,7 +198,8 @@ export default {
       },
       studentList: [],
       dialog: {
-        visible: false
+        visible: false,
+        title: '录入成绩'
       },
       form: {
         id: undefined,
@@ -225,9 +226,6 @@ export default {
     }
   },
   computed: {
-    dialogTitle() {
-      return this.form.id ? '修改成绩' : '录入成绩'
-    },
     selectedItemUnit() {
       const item = this.sportsItems.find(item => item.id === this.form.sportsItemId)
       return item ? item.unit : ''
@@ -319,17 +317,23 @@ export default {
         sportsItemId: undefined,
         score: undefined
       }
+      this.dialog.title = '录入成绩'
       this.dialog.visible = true
     },
     handleEdit(row) {
+      console.log('编辑的原始数据:', row);
+      this.dialog.title = '修改成绩';
       this.form = {
         id: row.id,
         studentNumber: row.studentNumber,
         className: row.className,
         sportsItemId: row.sportsItemId,
-        score: row.score
-      }
-      this.dialog.visible = true
+        score: row.score,
+        status: row.status || 'PENDING',
+        studentName: row.studentName // 保存学生姓名
+      };
+      console.log('编辑表单数据:', this.form);
+      this.dialog.visible = true;
     },
     handleDelete(row) {
       this.$confirm('确认删除该记录吗？', '提示', {
@@ -351,23 +355,40 @@ export default {
       this.$refs.form.validate(async (valid) => {
         if (valid) {
           try {
+            console.log('提交的表单数据:', this.form);
+            
+            // 构造提交的数据，只包含必要字段
+            const submitData = {
+              id: this.form.id,
+              score: parseFloat(this.form.score),
+              sportsItemId: this.form.sportsItemId,
+              status: 'PENDING'
+            };
+            
+            console.log('处理后的提交数据:', submitData);
+            
             const url = this.form.id ? 
               `/api/teacher/test-records/${this.form.id}` : 
               '/api/teacher/test-records';
             const method = this.form.id ? 'put' : 'post';
             
-            const res = await this.$http[method](url, this.form);
+            const response = await this.$axios[method](url, submitData);
+            console.log('服务器响应:', response);
             
-            if (res.data.code === 200) {
-              this.$message.success(this.form.id ? '修改成功' : '添加成功');
+            if (response.data.code === 200) {
+              this.$message.success(this.form.id ? '更新成功' : '添加成功');
               this.dialog.visible = false;
-              this.loadRecords();
+              await this.loadRecords();
             } else {
-              this.$message.error(res.data.message || '操作失败');
+              throw new Error(response.data.message || '操作失败');
             }
           } catch (error) {
             console.error('提交失败:', error);
-            this.$message.error('提交失败: ' + (error.response?.data?.message || error.message));
+            let errorMsg = error.response?.data?.message || error.message;
+            if (error.response?.data?.data) {
+              errorMsg += '\n' + error.response.data.data;
+            }
+            this.$message.error('提交失败: ' + errorMsg);
           }
         }
       });
