@@ -118,6 +118,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     @EntityGraph(value = "TestRecord.withSportsItem")
     @Query("SELECT DISTINCT tr FROM TestRecord tr " +
            "LEFT JOIN tr.sportsItem si " +
+           "LEFT JOIN tr.student s " +
            "WHERE (:className IS NULL OR :className = '' OR tr.className = :className) " +
            "AND (:sportsItemId IS NULL OR tr.sportsItemId = :sportsItemId) " +
            "AND (:status IS NULL OR :status = '' OR tr.status = :status) " +
