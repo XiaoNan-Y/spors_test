@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "test_record")
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class TestRecord implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -17,26 +18,31 @@ public class TestRecord implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "student_number")
-    private String studentNumber;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "student_number", referencedColumnName = "student_number", insertable = false, updatable = false)
-    private User student;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Student student;
 
     @Column(name = "sports_item_id")
     private Long sportsItemId;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "sports_item_id", referencedColumnName = "id", insertable = false, updatable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sports_item_id", insertable = false, updatable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private SportsItem sportsItem;
+
+    @Column(length = 20)
+    private String className;
+
+    @Column(length = 20)
+    private String studentName;
+
+    @Column(length = 20)
+    private String studentNumber;
 
     private Double score;
 
     private String status;
-
-    @Column(name = "class_name")
-    private String className;
 
     @Column(name = "review_comment")
     private String reviewComment;
@@ -53,11 +59,46 @@ public class TestRecord implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
 
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    public Long getSportsItemId() {
+        return sportsItemId;
+    }
+
+    public void setSportsItemId(Long sportsItemId) {
+        this.sportsItemId = sportsItemId;
+    }
+
     public String getStudentNumber() {
         return studentNumber;
     }
 
     public void setStudentNumber(String studentNumber) {
         this.studentNumber = studentNumber;
+    }
+
+    public Student getStudent() {
+        return student;
+    }
+
+    public void setStudent(Student student) {
+        this.student = student;
+    }
+
+    public SportsItem getSportsItem() {
+        return sportsItem;
+    }
+
+    public void setSportsItem(SportsItem sportsItem) {
+        this.sportsItem = sportsItem;
     }
 } 

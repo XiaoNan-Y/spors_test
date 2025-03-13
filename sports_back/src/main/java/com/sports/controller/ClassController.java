@@ -19,9 +19,8 @@ public class ClassController {
     @GetMapping("/classes")
     public Result getClassList() {
         try {
-            // 从测试记录中获取所有不重复的班级名称
-            List<String> classList = testRecordRepository.findDistinctClassName();
-            return Result.success(classList);
+            List<String> classNames = testRecordRepository.findDistinctClassNames();
+            return Result.success(classNames);
         } catch (Exception e) {
             return Result.error("获取班级列表失败：" + e.getMessage());
         }

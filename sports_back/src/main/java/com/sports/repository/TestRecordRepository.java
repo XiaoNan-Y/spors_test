@@ -83,20 +83,32 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     );
 
     @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
-    List<String> findDistinctClassName();
+    List<String> findDistinctClassNames();
 
     @Query("SELECT t FROM TestRecord t " +
-           "LEFT JOIN t.student s " +
-           "LEFT JOIN t.sportsItem si " +
-           "WHERE (:className IS NULL OR t.className = :className) " +
+           "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
            "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
-           "AND (:keyword IS NULL OR " +
-           "LOWER(s.realName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(s.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+           "AND (:keyword IS NULL OR :keyword = '' OR " +
+           "LOWER(t.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY t.createdAt DESC")
     Page<TestRecord> findByFiltersForTeacher(
         @Param("className") String className,
         @Param("sportsItemId") Long sportsItemId,
         @Param("keyword") String keyword,
         Pageable pageable
+    );
+
+    @Query("SELECT t FROM TestRecord t " +
+           "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
+           "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
+           "AND (:keyword IS NULL OR :keyword = '' OR " +
+           "LOWER(t.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY t.createdAt DESC")
+    List<TestRecord> findByFiltersForExport(
+        @Param("className") String className,
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("keyword") String keyword
     );
 } 

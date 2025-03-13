@@ -46,4 +46,21 @@ public interface TestExemptionRepository extends JpaRepository<TestExemption, Lo
 
     @Query("SELECT COUNT(e) FROM TestExemption e")
     long countAll();
+
+    @Query("SELECT e FROM TestExemption e WHERE " +
+           "(:className IS NULL OR :className = '' OR e.className = :className) AND " +
+           "(:type IS NULL OR :type = '' OR e.type = :type) AND " +
+           "(:status IS NULL OR :status = '' OR e.status = :status) AND " +
+           "(:studentNumber IS NULL OR :studentNumber = '' OR e.studentNumber = :studentNumber) AND " +
+           "(:keyword IS NULL OR :keyword = '' OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%',:keyword,'%')) OR " +
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%',:keyword,'%'))) " +
+           "ORDER BY e.createTime DESC")
+    List<TestExemption> findByFiltersForExport(
+        @Param("className") String className,
+        @Param("type") String type,
+        @Param("status") String status,
+        @Param("studentNumber") String studentNumber,
+        @Param("keyword") String keyword
+    );
 } 

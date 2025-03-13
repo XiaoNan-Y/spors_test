@@ -36,6 +36,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
+          <el-button type="success" @click="handleExport">导出</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -66,20 +67,25 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="120" align="center">
+      <el-table-column label="操作" align="center" width="250">
         <template slot-scope="scope">
           <el-button
-            v-if="scope.row.status === 'PENDING'"
+            v-if="canReview(scope.row)"
             size="mini"
             type="primary"
             @click="handleReview(scope.row)"
           >审核</el-button>
           <el-button
-            v-else
+            v-if="canModify(scope.row)"
+            size="mini"
+            type="warning"
+            @click="handleModify(scope.row)"
+          >修改</el-button>
+          <el-button
             size="mini"
             type="info"
             @click="handleDetail(scope.row)"
-          >详情</el-button>
+          >查看</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -149,6 +155,43 @@
         <el-button @click="detailDialog.visible = false">关 闭</el-button>
       </div>
     </el-dialog>
+
+    <!-- 修改对话框 -->
+    <el-dialog
+      title="修改审核"
+      :visible.sync="modifyDialog.visible"
+      width="500px"
+    >
+      <div class="review-info">
+        <p>学生：{{ currentRecord?.studentName }} ({{ currentRecord?.studentNumber }})</p>
+        <p>班级：{{ currentRecord?.className }}</p>
+        <p>申请类型：{{ currentRecord?.type === 'EXEMPTION' ? '免测申请' : '重测申请' }}</p>
+        <p>申请原因：{{ currentRecord?.reason }}</p>
+        <p>原审核意见：{{ currentRecord?.teacherReviewComment }}</p>
+        <p>原审核时间：{{ formatDateTime(currentRecord?.teacherReviewTime) }}</p>
+      </div>
+      <el-form :model="modifyForm" :rules="reviewRules" ref="modifyForm" label-width="100px">
+        <el-form-item label="审核结果" prop="status">
+          <el-radio-group v-model="modifyForm.status">
+            <el-radio label="PENDING">待审核</el-radio>
+            <el-radio label="APPROVED">通过</el-radio>
+            <el-radio label="REJECTED">驳回</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="审核意见" prop="comment">
+          <el-input
+            type="textarea"
+            v-model="modifyForm.comment"
+            :rows="3"
+            placeholder="请输入新的审核意见"
+          ></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="modifyDialog.visible = false">取 消</el-button>
+        <el-button type="primary" @click="submitModify">确 定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -187,6 +230,14 @@ export default {
         comment: [
           { required: true, message: '请输入审核意见', trigger: 'blur' }
         ]
+      },
+      modifyDialog: {
+        visible: false
+      },
+      modifyForm: {
+        id: null,
+        status: '',
+        comment: ''
       }
     }
   },
@@ -325,6 +376,82 @@ export default {
         second: '2-digit',
         hour12: false
       })
+    },
+    canReview(row) {
+      return row.status === 'PENDING'
+    },
+    canModify(row) {
+      return row.status !== 'PENDING'
+    },
+    handleModify(row) {
+      this.currentRecord = row
+      this.modifyForm = {
+        id: row.id,
+        status: row.status || '',
+        comment: row.teacherReviewComment || ''
+      }
+      this.modifyDialog.visible = true
+    },
+    async submitModify() {
+      this.$refs.modifyForm.validate(async (valid) => {
+        if (valid) {
+          try {
+            const res = await this.$http.put(`/api/teacher/exemptions/${this.currentRecord.id}/modify`, {
+              status: this.modifyForm.status,
+              teacherReviewComment: this.modifyForm.comment
+            })
+            
+            if (res.data.code === 200) {
+              this.$message.success('修改成功')
+              this.modifyDialog.visible = false
+              this.getList()
+            } else {
+              this.$message.error(res.data.message || '修改失败')
+            }
+          } catch (error) {
+            console.error('修改失败:', error)
+            this.$message.error('修改失败')
+          }
+        }
+      })
+    },
+    // 处理导出
+    async handleExport() {
+      try {
+        this.$message.info('正在导出数据，请稍候...');
+        
+        const res = await this.$http.get('/api/teacher/exemptions/export', {
+          params: {
+            type: this.queryParams.type,
+            status: this.queryParams.status,
+            className: this.queryParams.className,
+            keyword: this.queryParams.keyword
+          },
+          responseType: 'blob'  // 重要：指定响应类型为blob
+        });
+        
+        // 创建下载链接
+        const blob = new Blob([res.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        
+        // 生成文件名
+        const now = new Date();
+        const fileName = `免测重测申请记录_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.xlsx`;
+        link.setAttribute('download', fileName);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(link.href);
+        
+        this.$message.success('导出成功');
+      } catch (error) {
+        console.error('导出失败:', error);
+        this.$message.error('导出失败');
+      }
     }
   }
 }
@@ -356,5 +483,11 @@ export default {
 
 .review-info p {
   margin: 5px 0;
+}
+
+.modify-info {
+  margin-bottom: 15px;
+  color: #E6A23C;
+  font-size: 14px;
 }
 </style> 

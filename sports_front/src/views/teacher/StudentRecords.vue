@@ -57,7 +57,7 @@
     >
       <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
       
-      <el-table-column label="学生姓名" prop="student.realName" min-width="120" align="center"></el-table-column>
+      <el-table-column label="学生姓名" prop="studentName" min-width="120" align="center"></el-table-column>
       
       <el-table-column label="学号" prop="studentNumber" min-width="120" align="center"></el-table-column>
       
@@ -159,11 +159,11 @@ export default {
       tableData: [],
       total: 0,
       queryParams: {
+        className: '',
+        sportsItemId: null,
+        keyword: '',
         pageNum: 1,
-        pageSize: 10,
-        sportsItemId: undefined,
-        className: undefined,
-        keyword: ''
+        pageSize: 10
       },
       sportsItems: [],
       classList: [],
@@ -217,28 +217,28 @@ export default {
     },
     async getList() {
       try {
-        this.loading = true
+        this.loading = true;
         const res = await this.$http.get('/api/teacher/student-records', {
           params: {
-            page: this.queryParams.pageNum - 1,
-            size: this.queryParams.pageSize,
-            sportsItemId: this.queryParams.sportsItemId,
             className: this.queryParams.className,
-            keyword: this.queryParams.keyword
+            sportsItemId: this.queryParams.sportsItemId,
+            keyword: this.queryParams.keyword,
+            page: this.queryParams.pageNum - 1,  // 注意这里需要减1，因为后端从0开始计数
+            size: this.queryParams.pageSize
           }
-        })
+        });
         
         if (res.data.code === 200) {
-          this.tableData = res.data.data.content || []
-          this.total = res.data.data.totalElements || 0
+          this.tableData = res.data.data.content;
+          this.total = res.data.data.totalElements;
         } else {
-          this.$message.error(res.data.message || '获取数据失败')
+          this.$message.error(res.data.message || '获取数据失败');
         }
       } catch (error) {
-        console.error('获取列表失败:', error)
-        this.$message.error('获取列表失败')
+        console.error('获取列表失败:', error);
+        this.$message.error('获取列表失败');
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     async getSportsItems() {
@@ -340,8 +340,41 @@ export default {
       this.queryParams.pageNum = val
       this.getList()
     },
-    handleExport() {
-      this.$message.info('导出功能开发中')
+    async handleExport() {
+      try {
+        this.$message.info('正在导出数据，请稍候...');
+        
+        const res = await this.$http.get('/api/teacher/test-records/export', {
+          params: {
+            sportsItemId: this.queryParams.sportsItemId,
+            className: this.queryParams.className,
+            keyword: this.queryParams.keyword
+          },
+          responseType: 'blob'  // 重要：指定响应类型为blob
+        });
+        
+        // 创建下载链接
+        const blob = new Blob([res.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        const link = document.createElement('a');
+        link.href = window.URL.createObjectURL(blob);
+        
+        // 生成文件名
+        const now = new Date();
+        const fileName = `学生成绩记录_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}.xlsx`;
+        link.setAttribute('download', fileName);
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(link.href);
+        
+        this.$message.success('导出成功');
+      } catch (error) {
+        console.error('导出失败:', error);
+        this.$message.error('导出失败');
+      }
     }
   }
 }
