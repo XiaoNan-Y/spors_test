@@ -54,8 +54,11 @@ public class TestRecord implements Serializable {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "update_time")
+    private LocalDateTime updateTime;
+
+    @Column(name = "updated_by")
+    private Long updatedBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sports_item_id")
@@ -68,7 +71,7 @@ public class TestRecord implements Serializable {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        updateTime = LocalDateTime.now();
         if (status == null) {
             status = "PENDING";
         }
@@ -76,7 +79,7 @@ public class TestRecord implements Serializable {
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updateTime = LocalDateTime.now();
     }
 
     public Long getSportsItemId() {
@@ -136,5 +139,15 @@ public class TestRecord implements Serializable {
             info.put("name", sportsItem.getName());
         }
         return info;
+    }
+
+    @JsonProperty("updatedAt")
+    public LocalDateTime getUpdatedAt() {
+        return this.updateTime;
+    }
+
+    @JsonProperty("updatedAt")
+    public void setUpdatedAt(LocalDateTime time) {
+        this.updateTime = time;
     }
 } 

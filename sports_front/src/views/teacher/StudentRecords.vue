@@ -56,11 +56,21 @@
       <el-table-column prop="studentInfo.className" label="班级"></el-table-column>
       <el-table-column prop="sportsItem.name" label="测试项目"></el-table-column>
       <el-table-column prop="score" label="成绩"></el-table-column>
-      <el-table-column prop="status" label="状态">
+      <el-table-column label="操作" width="180" align="center">
         <template slot-scope="scope">
-          <el-tag :type="getStatusType(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
-          </el-tag>
+          <el-button
+            size="mini"
+            type="primary"
+            @click="handleEdit(scope.row)"
+            :disabled="!canEdit(scope.row)">
+            修改
+          </el-button>
+          <el-button
+            size="mini"
+            type="info"
+            @click="handleDetail(scope.row)">
+            详情
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -77,6 +87,54 @@
         :total="total">
       </el-pagination>
     </div>
+
+    <!-- 添加修改对话框 -->
+    <el-dialog
+      title="修改成绩"
+      :visible.sync="editDialog.visible"
+      width="500px"
+      @closed="handleEditDialogClosed">
+      <el-form
+        :model="editForm"
+        :rules="editRules"
+        ref="editForm"
+        label-width="100px">
+        <el-form-item label="学生姓名">
+          <span>{{ editForm.studentName }}</span>
+        </el-form-item>
+        <el-form-item label="测试项目">
+          <span>{{ editForm.sportsItemName }}</span>
+        </el-form-item>
+        <el-form-item label="成绩" prop="score">
+          <el-input v-model.number="editForm.score" type="number"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="editDialog.visible = false">取 消</el-button>
+        <el-button type="primary" @click="submitEdit">确 定</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- 添加详情对话框 -->
+    <el-dialog
+      title="成绩详情"
+      :visible.sync="detailDialog.visible"
+      width="500px">
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="学生姓名">{{ detailForm.studentName }}</el-descriptions-item>
+        <el-descriptions-item label="学号">{{ detailForm.studentNumber }}</el-descriptions-item>
+        <el-descriptions-item label="班级">{{ detailForm.className }}</el-descriptions-item>
+        <el-descriptions-item label="测试项目">{{ detailForm.sportsItemName }}</el-descriptions-item>
+        <el-descriptions-item label="成绩">{{ detailForm.score }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusType(detailForm.status)">
+            {{ getStatusText(detailForm.status) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ detailForm.createdAt }}</el-descriptions-item>
+        <el-descriptions-item label="更新时间">{{ detailForm.updatedAt }}</el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
@@ -97,7 +155,35 @@ export default {
       classNames: [],
       sportsItems: [],
       tableData: [],
-      total: 0
+      total: 0,
+      editDialog: {
+        visible: false
+      },
+      editForm: {
+        id: null,
+        studentName: '',
+        sportsItemName: '',
+        score: null
+      },
+      editRules: {
+        score: [
+          { required: true, message: '请输入成绩', trigger: 'blur' },
+          { type: 'number', message: '成绩必须为数字', trigger: 'blur' }
+        ]
+      },
+      detailDialog: {
+        visible: false
+      },
+      detailForm: {
+        studentName: '',
+        studentNumber: '',
+        className: '',
+        sportsItemName: '',
+        score: null,
+        status: '',
+        createdAt: '',
+        updatedAt: ''
+      }
     }
   },
   created() {
@@ -195,6 +281,100 @@ export default {
         'REJECTED': '已驳回'
       }
       return statusMap[status] || status
+    },
+    canEdit(row) {
+      return row.status === 'PENDING' || row.status === 'REJECTED'
+    },
+    handleEdit(row) {
+      this.editForm = {
+        id: row.id,
+        studentName: row.studentInfo.realName,
+        sportsItemName: row.sportsItem.name,
+        score: row.score
+      }
+      this.editDialog.visible = true
+    },
+    handleDetail(row) {
+      this.detailForm = {
+        studentName: row.studentInfo.realName,
+        studentNumber: row.studentInfo.studentNumber,
+        className: row.studentInfo.className,
+        sportsItemName: row.sportsItem.name,
+        score: row.score,
+        status: row.status,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt
+      }
+      this.detailDialog.visible = true
+    },
+    submitEdit() {
+      this.$refs.editForm.validate(async (valid) => {
+        if (valid) {
+          try {
+            console.log('开始提交修改请求，表单数据：', this.editForm);
+            
+            // 确保成绩是数字类型
+            const score = parseFloat(this.editForm.score);
+            if (isNaN(score)) {
+              this.$message.error('请输入有效的成绩');
+              return;
+            }
+
+            console.log('发送请求前的数据：', {
+              id: this.editForm.id,
+              score: score
+            });
+
+            const response = await this.$axios.put(
+              `/api/teacher/test-records/${this.editForm.id}`,
+              { score: score },
+              {
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+            
+            console.log('服务器响应：', response);
+
+            if (response.data.code === 200) {
+              this.$message.success('修改成功');
+              this.editDialog.visible = false;
+              this.getList();
+            } else {
+              this.$message.error(response.data.message || '修改失败');
+            }
+          } catch (error) {
+            console.error('修改失败，详细错误信息：', {
+              error: error,
+              response: error.response,
+              message: error.message,
+              stack: error.stack
+            });
+
+            let errorMessage = '修改失败';
+            if (error.response) {
+              console.log('服务器响应状态：', error.response.status);
+              console.log('服务器响应数据：', error.response.data);
+              errorMessage = error.response.data.message || errorMessage;
+            }
+
+            this.$message.error(errorMessage);
+          }
+        } else {
+          console.log('表单验证失败');
+          this.$message.warning('请正确填写表单');
+        }
+      });
+    },
+    handleEditDialogClosed() {
+      this.$refs.editForm?.resetFields()
+      this.editForm = {
+        id: null,
+        studentName: '',
+        sportsItemName: '',
+        score: null
+      }
     }
   }
 }
@@ -209,6 +389,9 @@ export default {
 }
 .pagination-container {
   margin-top: 20px;
+  text-align: right;
+}
+.dialog-footer {
   text-align: right;
 }
 </style> 
