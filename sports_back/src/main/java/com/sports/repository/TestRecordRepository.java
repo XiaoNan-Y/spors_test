@@ -32,7 +32,13 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     List<Object[]> getAverageScoreByStudent();
 
     // 根据学号和体育项目ID查找记录
-    List<TestRecord> findByStudentNumberAndSportsItemId(String studentNumber, Long sportsItemId);
+    @Query("SELECT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE t.studentNumber = :studentNumber AND si.id = :sportsItemId")
+    List<TestRecord> findByStudentNumberAndSportsItemId(
+        @Param("studentNumber") String studentNumber,
+        @Param("sportsItemId") Long sportsItemId
+    );
     
     // 根据学号查找记录
     List<TestRecord> findByStudentNumber(String studentNumber);
@@ -41,7 +47,13 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     List<TestRecord> findByStatus(String status);
     
     // 根据状态和体育项目ID查找记录
-    List<TestRecord> findByStatusAndSportsItemId(String status, Long sportsItemId);
+    @Query("SELECT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE t.status = :status AND si.id = :sportsItemId")
+    List<TestRecord> findByStatusAndSportsItemId(
+        @Param("status") String status,
+        @Param("sportsItemId") Long sportsItemId
+    );
     
     // 根据学号和状态查找记录
     @Query("SELECT t FROM TestRecord t WHERE t.studentNumber = :studentNumber AND t.status = :status")
@@ -51,7 +63,10 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     );
 
     // 根据学号和体育项目ID查询最新记录
-    @Query("SELECT t FROM TestRecord t WHERE t.studentNumber = :studentNumber AND t.sportsItemId = :sportsItemId " +
+    @Query("SELECT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE t.studentNumber = :studentNumber " +
+           "AND si.id = :sportsItemId " +
            "ORDER BY t.createdAt DESC")
     List<TestRecord> findLatestByStudentNumberAndSportsItemId(
         @Param("studentNumber") String studentNumber,
@@ -59,50 +74,10 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         Pageable pageable
     );
 
-    @Query("SELECT t FROM TestRecord t LEFT JOIN t.student WHERE " +
-           "(:status is null or t.status = :status) AND " +
-           "(:sportsItemId is null or t.sportsItemId = :sportsItemId) " +
-           "ORDER BY t.studentNumber, t.createdAt DESC")
-    Page<TestRecord> findAllWithStudent(
-        @Param("status") String status,
-        @Param("sportsItemId") Long sportsItemId,
-        Pageable pageable
-    );
-
     @Query("SELECT DISTINCT t FROM TestRecord t " +
-           "LEFT JOIN t.student s " +
            "LEFT JOIN t.sportsItem si " +
-           "WHERE (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:keyword IS NULL OR " +
-           "LOWER(s.realName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(s.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<TestRecord> findAllWithFilters(
-        @Param("sportsItemId") Long sportsItemId,
-        @Param("status") String status,
-        @Param("keyword") String keyword,
-        Pageable pageable
-    );
-
-    @Query("SELECT DISTINCT t FROM TestRecord t " +
-           "LEFT JOIN t.sportsItem " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
-           "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
-           "AND (:keyword IS NULL OR :keyword = '' OR " +
-           "LOWER(t.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "ORDER BY t.createdAt DESC")
-    Page<TestRecord> findByFiltersForTeacher(
-        @Param("className") String className,
-        @Param("sportsItemId") Long sportsItemId,
-        @Param("keyword") String keyword,
-        Pageable pageable
-    );
-
-    @Query("SELECT DISTINCT t FROM TestRecord t " +
-           "LEFT JOIN FETCH t.sportsItem si " +
-           "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
-           "AND (:sportsItemId IS NULL OR t.sportsItemId = :sportsItemId) " +
+           "AND (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
            "AND (:keyword IS NULL OR :keyword = '' OR " +
            "LOWER(t.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
@@ -113,16 +88,57 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         @Param("keyword") String keyword
     );
 
-    @EntityGraph(value = "TestRecord.withSportsItem")
     @Query("SELECT DISTINCT tr FROM TestRecord tr " +
            "LEFT JOIN tr.sportsItem si " +
            "LEFT JOIN tr.student s " +
            "WHERE (:className IS NULL OR :className = '' OR tr.className = :className) " +
-           "AND (:sportsItemId IS NULL OR tr.sportsItemId = :sportsItemId) " +
+           "AND (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
            "AND (:status IS NULL OR :status = '' OR tr.status = :status) " +
            "AND (:studentNumber IS NULL OR :studentNumber = '' OR tr.studentNumber = :studentNumber) " +
            "ORDER BY tr.createdAt DESC")
     Page<TestRecord> findByFilters(
+        @Param("className") String className,
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("status") String status,
+        @Param("studentNumber") String studentNumber,
+        Pageable pageable
+    );
+
+    @Query("SELECT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE (:status is null or t.status = :status) AND " +
+           "(:sportsItemId is null or si.id = :sportsItemId) " +
+           "ORDER BY t.studentNumber, t.createdAt DESC")
+    Page<TestRecord> findAllWithStudent(
+        @Param("status") String status,
+        @Param("sportsItemId") Long sportsItemId,
+        Pageable pageable
+    );
+
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(t.studentName) LIKE LOWER(CONCAT('%',:keyword,'%')) OR " +
+           "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%',:keyword,'%')))")
+    @EntityGraph(attributePaths = {"sportsItem"})
+    Page<TestRecord> findAllWithFilters(
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("status") String status,
+        @Param("keyword") String keyword,
+        Pageable pageable
+    );
+
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE (:className IS NULL OR t.className = :className) " +
+           "AND (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:studentNumber IS NULL OR " +
+           "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%', :studentNumber, '%')))")
+    @EntityGraph(attributePaths = {"sportsItem"})
+    Page<TestRecord> findByFiltersForTeacher(
         @Param("className") String className,
         @Param("sportsItemId") Long sportsItemId,
         @Param("status") String status,
@@ -147,7 +163,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
            "FROM TestRecord tr " +
            "LEFT JOIN tr.sportsItem si " +
            "WHERE (:className IS NULL OR :className = '' OR tr.className = :className) " +
-           "AND (:sportsItemId IS NULL OR tr.sportsItemId = :sportsItemId) " +
+           "AND (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
            "AND (:status IS NULL OR :status = '' OR tr.status = :status) " +
            "AND tr.score IS NOT NULL " +
            "GROUP BY tr.className")

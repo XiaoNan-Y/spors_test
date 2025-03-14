@@ -122,6 +122,12 @@ const routes = [
         name: 'TeacherProfile',
         component: () => import('@/views/profile/index'),
         meta: { title: '个人信息' }
+      },
+      {
+        path: '/teacher/student-records',
+        name: 'TeacherStudentRecords',
+        component: () => import('@/views/teacher/StudentRecords.vue'),
+        meta: { title: '学生成绩管理', roles: ['TEACHER'] }
       }
     ]
   },

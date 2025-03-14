@@ -6,6 +6,9 @@ import lombok.Data;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Data
 @Entity
@@ -30,14 +33,14 @@ public class TestRecord implements Serializable {
     @Column(name = "student_number", length = 50)
     private String studentNumber;
 
-    @Column(name = "sports_item_id")
-    private Long sportsItemId;
-
-    @Column(nullable = false)
-    private Double score;
+    @Column(name = "student_name", length = 50)
+    private String studentName;
 
     @Column(name = "class_name", length = 50)
     private String className;
+
+    @Column(nullable = false)
+    private Double score;
 
     @Column(length = 20)
     private String status;
@@ -48,9 +51,6 @@ public class TestRecord implements Serializable {
     @Column(name = "review_time")
     private LocalDateTime reviewTime;
 
-    @Column(name = "student_name", length = 20)
-    private String studentName;
-
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -58,14 +58,12 @@ public class TestRecord implements Serializable {
     private LocalDateTime updatedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_number", referencedColumnName = "student_number", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private User student;
+    @JoinColumn(name = "sports_item_id")
+    private SportsItem sportsItem;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sports_item_id", insertable = false, updatable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-    private SportsItem sportsItem;
+    @JoinColumn(name = "student_id")
+    private User student;
 
     @PrePersist
     protected void onCreate() {
@@ -82,19 +80,44 @@ public class TestRecord implements Serializable {
     }
 
     public Long getSportsItemId() {
-        return sportsItemId;
+        return sportsItem != null ? sportsItem.getId() : null;
     }
 
     public void setSportsItemId(Long sportsItemId) {
-        this.sportsItemId = sportsItemId;
+        if (this.sportsItem == null) {
+            this.sportsItem = new SportsItem();
+        }
+        this.sportsItem.setId(sportsItemId);
+    }
+
+    @JsonProperty("studentInfo")
+    public Map<String, String> getStudentInfo() {
+        Map<String, String> info = new HashMap<>();
+        info.put("studentNumber", this.studentNumber);
+        info.put("realName", this.studentName);
+        info.put("className", this.className);
+        return info;
     }
 
     public String getStudentNumber() {
-        return studentNumber;
+        return this.studentNumber;
     }
 
-    public void setStudentNumber(String studentNumber) {
-        this.studentNumber = studentNumber;
+    public String getStudentName() {
+        return this.studentName;
+    }
+
+    public String getClassName() {
+        return this.className;
+    }
+
+    public void setStudent(User student) {
+        this.student = student;
+        if (student != null) {
+            this.studentNumber = student.getStudentNumber();
+            this.studentName = student.getRealName();
+            this.className = student.getClassName();
+        }
     }
 
     public SportsItem getSportsItem() {
@@ -105,16 +128,13 @@ public class TestRecord implements Serializable {
         this.sportsItem = sportsItem;
     }
 
-    public User getStudent() {
-        return student;
-    }
-
-    public void setStudent(User student) {
-        this.student = student;
-        if (student != null) {
-            this.studentNumber = student.getStudentNumber();
-            this.studentName = student.getRealName();
-            this.className = student.getClassName();
+    @JsonProperty("sportsItem")
+    public Map<String, Object> getSportsItemInfo() {
+        Map<String, Object> info = new HashMap<>();
+        if (sportsItem != null) {
+            info.put("id", sportsItem.getId());
+            info.put("name", sportsItem.getName());
         }
+        return info;
     }
 } 

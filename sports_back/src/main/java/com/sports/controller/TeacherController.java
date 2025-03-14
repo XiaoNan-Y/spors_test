@@ -87,31 +87,25 @@ public class TeacherController {
     // 获取成绩记录列表
     @GetMapping("/test-records")
     public Result getTestRecords(
-        @RequestParam(required = false) String className,
-        @RequestParam(required = false) Long sportsItemId,
-        @RequestParam(required = false) String status,
-        @RequestParam(required = false) String studentNumber,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size
-    ) {
+            @RequestParam(required = false) String className,
+            @RequestParam(required = false) Long sportsItemId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String studentNumber,  // 添加这个参数
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            log.info("Getting test records with filters: className={}, sportsItemId={}, status={}, studentNumber={}, page={}, size={}", 
-                     className, sportsItemId, status, studentNumber, page, size);
-                 
             PageRequest pageRequest = PageRequest.of(page, size);
-            Page<TestRecord> records = testRecordRepository.findByFilters(
+            Page<TestRecord> records = testRecordRepository.findByFiltersForTeacher(
                 className,
                 sportsItemId,
                 status,
-                studentNumber,
+                studentNumber,  // 添加这个参数
                 pageRequest
             );
-            
-            log.info("Found {} records", records.getTotalElements());
             return Result.success(records);
         } catch (Exception e) {
-            log.error("获取成绩列表失败", e);
-            return Result.error("获取成绩列表失败：" + e.getMessage());
+            log.error("Failed to get test records", e);
+            return Result.error("获取记录列表失败: " + e.getMessage());
         }
     }
 
@@ -206,25 +200,42 @@ public class TeacherController {
     public Result getStudentRecords(
         @RequestParam(required = false) String className,
         @RequestParam(required = false) Long sportsItemId,
+        @RequestParam(required = false) String status,
         @RequestParam(required = false) String keyword,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size
     ) {
         try {
             log.info("开始查询学生成绩记录");
-            log.debug("查询参数: className={}, sportsItemId={}, keyword={}, page={}, size={}", 
-                className, sportsItemId, keyword, page, size);
+            
+            // 处理空值
+            className = (className != null && className.trim().isEmpty()) ? null : className;
+            status = (status != null && status.trim().isEmpty()) ? null : status;
+            String studentNumber = (keyword != null && keyword.trim().isEmpty()) ? null : keyword;
+
+            log.debug("处理后的查询参数: className={}, sportsItemId={}, status={}, studentNumber={}, page={}, size={}", 
+                className, sportsItemId, status, studentNumber, page, size);
 
             PageRequest pageRequest = PageRequest.of(page, size);
             Page<TestRecord> records = testRecordRepository.findByFiltersForTeacher(
                 className,
                 sportsItemId,
-                keyword,
+                status,
+                studentNumber,
                 pageRequest
             );
 
             log.info("查询结果: 总记录数={}, 当前页记录数={}", 
                 records.getTotalElements(), records.getContent().size());
+
+            if (records.isEmpty()) {
+                log.warn("未找到符合条件的记录");
+            } else {
+                log.debug("第一条记录信息: studentName={}, className={}, score={}", 
+                    records.getContent().get(0).getStudentName(),
+                    records.getContent().get(0).getClassName(),
+                    records.getContent().get(0).getScore());
+            }
 
             return Result.success(records);
         } catch (Exception e) {

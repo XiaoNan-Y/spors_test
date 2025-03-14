@@ -50,52 +50,49 @@
     <el-table
       v-loading="loading"
       :data="tableData"
-      border
-      stripe
       style="width: 100%"
-    >
-      <el-table-column type="index" label="序号" width="60" align="center"></el-table-column>
-      
-      <el-table-column label="学生姓名" prop="student.realName" min-width="120" align="center">
-        <template slot-scope="scope">
-          {{ scope.row.student ? scope.row.student.realName : '-' }}
-        </template>
+      border>
+      <el-table-column
+        type="index"
+        label="序号"
+        width="60"
+        align="center">
       </el-table-column>
-      
-      <el-table-column label="学生学号" prop="studentNumber" min-width="120" align="center">
-        <template slot-scope="scope">
-          {{ scope.row.student ? scope.row.student.studentNumber : '-' }}
-        </template>
+      <el-table-column
+        prop="studentInfo.realName"
+        label="学生姓名"
+        align="center">
       </el-table-column>
-      
-      <el-table-column label="班级" prop="className" min-width="120" align="center">
-        <template slot-scope="scope">
-          {{ scope.row.className }}
-        </template>
+      <el-table-column
+        prop="studentInfo.studentNumber"
+        label="学生学号"
+        align="center">
       </el-table-column>
-      
-      <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center">
-        <template slot-scope="scope">
-          {{ scope.row.sportsItem ? scope.row.sportsItem.name : '-' }}
-        </template>
+      <el-table-column
+        prop="studentInfo.className"
+        label="班级"
+        align="center">
       </el-table-column>
-      
-      <el-table-column label="成绩" min-width="120" align="center">
-        <template slot-scope="scope">
-          <span :class="{ 'abnormal-score': scope.row.isAbnormal }">
-            {{ scope.row.score }}{{ scope.row.sportsItem?.unit || '' }}
-          </span>
-        </template>
+      <el-table-column
+        prop="sportsItem.name"
+        label="测试项目"
+        align="center">
       </el-table-column>
-      
-      <el-table-column label="状态" width="100" align="center">
+      <el-table-column
+        prop="score"
+        label="成绩"
+        align="center">
+      </el-table-column>
+      <el-table-column
+        prop="status"
+        label="状态"
+        align="center">
         <template slot-scope="scope">
           <el-tag :type="getStatusType(scope.row.status)">
             {{ getStatusText(scope.row.status) }}
           </el-tag>
         </template>
       </el-table-column>
-
       <el-table-column label="操作" width="140" fixed="right" align="center">
         <template slot-scope="scope">
           <el-tooltip content="审核" placement="top" :disabled="!canReview(scope.row)">
@@ -473,28 +470,26 @@ export default {
     },
     async getList() {
       try {
-        this.loading = true
-        const res = await this.$http.get('/api/admin/data-review/list', {
+        this.loading = true;
+        const response = await this.$axios.get('/api/admin/data-review/list', {
           params: {
             page: this.queryParams.pageNum - 1,
             size: this.queryParams.pageSize,
-            sportsItemId: this.queryParams.sportsItemId,
-            status: this.queryParams.status,
-            keyword: this.queryParams.keyword
+            sportsItemId: this.queryParams.sportsItemId || null,
+            status: this.queryParams.status || null,
+            keyword: this.queryParams.keyword || null
           }
-        })
-        console.log('Response:', res.data)
-        if (res.data.code === 200) {
-          this.tableData = res.data.data.content || []
-          this.total = res.data.data.totalElements || 0
-        } else {
-          this.$message.error(res.data.message || '获取数据失败')
+        });
+        
+        if (response.data.code === 200) {
+          this.tableData = response.data.data.content;
+          this.total = response.data.data.totalElements;
         }
       } catch (error) {
-        console.error('获取列表失败:', error)
-        this.$message.error('获取列表失败')
+        console.error('获取列表失败:', error);
+        this.$message.error('获取列表失败: ' + error.message);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     async getSportsItems() {
@@ -550,7 +545,7 @@ export default {
         'APPROVED': '已通过',
         'REJECTED': '已驳回'
       }
-      return statusMap[status] || '未知'
+      return statusMap[status] || status
     },
     handleAdd() {
       this.addDialog.visible = true
