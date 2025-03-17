@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.EntityGraph;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,8 +18,29 @@ import java.util.Optional;
 public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, JpaSpecificationExecutor<TestRecord> {
     long countByStatus(String status);
 
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createdAt >= :startTime")
+    int countByCreateTimeAfter(@Param("startTime") LocalDateTime startTime);
+
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.className = :className AND t.createdAt >= :startTime")
+    int countByClassNameAndCreateTimeAfter(@Param("className") String className, @Param("startTime") LocalDateTime startTime);
+
+    @Query("SELECT COUNT(DISTINCT t.studentNumber) FROM TestRecord t WHERE t.createdAt >= :startTime")
+    int countDistinctStudentsByCreateTimeAfter(@Param("startTime") LocalDateTime startTime);
+
     @Query("SELECT COUNT(t) FROM TestRecord t")
     long getTestCount();
+    
+    // 统计不重复的学号数量
+    @Query("SELECT COUNT(DISTINCT t.studentNumber) FROM TestRecord t")
+    long countDistinctStudentNumber();
+    
+    // 统计指定时间之后的记录数
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createdAt >= :startTime")
+    long countByCreatedAtAfter(@Param("startTime") LocalDateTime startTime);
+    
+    // 统计不重复的班级数量
+    @Query("SELECT COUNT(DISTINCT t.className) FROM TestRecord t")
+    long countDistinctClassName();
 
     @Query("SELECT t.sportsItem.name, COUNT(t) " +
            "FROM TestRecord t " +
@@ -181,4 +203,4 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     @EntityGraph(attributePaths = {"sportsItem", "student"})
     Optional<TestRecord> findWithDetailsById(Long id);
-} 
+}

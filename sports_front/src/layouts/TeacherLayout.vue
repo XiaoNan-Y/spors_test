@@ -29,6 +29,16 @@
           <span slot="title">免测/重测审核</span>
         </el-menu-item>
 
+        <el-menu-item index="/teacher/student-management">
+          <i class="el-icon-user-solid"></i>
+          <span slot="title">学生管理</span>
+        </el-menu-item>
+
+        <el-menu-item index="/teacher/notice-management">
+          <i class="el-icon-bell"></i>
+          <span slot="title">通知管理</span>
+        </el-menu-item>
+
         <el-menu-item index="/teacher/profile">
           <i class="el-icon-user"></i>
           <span slot="title">个人信息</span>
@@ -125,4 +135,4 @@ export default {
   background-color: #f0f2f5;
   padding: 20px;
 }
-</style> 
+</style>

@@ -68,4 +68,12 @@ export function deleteTestRecord(id) {
     url: `/api/teacher/test-records/${id}`,
     method: 'delete'
   })
-} 
+}
+
+// 获取教师仪表盘统计数据
+export function getDashboardStats() {
+  return request({
+    url: '/api/teacher/dashboard-stats',
+    method: 'get'
+  })
+}

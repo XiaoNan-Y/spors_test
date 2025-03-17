@@ -22,6 +22,49 @@ const routes = [
     meta: { requiresAuth: false }
   },
   {
+    path: '/student',
+    component: () => import('@/layouts/StudentLayout'),
+    meta: { requiresAuth: true, role: 'STUDENT' },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'StudentDashboard',
+        component: () => import('@/views/student/Dashboard'),
+        meta: { title: '首页' }
+      },
+      {
+        path: 'test-items',
+        name: 'TestItems',
+        component: () => import('@/views/student/TestItems'),
+        meta: { title: '体测项目' }
+      },
+      {
+        path: 'test-records',
+        name: 'TestRecords',
+        component: () => import('@/views/student/TestRecords'),
+        meta: { title: '体测成绩' }
+      },
+      {
+        path: 'notices',
+        name: 'StudentNotices',
+        component: () => import('@/views/student/Notices'),
+        meta: { title: '通知公告' }
+      },
+      {
+        path: 'feedback',
+        name: 'StudentFeedback',
+        component: () => import('@/views/student/Feedback'),
+        meta: { title: '反馈建议' }
+      },
+      {
+        path: 'profile',
+        name: 'StudentProfile',
+        component: () => import('@/views/profile/index'),
+        meta: { title: '个人信息' }
+      }
+    ]
+  },
+  {
     path: '/admin',
     component: AdminLayout,
     meta: { requiresAuth: true, role: 'ADMIN' },
@@ -124,6 +167,18 @@ const routes = [
         meta: { title: '个人信息' }
       },
       {
+        path: 'student-management',
+        name: 'TeacherStudentManagement',
+        component: () => import('@/views/teacher/StudentManagement.vue'),
+        meta: { title: '学生管理', roles: ['TEACHER'] }
+      },
+      {
+        path: 'notice-management',
+        name: 'TeacherNoticeManagement',
+        component: () => import('@/views/teacher/NoticeManagement.vue'),
+        meta: { title: '通知管理', roles: ['TEACHER'] }
+      },
+      {
         path: '/teacher/student-records',
         name: 'TeacherStudentRecords',
         component: () => import('@/views/teacher/StudentRecords.vue'),
@@ -170,4 +225,4 @@ router.beforeEach((to, from, next) => {
   next()
 })
 
-export default router 
+export default router

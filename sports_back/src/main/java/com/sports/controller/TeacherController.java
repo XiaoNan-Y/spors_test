@@ -4,10 +4,10 @@ import com.sports.common.Result;
 import com.sports.entity.SportsItem;
 import com.sports.entity.TestRecord;
 import com.sports.entity.TestExemption;
-import com.sports.entity.Student;
+import com.sports.entity.User;
 import com.sports.repository.TestRecordRepository;
 import com.sports.repository.TestExemptionRepository;
-import com.sports.repository.StudentRepository;
+import com.sports.repository.UserRepository;
 import com.sports.service.SportsItemService;
 import com.sports.service.TeacherService;
 import org.apache.poi.ss.usermodel.*;
@@ -35,11 +35,61 @@ import java.util.stream.Collectors;
 import javax.persistence.criteria.Predicate;
 
 import com.sports.dto.ClassStatisticsDTO;
+import com.sports.dto.TeacherDashboardDTO;
 
 @RestController
 @RequestMapping("/api/teacher")
 @CrossOrigin
 public class TeacherController {
+
+    // 获取学生列表（分页）
+    @GetMapping("/students")
+    public Result getStudents(
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String className) {
+        try {
+            log.info("获取学生列表 - 页码: {}, 每页大小: {}, 关键字: {}, 班级: {}", pageNum, pageSize, keyword, className);
+            PageRequest pageRequest = PageRequest.of(pageNum - 1, pageSize);
+            Page<User> students;
+            
+            students = userRepository.findAll((root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                
+                // 只查询学生用户
+                predicates.add(cb.equal(root.get("userType"), User.TYPE_STUDENT));
+                
+                // 按班级筛选
+                if (className != null && !className.trim().isEmpty()) {
+                    predicates.add(cb.equal(root.get("className"), className));
+                }
+                
+                // 关键字搜索（姓名或学号）
+                if (keyword != null && !keyword.trim().isEmpty()) {
+                    predicates.add(cb.or(
+                        cb.like(root.get("realName"), "%" + keyword + "%"),
+                        cb.like(root.get("studentNumber"), "%" + keyword + "%")
+                    ));
+                }
+                
+                return cb.and(predicates.toArray(new Predicate[0]));
+            }, pageRequest);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", students.getContent());
+            result.put("totalElements", students.getTotalElements());
+            result.put("totalPages", students.getTotalPages());
+            result.put("currentPage", pageNum);
+            result.put("pageSize", pageSize);
+            
+            log.info("查询到的学生数量: {}, 总页数: {}", students.getTotalElements(), students.getTotalPages());
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取学生列表失败", e);
+            return Result.error("获取学生列表失败：" + e.getMessage());
+        }
+    }
 
     private static final Logger log = LoggerFactory.getLogger(TeacherController.class);
     
@@ -50,13 +100,74 @@ public class TeacherController {
     private SportsItemService sportsItemService;
 
     private final TestRecordRepository testRecordRepository;
+    private final UserRepository userRepository;
     private final TestExemptionRepository testExemptionRepository;
-    private final StudentRepository studentRepository;
 
-    public TeacherController(TestRecordRepository testRecordRepository, TestExemptionRepository testExemptionRepository, StudentRepository studentRepository) {
+    public TeacherController(TestRecordRepository testRecordRepository, TestExemptionRepository testExemptionRepository, UserRepository userRepository) {
         this.testRecordRepository = testRecordRepository;
         this.testExemptionRepository = testExemptionRepository;
-        this.studentRepository = studentRepository;
+        this.userRepository = userRepository;
+    }
+
+    // 获取教师仪表盘统计数据
+    @GetMapping("/dashboard-stats")
+    public Result getDashboardStats() {
+        try {
+            TeacherDashboardDTO stats = new TeacherDashboardDTO();
+            
+            // 获取待审核免测申请数
+            long pendingReviews = testExemptionRepository.countByStatus("PENDING");
+            stats.setPendingReviews((int) pendingReviews);
+            
+            // 获取班级数量
+            List<String> classes = userRepository.findDistinctClassName();
+            stats.setClassCount(classes.size());
+            
+            // 计算测试完成率和参测率
+            long totalStudents = userRepository.countByUserType(User.TYPE_STUDENT);
+            long testedStudents = testRecordRepository.countDistinctStudentNumber();
+            
+            // 测试完成率
+            double completionRate = totalStudents > 0 ? (testedStudents * 100.0) / totalStudents : 0;
+            stats.setTestCompletion((int) Math.round(completionRate));
+            
+            // 参测率（保留一位小数）
+            stats.setTestParticipationRate(Math.round(completionRate * 10.0) / 10.0);
+            
+            // 获取本月测试人数
+            LocalDateTime startOfMonth = LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0);
+            long monthlyTestCount = testRecordRepository.countByCreatedAtAfter(startOfMonth);
+            stats.setMonthlyTests((int) monthlyTestCount);
+            
+            // 设置学生总数
+            stats.setStudentCount((int) totalStudents);
+            
+            // 计算活跃班级数（有测试记录的班级）
+            long activeClassCount = testRecordRepository.countDistinctClassName();
+            stats.setActiveClasses((int) activeClassCount);
+            
+            // 计算审核趋势（与上月相比的百分比变化）
+            LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
+            long lastMonthReviews = testExemptionRepository.countByCreatedAtBetween(startOfLastMonth, startOfMonth);
+            long thisMonthReviews = testExemptionRepository.countByCreatedAtAfter(startOfMonth);
+            
+            // 计算环比增长率
+            int reviewTrend;
+            if (lastMonthReviews > 0) {
+                reviewTrend = (int) ((thisMonthReviews - lastMonthReviews) * 100 / lastMonthReviews);
+            } else if (thisMonthReviews > 0) {
+                reviewTrend = 100; // 上月为0，本月有数据，增长100%
+            } else {
+                reviewTrend = 0; // 上月和本月都为0，增长0%
+            }
+            stats.setReviewTrend(reviewTrend);
+
+            log.info("Dashboard统计数据: {}", stats);
+            return Result.success(stats);
+        } catch (Exception e) {
+            log.error("获取仪表盘统计数据失败", e);
+            return Result.error("获取仪表盘统计数据失败：" + e.getMessage());
+        }
     }
 
     // 获取体育项目列表
@@ -117,8 +228,12 @@ public class TeacherController {
             log.debug("录入数据: {}", record);
             
             // 从学号查询学生信息
-            Student student = studentRepository.findByStudentNumber(record.getStudentNumber())
-                .orElseThrow(() -> new RuntimeException("未找到学生信息"));
+            User student = userRepository.findOne((root, query, cb) -> {
+                return cb.and(
+                    cb.equal(root.get("studentNumber"), record.getStudentNumber()),
+                    cb.equal(root.get("userType"), User.TYPE_STUDENT)
+                );
+            }).orElseThrow(() -> new RuntimeException("未找到学生信息"));
             
             // 设置学生相关信息
             record.setStudentNumber(student.getStudentNumber());
@@ -654,4 +769,4 @@ public class TeacherController {
         if (dateTime == null) return "";
         return dateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
-} 
+}

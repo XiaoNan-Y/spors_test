@@ -20,5 +20,6 @@ public class Student {
     @Column(length = 20)
     private String className;
     
-    // 其他字段...
-} 
+    @Column(length = 20)
+    private String status;
+}

@@ -3,6 +3,7 @@ package com.sports.repository;
 import com.sports.entity.Student;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -25,4 +26,6 @@ public interface StudentRepository extends JpaRepository<Student, Long>, JpaSpec
      * 根据姓名或学号模糊查询
      */
     List<Student> findByRealNameContainingOrStudentNumberContaining(String realName, String studentNumber);
-} 
+    
+    long countByStatus(String status);
+}

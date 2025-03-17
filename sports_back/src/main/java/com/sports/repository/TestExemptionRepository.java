@@ -10,10 +10,21 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.EntityGraph;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface TestExemptionRepository extends JpaRepository<TestExemption, Long>, JpaSpecificationExecutor<TestExemption> {
+    // 统计指定时间段内的记录数
+    @Query("SELECT COUNT(t) FROM TestExemption t WHERE t.createdAt BETWEEN :startTime AND :endTime")
+    long countByCreatedAtBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+    
+    // 统计指定时间之后的记录数
+    @Query("SELECT COUNT(t) FROM TestExemption t WHERE t.createdAt >= :startTime")
+    long countByCreatedAtAfter(@Param("startTime") LocalDateTime startTime);
+    
+    // 统计指定状态的记录数
+    long countByStatus(String status);
     
     @Query(value = "SELECT e FROM TestExemption e WHERE " +
            "(:className IS NULL OR :className = '' OR e.className = :className) AND " +
@@ -44,6 +55,12 @@ public interface TestExemptionRepository extends JpaRepository<TestExemption, Lo
     @Query("SELECT DISTINCT e.className FROM TestExemption e ORDER BY e.className")
     List<String> findDistinctClassNames();
 
+    @Query("SELECT COUNT(e) FROM TestExemption e WHERE e.createTime BETWEEN :startTime AND :endTime")
+    int countByCreateTimeBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT COUNT(e) FROM TestExemption e WHERE e.createTime >= :startTime")
+    int countByCreateTimeAfter(@Param("startTime") LocalDateTime startTime);
+
     @Query("SELECT COUNT(e) FROM TestExemption e")
     long countAll();
 
@@ -63,4 +80,4 @@ public interface TestExemptionRepository extends JpaRepository<TestExemption, Lo
         @Param("studentNumber") String studentNumber,
         @Param("keyword") String keyword
     );
-} 
+}
