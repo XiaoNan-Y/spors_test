@@ -87,8 +87,8 @@ export default {
         if (valid) {
           try {
             const url = this.isEdit ? 
-              `/api/users/${this.form.id}` : 
-              '/api/users'
+              `/api/admin/users/${this.form.id}` : 
+              '/api/admin/users'
             const method = this.isEdit ? 'put' : 'post'
             
             this.form.userType = this.userType
@@ -137,4 +137,4 @@ export default {
   max-width: 600px;
   margin: 20px auto;
 }
-</style> 
+</style>

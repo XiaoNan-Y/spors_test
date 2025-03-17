@@ -41,7 +41,11 @@ public class User implements Serializable {
     @Column(name = "class_name")
     private String className;
 
+    @Column(name = "created_at", nullable = false)
+    private java.util.Date createdAt;
+
     public User() {
+        this.createdAt = new java.util.Date();
     }
 
     public User(Long id) {
@@ -81,4 +85,4 @@ public class User implements Serializable {
     public boolean isTeacher() {
         return TYPE_TEACHER.equals(this.userType);
     }
-} 
+}

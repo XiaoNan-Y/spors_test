@@ -79,30 +79,53 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public Result addUser(User user) {
         try {
+            log.info("开始添加用户，用户信息：username={}, userType={}, realName={}, studentNumber={}", 
+                user.getUsername(), user.getUserType(), user.getRealName(), user.getStudentNumber());
+
+            // 基本字段验证
+            if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+                return Result.error("用户名不能为空");
+            }
+
             // 检查用户名是否已存在
             User existingUser = userRepository.findByUsername(user.getUsername());
             if (existingUser != null) {
+                log.warn("用户名已存在：{}", user.getUsername());
                 return Result.error("用户名已存在");
             }
             
             // 设置默认密码
             if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
                 user.setPassword("123456"); // 默认密码
+                log.info("用户未设置密码，使用默认密码");
             }
             
+            // 验证用户类型
+            if (user.getUserType() == null || user.getUserType().trim().isEmpty()) {
+                log.warn("用户类型为空");
+                return Result.error("用户类型不能为空");
+            }
+
             // 验证学生用户必须填写学号
-            if ("STUDENT".equals(user.getUserType()) && 
-                (user.getStudentNumber() == null || user.getStudentNumber().trim().isEmpty())) {
-                return Result.error("学生用户必须填写学号");
+            if (User.TYPE_STUDENT.equals(user.getUserType())) {
+                if (user.getStudentNumber() == null || user.getStudentNumber().trim().isEmpty()) {
+                    log.warn("学生用户未填写学号");
+                    return Result.error("学生用户必须填写学号");
+                }
             }
             
             // 保存用户
-            User savedUser = userRepository.save(user);
-            log.info("Successfully added user: {}", savedUser.getUsername());
-            return Result.success(savedUser);
+            try {
+                User savedUser = userRepository.save(user);
+                log.info("用户添加成功：id={}, username={}", savedUser.getId(), savedUser.getUsername());
+                return Result.success(savedUser);
+            } catch (Exception e) {
+                log.error("保存用户到数据库失败：{}", e.getMessage(), e);
+                throw e;
+            }
             
         } catch (Exception e) {
-            log.error("Error adding user: ", e);
+            log.error("添加用户过程中发生异常：{}", e.getMessage(), e);
             throw new RuntimeException("添加用户失败: " + e.getMessage());
         }
     }
@@ -192,4 +215,4 @@ public class UserServiceImpl implements UserService {
             return Result.error("更新个人信息失败：" + e.getMessage());
         }
     }
-} 
+}
