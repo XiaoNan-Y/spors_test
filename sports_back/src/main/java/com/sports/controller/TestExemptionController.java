@@ -90,4 +90,38 @@ public class TestExemptionController {
             return Result.error("审核失败：" + e.getMessage());
         }
     }
+
+    @PutMapping("/{id}/modify")
+    public Result modifyApplication(
+            @PathVariable Long id,
+            @RequestBody ExemptionApplication application) {
+        try {
+            log.info("开始修改申请状态，id={}", id);
+            ExemptionApplication existing = exemptionApplicationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("申请不存在"));
+
+            // 更新状态和管理员审核意见
+            existing.setStatus(application.getStatus());
+            existing.setAdminReviewComment(application.getAdminReviewComment());
+            existing.setAdminReviewTime(LocalDateTime.now());
+            existing.setUpdateTime(LocalDateTime.now());
+
+            // 如果状态改为待教师审核，清除管理员的审核信息
+            if ("PENDING_TEACHER".equals(application.getStatus())) {
+                existing.setAdminReviewComment(null);
+                existing.setAdminReviewTime(null);
+            }
+
+            log.debug("修改申请状态：status={}, comment={}", 
+                application.getStatus(), application.getAdminReviewComment());
+            
+            ExemptionApplication saved = exemptionApplicationRepository.save(existing);
+            log.info("修改申请状态成功");
+            
+            return Result.success(saved);
+        } catch (Exception e) {
+            log.error("修改申请状态失败", e);
+            return Result.error("修改失败：" + e.getMessage());
+        }
+    }
 } 

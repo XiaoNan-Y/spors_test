@@ -71,7 +71,7 @@
           {{ formatDateTime(scope.row.applyTime || scope.row.createdAt) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template slot-scope="scope">
           <el-button
             size="mini"
@@ -79,6 +79,11 @@
             @click="handleReview(scope.row)"
             v-if="scope.row.status === 'PENDING_ADMIN'"
           >审核</el-button>
+          <el-button
+            size="mini"
+            type="warning"
+            @click="handleModify(scope.row)"
+          >修改</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -122,6 +127,37 @@
         <el-button type="primary" @click="submitReview">确定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 修改对话框 -->
+    <el-dialog
+      title="修改审核状态"
+      :visible.sync="modifyDialog.visible"
+      width="500px"
+    >
+      <el-form :model="modifyForm" ref="modifyForm" label-width="100px">
+        <el-form-item label="审核状态" prop="status">
+          <el-select v-model="modifyForm.status" placeholder="选择状态">
+            <el-option label="待教师审核" value="PENDING_TEACHER" />
+            <el-option label="待管理员审核" value="PENDING_ADMIN" />
+            <el-option label="已通过" value="APPROVED" />
+            <el-option label="教师已驳回" value="REJECTED_TEACHER" />
+            <el-option label="已驳回" value="REJECTED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="审核意见" prop="adminReviewComment">
+          <el-input
+            type="textarea"
+            v-model="modifyForm.adminReviewComment"
+            :rows="4"
+            placeholder="请输入审核意见"
+          />
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="modifyDialog.visible = false">取消</el-button>
+        <el-button type="primary" @click="submitModify">确定</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -147,7 +183,14 @@ export default {
         status: '',
         adminReviewComment: ''
       },
-      currentRecord: null
+      currentRecord: null,
+      modifyDialog: {
+        visible: false
+      },
+      modifyForm: {
+        status: '',
+        adminReviewComment: ''
+      }
     }
   },
   created() {
@@ -286,6 +329,36 @@ export default {
       } catch (error) {
         console.error('修复失败:', error)
         this.$message.error('修复失败')
+      }
+    },
+    handleModify(row) {
+      this.currentRecord = row
+      this.modifyForm = {
+        status: row.status,
+        adminReviewComment: row.adminReviewComment || ''
+      }
+      this.modifyDialog.visible = true
+    },
+    async submitModify() {
+      try {
+        const response = await this.$http.put(
+          `/api/exemptions/${this.currentRecord.id}/modify`,
+          {
+            status: this.modifyForm.status,
+            adminReviewComment: this.modifyForm.adminReviewComment
+          }
+        )
+        
+        if (response.data.code === 200) {
+          this.$message.success('修改成功')
+          this.modifyDialog.visible = false
+          this.fetchRecords()
+        } else {
+          this.$message.error(response.data.msg || '修改失败')
+        }
+      } catch (error) {
+        console.error('修改失败:', error)
+        this.$message.error('修改失败')
       }
     }
   }
