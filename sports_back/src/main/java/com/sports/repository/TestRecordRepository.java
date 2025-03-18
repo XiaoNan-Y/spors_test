@@ -207,16 +207,18 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.status = 'PENDING'")
     Integer countPendingRecords();
 
-    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createTime >= :since")
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createdAt >= :since")
     Integer countRecordsSince(@Param("since") LocalDateTime since);
 
-    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createTime >= :startTime AND t.createTime <= :endTime")
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createdAt >= :startTime AND t.createdAt <= :endTime")
     Integer countRecordsBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 
-    @Query("SELECT CAST(COUNT(CASE WHEN t.score >= 60 THEN 1 END) AS double) / CAST(COUNT(*) AS double) * 100 FROM TestRecord t")
+    @Query(value = "SELECT IFNULL(COUNT(CASE WHEN t.score >= 60 AND t.status = 'APPROVED' THEN 1 END) * 100.0 / " +
+           "NULLIF(COUNT(CASE WHEN t.status = 'APPROVED' THEN 1 END), 0), 0) FROM test_record t", nativeQuery = true)
     Double calculatePassRate();
 
-    @Query("SELECT CAST(COUNT(CASE WHEN t.status = 'COMPLETED' THEN 1 END) AS double) / CAST(COUNT(*) AS double) * 100 FROM TestRecord t")
+    @Query(value = "SELECT IFNULL(COUNT(CASE WHEN t.status = 'APPROVED' THEN 1 END) * 100.0 / " +
+           "NULLIF(COUNT(*), 0), 0) FROM test_record t", nativeQuery = true)
     Double calculateTestCompletionRate();
 
     @Query("SELECT COUNT(DISTINCT t.className) FROM TestRecord t")
