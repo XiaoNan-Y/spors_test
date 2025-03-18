@@ -5,6 +5,7 @@ import com.sports.entity.TestRecord;
 import com.sports.repository.TestRecordRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
@@ -13,25 +14,22 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/admin/data-review")
+@RequestMapping("/api/admin")
 @CrossOrigin
 public class DataReviewController {
 
     private static final Logger log = LoggerFactory.getLogger(DataReviewController.class);
 
-    private final TestRecordRepository testRecordRepository;
+    @Autowired
+    private TestRecordRepository testRecordRepository;
 
-    public DataReviewController(TestRecordRepository testRecordRepository) {
-        this.testRecordRepository = testRecordRepository;
-    }
-
-    @GetMapping("/list")
-    public Result getList(
-        @RequestParam(required = false) Long sportsItemId,
-        @RequestParam(required = false) String status,
-        @RequestParam(required = false) String keyword,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size) {
+    @GetMapping("/test-records")
+    public Result getTestRecords(
+            @RequestParam(required = false) Long sportsItemId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
             log.info("Received parameters - sportsItemId: {}, status: {}, keyword: {}, page: {}, size: {}", 
                     sportsItemId, status, keyword, page, size);
@@ -42,7 +40,7 @@ public class DataReviewController {
             
             PageRequest pageRequest = PageRequest.of(page, size);
             Page<TestRecord> records = testRecordRepository.findAllWithFilters(
-                sportsItemId, 
+                sportsItemId,
                 status,
                 keyword,
                 pageRequest
@@ -58,35 +56,36 @@ public class DataReviewController {
             return Result.success(records);
         } catch (Exception e) {
             log.error("Failed to get test records: ", e);
-            return Result.error("获取记录列表失败: " + e.getMessage());
+            return Result.error("获取测试记录失败：" + e.getMessage());
         }
     }
 
-    // 添加审核方法
-    @PutMapping("/review/{id}")
-    public Result reviewRecord(@PathVariable Long id, @RequestBody Map<String, String> reviewData) {
+    @PutMapping("/test-records/{id}/review")
+    public Result reviewTestRecord(
+            @PathVariable Long id,
+            @RequestBody TestRecord record) {
         try {
             log.info("Reviewing record with id: {}", id);
-            TestRecord record = testRecordRepository.findById(id)
+            TestRecord existing = testRecordRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("记录不存在"));
 
-            String status = reviewData.get("status");
-            String comment = reviewData.get("comment");
+            String status = record.getStatus();
+            String comment = record.getReviewComment();
             
             log.debug("Updating record - status: {}, comment: {}", status, comment);
 
-            record.setStatus(status);
-            record.setReviewComment(comment);
-            record.setReviewTime(LocalDateTime.now());
-            record.setUpdatedAt(LocalDateTime.now());
+            existing.setStatus(status);
+            existing.setReviewComment(comment);
+            existing.setReviewTime(record.getReviewTime());
+            existing.setUpdatedAt(LocalDateTime.now());
 
-            TestRecord savedRecord = testRecordRepository.save(record);
+            TestRecord saved = testRecordRepository.save(existing);
             log.info("Record reviewed successfully");
             
-            return Result.success(savedRecord);
+            return Result.success(saved);
         } catch (Exception e) {
             log.error("Review failed: ", e);
-            return Result.error("审核失败: " + e.getMessage());
+            return Result.error("审核失败：" + e.getMessage());
         }
     }
 } 

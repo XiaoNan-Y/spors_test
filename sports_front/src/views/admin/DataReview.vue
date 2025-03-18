@@ -1,236 +1,199 @@
 <template>
   <div class="data-review">
-    <!-- 顶部操作栏 -->
-    <div class="operation-bar">
-      <el-button type="primary" @click="handleAdd">
-        <i class="el-icon-plus"></i> 录入成绩
-      </el-button>
-      <el-button type="success" @click="handleExport">
-        <i class="el-icon-download"></i> 导出数据
-      </el-button>
+    <div class="header">
+      <h2>数据录入与审核</h2>
+      <div class="actions">
+        <el-button type="primary" @click="showAddDialog">
+          <i class="el-icon-plus"></i> 录入成绩
+        </el-button>
+        <el-button type="success" @click="exportData">
+          <i class="el-icon-download"></i> 导出数据
+        </el-button>
+      </div>
     </div>
 
-   <!-- 搜索筛选区 -->
-<div class="filter-section">
-  <el-form :inline="true" :model="queryParams" ref="queryForm">
-    <el-form-item label="测试项目">
-      <el-select v-model="queryParams.sportsItemId" placeholder="选择测试项目" clearable>
-        <el-option
-          v-for="item in sportsItems"
-          :key="item.id"
-          :label="item.name"
-          :value="item.id"
-        ></el-option>
-      </el-select>
-    </el-form-item>
-    <el-form-item label="状态">
-      <el-select v-model="queryParams.status" placeholder="选择状态" clearable>
-        <el-option label="待审核" value="PENDING"></el-option>
-        <el-option label="已通过" value="APPROVED"></el-option>
-        <el-option label="已驳回" value="REJECTED"></el-option>
-      </el-select>
-    </el-form-item>
-    <el-form-item label="关键字">
-      <el-input 
-        v-model="queryParams.keyword" 
-        placeholder="学生/教师姓名"
-        clearable
-      ></el-input>
-    </el-form-item>
-    <el-form-item>
-      <el-button type="primary" @click="handleQuery">查询</el-button>
-      <el-button @click="resetQuery">重置</el-button>
-    </el-form-item>
-  </el-form>
-</div>
+    <div class="filters">
+      <el-form :inline="true" class="filter-form">
+        <el-form-item label="测试项目">
+          <el-select v-model="filters.sportsItemId" placeholder="选择测试项目" clearable>
+            <el-option
+              v-for="item in sportsItems"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select v-model="filters.status" placeholder="选择状态" clearable>
+            <el-option label="待审核" value="PENDING" />
+            <el-option label="已通过" value="APPROVED" />
+            <el-option label="已驳回" value="REJECTED" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input
+            v-model="filters.keyword"
+            placeholder="学号/姓名"
+            clearable
+            @keyup.enter.native="handleSearch"
+          />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="resetFilters">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
 
-    <!-- 数据表格 -->
-    <el-card class="table-card">
-      <!-- 数据表格部分 -->
     <el-table
       v-loading="loading"
-      :data="tableData"
+      :data="records"
+      border
       style="width: 100%"
-      border>
-      <el-table-column
-        type="index"
-        label="序号"
-        width="60"
-        align="center">
+    >
+      <el-table-column label="序号" type="index" width="50" align="center" />
+      <el-table-column prop="studentNumber" label="学号" width="120" />
+      <el-table-column prop="studentName" label="姓名" width="120" />
+      <el-table-column prop="className" label="班级" width="120" />
+      <el-table-column label="测试项目" width="120">
+        <template slot-scope="scope">
+          {{ scope.row.sportsItem ? scope.row.sportsItem.name : '' }}
+        </template>
       </el-table-column>
-      <el-table-column
-        prop="studentInfo.realName"
-        label="学生姓名"
-        align="center">
-      </el-table-column>
-      <el-table-column
-        prop="studentInfo.studentNumber"
-        label="学生学号"
-        align="center">
-      </el-table-column>
-      <el-table-column
-        prop="studentInfo.className"
-        label="班级"
-        align="center">
-      </el-table-column>
-      <el-table-column
-        prop="sportsItem.name"
-        label="测试项目"
-        align="center">
-      </el-table-column>
-      <el-table-column
-        prop="score"
-        label="成绩"
-        align="center">
-      </el-table-column>
-      <el-table-column
-        prop="status"
-        label="状态"
-        align="center">
+      <el-table-column prop="score" label="成绩" width="100" />
+      <el-table-column prop="status" label="状态" width="100">
         <template slot-scope="scope">
           <el-tag :type="getStatusType(scope.row.status)">
             {{ getStatusText(scope.row.status) }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="140" fixed="right" align="center">
+      <el-table-column prop="reviewComment" label="审核意见" />
+      <el-table-column prop="createdAt" label="创建时间" width="180">
         <template slot-scope="scope">
-          <el-tooltip content="审核" placement="top" :disabled="!canReview(scope.row)">
-            <el-button
-              v-if="canReview(scope.row)"
-              type="primary"
-              icon="el-icon-check"
-              size="mini"
-              circle
-              @click="handleReview(scope.row)"
-            ></el-button>
-          </el-tooltip>
-          <el-tooltip content="修改" placement="top" :disabled="!canModify(scope.row)">
-            <el-button
-              v-if="canModify(scope.row)"
-              type="warning"
-              icon="el-icon-edit"
-              size="mini"
-              circle
-              @click="handleModify(scope.row)"
-            ></el-button>
-          </el-tooltip>
-          <el-tooltip content="详情" placement="top">
-            <el-button
-              type="info"
-              icon="el-icon-view"
-              size="mini"
-              circle
-              @click="handleDetail(scope.row)"
-            ></el-button>
-          </el-tooltip>
+          {{ formatDateTime(scope.row.createdAt) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="200" fixed="right">
+        <template slot-scope="scope">
+          <el-button
+            size="mini"
+            type="primary"
+            @click="handleEdit(scope.row)"
+          >编辑</el-button>
+          <el-button
+            size="mini"
+            type="success"
+            @click="handleReview(scope.row)"
+            v-if="scope.row.status === 'PENDING'"
+          >审核</el-button>
         </template>
       </el-table-column>
     </el-table>
 
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-          :current-page.sync="queryParams.pageNum"
-          :page-sizes="[10, 20, 50, 100]"
-          :page-size="queryParams.pageSize"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total">
-        </el-pagination>
-      </div>
-    </el-card>
-
-  <!-- 录入成绩对话框 -->
-  <el-dialog 
-    title="录入成绩" 
-    :visible.sync="addDialog.visible" 
-    width="400px"
-    @closed="handleDialogClosed"
-  >
-    <el-form :model="form" :rules="rules" ref="recordForm" label-width="80px">
-      <!-- 学生选择 -->
-      <el-form-item label="学生" prop="studentId">
-        <el-select 
-          v-model="form.studentId" 
-          placeholder="请选择学生" 
-          filterable
-          remote
-          :remote-method="searchStudents"
-          :loading="studentLoading"
-          style="width: 100%"
-        >
-          <el-option
-            v-for="student in students"
-            :key="student.id"
-            :label="student.realName"
-            :value="student.id"
-          >
-            <span>{{ student.realName }}</span>
-            <span style="float: right; color: #8492a6; font-size: 13px">
-              {{ student.username }}
-            </span>
-          </el-option>
-        </el-select>
-      </el-form-item>
-
-      <!-- 测试项目选择 -->
-      <el-form-item label="测试项目" prop="sportsItemId">
-        <el-select 
-          v-model="form.sportsItemId" 
-          placeholder="请选择项目"
-          @change="handleSportsItemChange"
-          style="width: 100%"
-        >
-          <el-option
-            v-for="item in sportsItems"
-            :key="item.id"
-            :label="item.name"
-            :value="item.id"
-          >
-            <span>{{ item.name }}</span>
-            <span style="float: right; color: #8492a6; font-size: 13px">
-              {{ item.unit }}
-            </span>
-          </el-option>
-        </el-select>
-      </el-form-item>
-
-      <!-- 成绩输入 -->
-      <el-form-item label="成绩" prop="score">
-        <div style="display: flex; align-items: center;">
-          <el-input-number 
-            v-model="form.score" 
-            :precision="2"
-            :step="0.1"
-            :min="0"
-            controls-position="right"
-            style="width: 160px;"
-          ></el-input-number>
-          <span style="margin-left: 10px; color: #606266;">{{ selectedItemUnit }}</span>
-        </div>
-      </el-form-item>
-
-      <!-- 班级选择 -->
-      <el-form-item label="班级" prop="className">
-        <el-select v-model="form.className" placeholder="请选择班级" style="width: 100%">
-          <el-option
-            v-for="className in classList"
-            :key="className"
-            :label="className"
-            :value="className"
-          ></el-option>
-        </el-select>
-      </el-form-item>
-    </el-form>
-
-    <!-- 对话框底部按钮 -->
-    <div slot="footer" class="dialog-footer">
-      <el-button @click="addDialog.visible = false">取 消</el-button>
-      <el-button type="primary" @click="submitForm">确 定</el-button>
+    <!-- 分页 -->
+    <div class="pagination-container">
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page.sync="currentPage"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total">
+      </el-pagination>
     </div>
-  </el-dialog>
+
+    <!-- 录入成绩对话框 -->
+    <el-dialog 
+      title="录入成绩" 
+      :visible.sync="addDialog.visible" 
+      width="400px"
+      @closed="handleDialogClosed"
+    >
+      <el-form :model="form" :rules="rules" ref="recordForm" label-width="80px">
+        <!-- 学生选择 -->
+        <el-form-item label="学生" prop="studentId">
+          <el-select 
+            v-model="form.studentId" 
+            placeholder="请选择学生" 
+            filterable
+            remote
+            :remote-method="searchStudents"
+            :loading="studentLoading"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="student in students"
+              :key="student.id"
+              :label="student.realName"
+              :value="student.id"
+            >
+              <span>{{ student.realName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">
+                {{ student.username }}
+              </span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+
+        <!-- 测试项目选择 -->
+        <el-form-item label="测试项目" prop="sportsItemId">
+          <el-select 
+            v-model="form.sportsItemId" 
+            placeholder="请选择项目"
+            @change="handleSportsItemChange"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="item in sportsItems"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            >
+              <span>{{ item.name }}</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">
+                {{ item.unit }}
+              </span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+
+        <!-- 成绩输入 -->
+        <el-form-item label="成绩" prop="score">
+          <div style="display: flex; align-items: center;">
+            <el-input-number 
+              v-model="form.score" 
+              :precision="2"
+              :step="0.1"
+              :min="0"
+              controls-position="right"
+              style="width: 160px;"
+            ></el-input-number>
+            <span style="margin-left: 10px; color: #606266;">{{ selectedItemUnit }}</span>
+          </div>
+        </el-form-item>
+
+        <!-- 班级选择 -->
+        <el-form-item label="班级" prop="className">
+          <el-select v-model="form.className" placeholder="请选择班级" style="width: 100%">
+            <el-option
+              v-for="className in classList"
+              :key="className"
+              :label="className"
+              :value="className"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+
+      <!-- 对话框底部按钮 -->
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="addDialog.visible = false">取 消</el-button>
+        <el-button type="primary" @click="submitForm">确 定</el-button>
+      </div>
+    </el-dialog>
 
     <!-- 审核对话框 -->
     <el-dialog 
@@ -387,11 +350,11 @@ export default {
   data() {
     return {
       loading: false,
-      tableData: [],
+      records: [],
       total: 0,
-      queryParams: {
-        pageNum: 1,
-        pageSize: 10,
+      currentPage: 1,
+      pageSize: 10,
+      filters: {
         sportsItemId: undefined,
         status: undefined,
         keyword: ''
@@ -464,326 +427,191 @@ export default {
     async init() {
       await Promise.all([
         this.getSportsItems(),
-        this.getClassList(),
-        this.getList()
+        this.fetchRecords()
       ])
     },
-    async getList() {
+    async fetchRecords() {
       try {
         this.loading = true;
-        const response = await this.$axios.get('/api/admin/data-review/list', {
+        const { sportsItemId, status, keyword } = this.filters;
+        const response = await this.$http.get('/api/admin/test-records', {
           params: {
-            page: this.queryParams.pageNum - 1,
-            size: this.queryParams.pageSize,
-            sportsItemId: this.queryParams.sportsItemId || null,
-            status: this.queryParams.status || null,
-            keyword: this.queryParams.keyword || null
+            sportsItemId,
+            status,
+            keyword,
+            page: this.currentPage - 1,
+            size: this.pageSize
           }
         });
         
         if (response.data.code === 200) {
-          this.tableData = response.data.data.content;
-          this.total = response.data.data.totalElements;
+          const { content, totalElements } = response.data.data;
+          this.records = content;
+          this.total = totalElements;
+        } else {
+          this.$message.error(response.data.msg || '获取数据失败');
         }
       } catch (error) {
-        console.error('获取列表失败:', error);
-        this.$message.error('获取列表失败: ' + error.message);
+        console.error('获取记录失败:', error);
+        this.$message.error('获取记录失败');
       } finally {
         this.loading = false;
       }
     },
     async getSportsItems() {
       try {
-        const res = await this.$http.get('/api/admin/sports-items', {
-          params: {
-            page: 0,
-            size: 100
-          }
-        })
+        const res = await this.$http.get('/api/admin/sports-items')
         if (res.data.code === 200) {
-          this.sportsItems = res.data.data.content || []
+          this.sportsItems = res.data.data || []
         }
       } catch (error) {
         console.error('获取体测项目列表失败:', error)
         this.$message.error('获取体测项目列表失败')
       }
     },
-    handleQuery() {
-      this.queryParams.pageNum = 1
-      this.getList()
+    handleSearch() {
+      this.currentPage = 1
+      this.fetchRecords()
     },
-    resetQuery() {
-      this.$refs.queryForm.resetFields()
-      this.queryParams = {
-        pageNum: 1,
-        pageSize: 10,
+    resetFilters() {
+      this.$refs.filterForm.resetFields()
+      this.filters = {
         sportsItemId: undefined,
         status: undefined,
         keyword: ''
       }
-      this.getList()
-    },
-    handleSizeChange(val) {
-      this.queryParams.pageSize = val
-      this.getList()
-    },
-    handleCurrentChange(val) {
-      this.queryParams.pageNum = val
-      this.getList()
+      this.handleSearch()
     },
     getStatusType(status) {
-      const statusMap = {
-        'PENDING': 'warning',
-        'APPROVED': 'success',
-        'REJECTED': 'danger'
+      const types = {
+        PENDING: 'warning',
+        APPROVED: 'success',
+        REJECTED: 'danger'
       }
-      return statusMap[status] || 'info'
+      return types[status] || 'info'
     },
     getStatusText(status) {
-      const statusMap = {
-        'PENDING': '待审核',
-        'APPROVED': '已通过',
-        'REJECTED': '已驳回'
+      const texts = {
+        PENDING: '待审核',
+        APPROVED: '已通过',
+        REJECTED: '已驳回'
       }
-      return statusMap[status] || status
+      return texts[status] || status
     },
-    handleAdd() {
+    formatDateTime(datetime) {
+      if (!datetime) return ''
+      return new Date(datetime).toLocaleString()
+    },
+    showAddDialog() {
       this.addDialog.visible = true
-      this.resetForm()
     },
-    resetForm() {
-      this.$nextTick(() => {
-        if (this.$refs.recordForm) {
-          this.$refs.recordForm.resetFields()
-        }
-        this.form = {
-          studentId: null,
-          sportsItemId: null,
-          score: null,
-          className: null
-        }
-        this.selectedItemUnit = ''
-      })
+    async exportData() {
+      try {
+        const response = await exportRecords(this.filters)
+        // 处理导出逻辑
+      } catch (error) {
+        this.$message.error('导出失败：' + error.message)
+      }
     },
     handleDialogClosed() {
-      this.resetForm()
+      this.$refs.recordForm.resetFields()
     },
     submitForm() {
       this.$refs.recordForm.validate(async (valid) => {
         if (valid) {
           try {
-            const data = {
-              studentId: this.form.studentId,
-              sportsItemId: this.form.sportsItemId,
-              score: Number(this.form.score),
-              className: this.form.className,
-              teacherId: JSON.parse(localStorage.getItem('user')).id
-            }
-
-            const res = await addTestRecord(data)
-            if (res.data.code === 200) {
+            const response = await addTestRecord(this.form)
+            if (response.data.code === 200) {
               this.$message.success('成绩录入成功')
               this.addDialog.visible = false
-              this.getList()
+              this.handleSearch()
             } else {
-              this.$message.error(res.data.message || '录入失败')
+              this.$message.error(response.data.msg || '录入失败')
             }
           } catch (error) {
-            console.error('录入成绩失败:', error)
-            this.$message.error(error.response?.data?.message || '录入成绩失败')
+            console.error('录入失败:', error)
+            this.$message.error('录入失败')
           }
         }
       })
     },
-    async getTeachers() {
-      try {
-        const res = await this.$http.get('/api/admin/users', {
-          params: { userType: 'TEACHER' }
-        })
-        if (res.data.code === 200) {
-          this.teachers = res.data.data.content
-        }
-      } catch (error) {
-        console.error('获取教师列表失败:', error)
-      }
-    },
-    async getStudents() {
-      try {
-        const res = await this.$http.get('/api/admin/users', {
-          params: { userType: 'STUDENT' }
-        })
-        if (res.data.code === 200) {
-          this.students = res.data.data.content
-        }
-      } catch (error) {
-        console.error('获取学生列表失败:', error)
-      }
-    },
-    async handleExport() {
-      // 构建查询参数
-      const params = {
-        status: this.queryParams.status,
-        teacherId: this.queryParams.teacherId,
-        sportsItemId: this.queryParams.sportsItemId
-      }
-      
-      // 构建查询字符串
-      const queryString = Object.entries(params)
-        .filter(([_, value]) => value != null && value !== '')
-        .map(([key, value]) => `${key}=${value}`)
-        .join('&')
-      
-      // 下载文件
-      window.location.href = `/api/admin/test-record/export${queryString ? '?' + queryString : ''}`
-    },
-    handleSportsItemChange(value) {
-      const selectedItem = this.sportsItems.find(item => item.id === value)
-      if (selectedItem) {
-        this.selectedItemUnit = selectedItem.unit
-        console.log('选中的项目:', selectedItem)
-      } else {
-        this.selectedItemUnit = ''
-      }
-      this.form.score = null
-    },
-    handleReview(row) {
-      this.currentRecord = { ...row }; // 创建副本以避免直接修改
-      this.reviewForm = {
-        id: row.id,
-        status: '',
-        comment: ''
-      };
-      this.reviewDialog.visible = true;
-    },
-    async handleDetail(row) {
-      this.currentRecord = { ...row }; // 创建副本以避免直接修改
-      this.detailDialog.visible = true;
-      
-      try {
-        const res = await getHistoryRecords({
-          studentNumber: row.studentNumber,
-          sportsItemId: row.sportsItemId,
-          excludeId: row.id
-        });
-        
-        if (res.data.code === 200) {
-          this.historyRecords = res.data.data;
-        } else {
-          this.$message.warning(res.data.msg || '获取历史记录失败');
-          this.historyRecords = [];
-        }
-      } catch (error) {
-        console.error('获取历史记录失败:', error);
-        this.$message.error('获取历史记录失败');
-        this.historyRecords = [];
-      }
+    handleReview(record) {
+      this.currentRecord = record
+      this.reviewDialog.visible = true
     },
     submitReview() {
       this.$refs.reviewForm.validate(async (valid) => {
         if (valid) {
           try {
-            const data = {
-              id: this.currentRecord.id,
-              status: this.reviewForm.status,
-              reviewComment: this.reviewForm.comment
-            };
-
-            const res = await reviewTestRecord(data);
-            if (res.data.code === 200) {
-              this.$message.success('审核成功');
-              this.reviewDialog.visible = false;
-              this.getList();
+            const response = await reviewTestRecord(this.currentRecord.id, this.reviewForm)
+            if (response.data.code === 200) {
+              this.$message.success('审核成功')
+              this.reviewDialog.visible = false
+              this.handleSearch()
             } else {
-              this.$message.error(res.data.msg || '审核失败');
+              this.$message.error(response.data.msg || '审核失败')
             }
           } catch (error) {
-            console.error('审核失败:', error);
-            this.$message.error('审核失败');
+            console.error('审核失败:', error)
+            this.$message.error('审核失败')
           }
         }
-      });
+      })
     },
-    canReview(record) {
-      return record.status === 'PENDING' || record.status === 'REJECTED'
+    handleEdit(record) {
+      this.currentRecord = record
+      this.detailDialog.visible = true
+    },
+    handleSportsItemChange(value) {
+      const item = this.sportsItems.find(i => i.id === value)
+      if (item) {
+        this.selectedItemUnit = item.unit
+      }
     },
     searchStudents(query) {
       this.studentLoading = true
-      this.$http.get('/api/admin/users', {
+      this.$http.get('/api/admin/students', {
         params: {
-          userType: 'STUDENT',
-          realName: query
+          query,
+          page: 0,
+          size: 10
         }
-      }).then(res => {
-        if (res.data.code === 200) {
-          this.students = res.data.data.content
+      }).then(response => {
+        if (response.data.code === 200) {
+          this.students = response.data.data.content || []
+        } else {
+          this.$message.error(response.data.msg || '获取学生列表失败')
         }
-        this.studentLoading = false
-      }).catch(error => {
-        console.error('获取学生列表失败:', error)
+      }).finally(() => {
         this.studentLoading = false
       })
     },
-    formatDateTime(dateTime) {
-      if (!dateTime) return '-'
-      const date = new Date(dateTime)
-      return date.toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      })
+    handleSizeChange(newSize) {
+      this.pageSize = newSize
+      this.handleSearch()
     },
-    handleModify(row) {
-      this.currentRecord = { ...row }; // 创建副本以避免直接修改
-      this.modifyForm = {
-        id: row.id,
-        status: row.status,
-        comment: row.reviewComment || ''
-      };
-      this.modifyDialog.visible = true;
+    handleCurrentChange(newPage) {
+      this.currentPage = newPage
+      this.handleSearch()
     },
     submitModify() {
       this.$refs.modifyForm.validate(async (valid) => {
         if (valid) {
           try {
-            const data = {
-              id: this.currentRecord.id,
-              status: this.modifyForm.status,
-              reviewComment: this.modifyForm.comment
-            };
-
-            const res = await modifyReview(data);
-            if (res.data.code === 200) {
-              this.$message.success('修改成功');
-              this.modifyDialog.visible = false;
-              this.getList();
+            const response = await modifyReview(this.currentRecord.id, this.modifyForm)
+            if (response.data.code === 200) {
+              this.$message.success('审核状态修改成功')
+              this.modifyDialog.visible = false
+              this.handleSearch()
             } else {
-              this.$message.error(res.data.msg || '修改失败');
+              this.$message.error(response.data.msg || '修改失败')
             }
           } catch (error) {
-            console.error('修改失败:', error);
-            this.$message.error('修改失败');
+            console.error('修改失败:', error)
+            this.$message.error('修改失败')
           }
         }
-      });
-    },
-    canModify(row) {
-      // 已审核的记录可以修改
-      return row.status === 'APPROVED' || row.status === 'REJECTED'
-    },
-    async getClassList() {
-      try {
-        const res = await this.$http.get('/api/admin/classes')
-        if (res.data.code === 200) {
-          this.classList = res.data.data || []
-        }
-      } catch (error) {
-        console.error('获取班级列表失败:', error)
-        this.$message.error('获取班级列表失败')
-      }
+      })
     }
   }
 }
@@ -794,73 +622,19 @@ export default {
   padding: 20px;
 }
 
-.operation-bar {
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
 }
 
-.filter-section {
-  background-color: #f5f7fa;
-  padding: 20px;
-  border-radius: 4px;
+.filters {
   margin-bottom: 20px;
-}
-
-.table-card {
-  margin-top: 20px;
 }
 
 .pagination-container {
   margin-top: 20px;
   text-align: right;
 }
-
-.review-info {
-  margin-bottom: 20px;
-}
-
-.review-form {
-  margin-top: 20px;
-}
-
-.abnormal-score {
-  color: #f56c6c;
-  font-weight: bold;
-}
-
-.review-comment {
-  display: inline-block;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.el-descriptions {
-  margin: 20px 0;
-}
-
-.detail-container {
-  padding: 20px;
-}
-
-.history-records {
-  margin-top: 20px;
-}
-
-.history-records h3 {
-  margin-bottom: 15px;
-  font-size: 16px;
-  color: #606266;
-}
-
-/* 添加按钮间距 */
-.el-button + .el-button {
-  margin-left: 8px;
-}
-
-/* 可选：鼠标悬停效果 */
-.el-button.is-circle:hover {
-  transform: scale(1.1);
-  transition: transform 0.2s;
-}
-</style> 
+</style>

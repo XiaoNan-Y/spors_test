@@ -20,6 +20,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
             @NamedAttributeNode("sportsItem"),
             @NamedAttributeNode("student")
         }
+    ),
+    @NamedEntityGraph(
+        name = "TestRecord.withDetails",
+        attributeNodes = {
+            @NamedAttributeNode("student"),
+            @NamedAttributeNode("sportsItem")
+        }
     )
 })
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
@@ -67,7 +74,7 @@ public class TestRecord implements Serializable {
     @JoinColumn(name = "sports_item_id")
     private SportsItem sportsItem;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id")
     private User student;
 
@@ -123,6 +130,14 @@ public class TestRecord implements Serializable {
             this.studentNumber = student.getStudentNumber();
             this.studentName = student.getRealName();
             this.className = student.getClassName();
+        }
+    }
+
+    public void setStudentNumber(String studentNumber) {
+        this.studentNumber = studentNumber;
+        if (this.student == null && studentNumber != null) {
+            // 这里需要注入 UserRepository，或者通过其他方式获取 User 信息
+            // 暂时只设置 studentNumber
         }
     }
 

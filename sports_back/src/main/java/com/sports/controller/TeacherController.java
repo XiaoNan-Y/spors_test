@@ -3,10 +3,10 @@ package com.sports.controller;
 import com.sports.common.Result;
 import com.sports.entity.SportsItem;
 import com.sports.entity.TestRecord;
-import com.sports.entity.TestExemption;
+import com.sports.entity.ExemptionApplication;
 import com.sports.entity.User;
 import com.sports.repository.TestRecordRepository;
-import com.sports.repository.TestExemptionRepository;
+import com.sports.repository.ExemptionApplicationRepository;
 import com.sports.repository.UserRepository;
 import com.sports.service.SportsItemService;
 import com.sports.service.TeacherService;
@@ -101,11 +101,11 @@ public class TeacherController {
 
     private final TestRecordRepository testRecordRepository;
     private final UserRepository userRepository;
-    private final TestExemptionRepository testExemptionRepository;
+    private final ExemptionApplicationRepository exemptionApplicationRepository;
 
-    public TeacherController(TestRecordRepository testRecordRepository, TestExemptionRepository testExemptionRepository, UserRepository userRepository) {
+    public TeacherController(TestRecordRepository testRecordRepository, ExemptionApplicationRepository exemptionApplicationRepository, UserRepository userRepository) {
         this.testRecordRepository = testRecordRepository;
-        this.testExemptionRepository = testExemptionRepository;
+        this.exemptionApplicationRepository = exemptionApplicationRepository;
         this.userRepository = userRepository;
     }
 
@@ -116,8 +116,8 @@ public class TeacherController {
             TeacherDashboardDTO stats = new TeacherDashboardDTO();
             
             // 获取待审核免测申请数
-            long pendingReviews = testExemptionRepository.countByStatus("PENDING");
-            stats.setPendingReviews((int) pendingReviews);
+            Integer pendingReviews = exemptionApplicationRepository.countPendingApplications();
+            stats.setPendingReviews(pendingReviews);
             
             // 获取班级数量
             List<String> classes = userRepository.findDistinctClassName();
@@ -148,8 +148,8 @@ public class TeacherController {
             
             // 计算审核趋势（与上月相比的百分比变化）
             LocalDateTime startOfLastMonth = startOfMonth.minusMonths(1);
-            long lastMonthReviews = testExemptionRepository.countByCreatedAtBetween(startOfLastMonth, startOfMonth);
-            long thisMonthReviews = testExemptionRepository.countByCreatedAtAfter(startOfMonth);
+            Integer lastMonthReviews = exemptionApplicationRepository.countReviewedSince(startOfLastMonth);
+            Integer thisMonthReviews = exemptionApplicationRepository.countReviewedSince(startOfMonth);
             
             // 计算环比增长率
             int reviewTrend;
@@ -417,11 +417,8 @@ public class TeacherController {
             log.debug("查询参数: className={}, type={}, status={}, keyword={}, page={}, size={}",
                 className, type, status, keyword, page, size);
             
-            Page<TestExemption> exemptions = testExemptionRepository.findByFilters(
-                className,
+            Page<ExemptionApplication> exemptions = exemptionApplicationRepository.findAllWithFilters(
                 type,
-                status,
-                null,
                 keyword,
                 PageRequest.of(page, size)
             );
@@ -439,9 +436,9 @@ public class TeacherController {
     @PutMapping("/exemptions/{id}/review")
     public Result reviewExemption(
             @PathVariable Long id,
-            @RequestBody TestExemption exemption) {
+            @RequestBody ExemptionApplication exemption) {
         try {
-            TestExemption existing = testExemptionRepository.findById(id)
+            ExemptionApplication existing = exemptionApplicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("申请不存在"));
 
             existing.setStatus(exemption.getStatus());
@@ -449,7 +446,7 @@ public class TeacherController {
             existing.setTeacherReviewTime(LocalDateTime.now());
             existing.setUpdateTime(LocalDateTime.now());
 
-            testExemptionRepository.save(existing);
+            exemptionApplicationRepository.save(existing);
             return Result.success(existing);
         } catch (Exception e) {
             return Result.error("审核失败：" + e.getMessage());
@@ -459,10 +456,10 @@ public class TeacherController {
     @PutMapping("/exemptions/{id}/modify")
     public Result modifyExemption(
             @PathVariable Long id,
-            @RequestBody TestExemption exemption) {
+            @RequestBody ExemptionApplication exemption) {
         try {
             log.info("开始修改审核，id={}", id);
-            TestExemption existing = testExemptionRepository.findById(id)
+            ExemptionApplication existing = exemptionApplicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("申请不存在"));
 
             // 更新审核状态和意见
@@ -480,7 +477,7 @@ public class TeacherController {
             log.debug("修改审核信息：status={}, comment={}", 
                 exemption.getStatus(), exemption.getTeacherReviewComment());
             
-            TestExemption saved = testExemptionRepository.save(existing);
+            ExemptionApplication saved = exemptionApplicationRepository.save(existing);
             log.info("修改审核成功");
             
             return Result.success(saved);
@@ -497,9 +494,9 @@ public class TeacherController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword) {
         try {
-            // 查询数据
-            List<TestExemption> exemptions = testExemptionRepository.findByFiltersForExport(
-                className, type, status, null, keyword);
+            // 修改这里，移除多余的 null 参数
+            List<ExemptionApplication> exemptions = exemptionApplicationRepository.findByFiltersForExport(
+                className, type, status, keyword);
 
             // 创建工作簿
             Workbook workbook = new XSSFWorkbook();
@@ -538,7 +535,7 @@ public class TeacherController {
 
             // 填充数据
             int rowNum = 1;
-            for (TestExemption exemption : exemptions) {
+            for (ExemptionApplication exemption : exemptions) {
                 Row row = sheet.createRow(rowNum++);
                 row.createCell(0).setCellValue(rowNum - 1);
                 row.createCell(1).setCellValue(exemption.getStudentNumber());

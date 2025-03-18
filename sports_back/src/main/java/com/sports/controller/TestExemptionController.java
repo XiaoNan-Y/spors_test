@@ -1,8 +1,9 @@
 package com.sports.controller;
 
+import com.sports.entity.ExemptionApplication;
 import com.sports.common.Result;
-import com.sports.entity.TestExemption;
-import com.sports.repository.TestExemptionRepository;
+import com.sports.service.TestExemptionService;
+import com.sports.repository.ExemptionApplicationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,69 +25,38 @@ public class TestExemptionController {
     private static final Logger log = LoggerFactory.getLogger(TestExemptionController.class);
 
     @Autowired
-    private TestExemptionRepository exemptionRepository;
+    private TestExemptionService testExemptionService;
+
+    @Autowired
+    private ExemptionApplicationRepository exemptionApplicationRepository;
 
     @GetMapping
-    public Result getList(
-            @RequestParam(required = false) String className,
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String studentNumber,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize) {
+    public Result<Page<ExemptionApplication>> getApplications(
+        @RequestParam(required = false) String type,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
+        
+        log.info("Received request - type: {}, keyword: {}, page: {}, size: {}", 
+                 type, keyword, page, size);
+        
         try {
-            log.info("开始查询免测申请列表");
-            log.debug("查询参数详情:");
-            log.debug("- className=[{}], length={}", className, className != null ? className.length() : 0);
-            log.debug("- type=[{}], length={}", type, type != null ? type.length() : 0);
-            log.debug("- status=[{}], length={}", status, status != null ? status.length() : 0);
-            log.debug("- studentNumber=[{}], length={}", studentNumber, studentNumber != null ? studentNumber.length() : 0);
-            log.debug("- keyword=[{}], length={}", keyword, keyword != null ? keyword.length() : 0);
-            log.debug("- pageNum={}, pageSize={}", pageNum, pageSize);
-            
-            Page<TestExemption> exemptions = exemptionRepository.findByFilters(
-                className, type, status, studentNumber, keyword, 
-                PageRequest.of(pageNum, pageSize));
-            
-            // 转换为简单的数据传输对象，确保包含学生姓名
-            Page<Map<String, Object>> simplifiedRecords = exemptions.map(exemption -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("id", exemption.getId());
-                map.put("studentName", exemption.getStudentName());  // 确保包含学生姓名
-                map.put("studentNumber", exemption.getStudentNumber());
-                map.put("className", exemption.getClassName());
-                map.put("type", exemption.getType());
-                map.put("reason", exemption.getReason());
-                map.put("status", exemption.getStatus());
-                map.put("teacherReviewComment", exemption.getTeacherReviewComment());
-                map.put("teacherReviewTime", exemption.getTeacherReviewTime());
-                map.put("adminReviewComment", exemption.getAdminReviewComment());
-                map.put("adminReviewTime", exemption.getAdminReviewTime());
-                map.put("createdAt", exemption.getCreatedAt());
-                return map;
-            });
-            
-            log.info("查询结果: 总条数={}, 当前页数据量={}", 
-                exemptions.getTotalElements(), exemptions.getContent().size());
-            
-            if (exemptions.isEmpty()) {
-                log.warn("查询结果为空，检查数据库中是否存在数据");
-                long total = exemptionRepository.countAll();
-                log.info("数据库中总记录数: {}", total);
+            Page<ExemptionApplication> applications = testExemptionService.getApplications(
+                type, keyword, PageRequest.of(page, size));
                 
-                if (total > 0) {
-                    log.warn("数据库中有数据但查询结果为空，可能是查询条件限制导致");
-                    // 打印一条原始数据作为参考
-                    exemptionRepository.findAll(PageRequest.of(0, 1))
-                        .getContent()
-                        .forEach(e -> log.debug("数据库样本数据: {}", e));
-                }
-            }
+            log.info("Found {} applications, total {} pages", 
+                    applications.getContent().size(), 
+                    applications.getTotalPages());
+                    
+            // 添加详细的数据日志
+            applications.getContent().forEach(app -> 
+                log.debug("Application: id={}, studentName={}, type={}, status={}", 
+                         app.getId(), app.getStudentName(), app.getType(), app.getStatus())
+            );
             
-            return Result.success(simplifiedRecords);
+            return Result.success(applications);
         } catch (Exception e) {
-            log.error("查询免测申请列表失败", e);
+            log.error("Error getting applications", e);
             return Result.error("获取申请列表失败：" + e.getMessage());
         }
     }
@@ -94,12 +64,7 @@ public class TestExemptionController {
     @GetMapping("/classes")
     public Result getClassList() {
         try {
-            List<String> classNames = exemptionRepository.findDistinctClassNames()
-                .stream()
-                .distinct()
-                .filter(className -> className != null && !className.isEmpty())
-                .sorted()
-                .collect(Collectors.toList());
+            List<String> classNames = exemptionApplicationRepository.findDistinctClassNames();
             return Result.success(classNames);
         } catch (Exception e) {
             return Result.error("获取班级列表失败：" + e.getMessage());
@@ -109,20 +74,18 @@ public class TestExemptionController {
     @PutMapping("/{id}/review")
     public Result review(
             @PathVariable Long id,
-            @RequestBody TestExemption exemption) {
+            @RequestBody ExemptionApplication exemption) {
         try {
-            TestExemption existing = exemptionRepository.findById(id)
+            ExemptionApplication existing = exemptionApplicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("申请不存在"));
 
             existing.setStatus(exemption.getStatus());
-            existing.setReviewComment(exemption.getReviewComment());
-            existing.setReviewerId(exemption.getReviewerId());
-            existing.setReviewerName(exemption.getReviewerName());
-            existing.setReviewTime(LocalDateTime.now());
+            existing.setTeacherReviewComment(exemption.getTeacherReviewComment());
+            existing.setTeacherReviewTime(LocalDateTime.now());
             existing.setUpdateTime(LocalDateTime.now());
 
-            exemptionRepository.save(existing);
-            return Result.success(existing);
+            ExemptionApplication saved = exemptionApplicationRepository.save(existing);
+            return Result.success(saved);
         } catch (Exception e) {
             return Result.error("审核失败：" + e.getMessage());
         }

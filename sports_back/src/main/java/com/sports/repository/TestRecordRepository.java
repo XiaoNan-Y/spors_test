@@ -139,21 +139,6 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     @Query("SELECT DISTINCT t FROM TestRecord t " +
            "LEFT JOIN t.sportsItem si " +
-           "WHERE (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
-           "AND (:status IS NULL OR t.status = :status) " +
-           "AND (:keyword IS NULL OR " +
-           "LOWER(t.studentName) LIKE LOWER(CONCAT('%',:keyword,'%')) OR " +
-           "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%',:keyword,'%')))")
-    @EntityGraph(attributePaths = {"sportsItem"})
-    Page<TestRecord> findAllWithFilters(
-        @Param("sportsItemId") Long sportsItemId,
-        @Param("status") String status,
-        @Param("keyword") String keyword,
-        Pageable pageable
-    );
-
-    @Query("SELECT DISTINCT t FROM TestRecord t " +
-           "LEFT JOIN t.sportsItem si " +
            "WHERE (:className IS NULL OR t.className = :className) " +
            "AND (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
            "AND (:status IS NULL OR t.status = :status) " +
@@ -226,4 +211,19 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     @Query("SELECT COUNT(DISTINCT t.studentNumber) FROM TestRecord t")
     Integer countDistinctStudents();
+
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
+           "LEFT JOIN t.student s " +
+           "LEFT JOIN t.sportsItem si " +
+           "WHERE (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:keyword IS NULL OR t.studentNumber LIKE %:keyword% " +
+           "OR t.studentName LIKE %:keyword%)")
+    @EntityGraph(value = "TestRecord.withDetails")
+    Page<TestRecord> findAllWithFilters(
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("status") String status,
+        @Param("keyword") String keyword,
+        Pageable pageable
+    );
 }

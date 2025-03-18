@@ -62,6 +62,11 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.2.3</version>
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>2.12.5</version>  <!-- 使用与你的 Spring Boot 版本兼容的版本 -->
+        </dependency>
     </dependencies>
 
     <build>

@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificationExecutor<User> {
@@ -45,7 +46,7 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     Page<User> findByUserType(String userType, Pageable pageable);
 
     // 根据学号查找用户
-    User findByStudentNumber(String studentNumber);
+    Optional<User> findByStudentNumber(String studentNumber);
     
     // 检查学号是否已存在
     boolean existsByStudentNumber(String studentNumber);
