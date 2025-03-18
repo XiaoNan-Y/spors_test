@@ -1,15 +1,42 @@
 package com.sports.dto;
 
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class TeacherDashboardDTO {
-    private Integer pendingReviews; // 待审核申请数
-    private Integer monthlyTests; // 本月测试人数
-    private Integer testCompletion; // 测试完成率
-    private Integer classCount; // 班级数量
-    private Integer activeClasses; // 活跃班级数
-    private Integer studentCount; // 学生总数
-    private Integer reviewTrend; // 审核趋势
-    private Double testParticipationRate; // 参测率
-}
+    // 班级统计
+    private Integer classCount;
+    private Integer testCompletion;
+    private Double testCompletionRate;
+    private Double passRate;
+    private Double testParticipationRate;
+    
+    // 成绩管理
+    private Integer pendingRecords;
+    private Integer weeklyRecords;
+    private Integer monthlyTests;
+    
+    // 审核统计
+    private Integer pendingReviews;
+    private Integer weeklyReviewed;
+    private Integer reviewTrend;
+    
+    // 学生统计
+    private Integer totalStudents;
+    private Integer studentCount;
+    private Integer activeClasses;
+    
+    // 通知统计
+    private Integer latestNotices;
+    private Integer weeklyNotices;
+    
+    // 近期活动
+    private List<ActivityDTO> recentActivities;
+
+    @Data
+    public static class ActivityDTO {
+        private String name;
+        private String date;
+    }
+} 

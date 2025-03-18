@@ -203,4 +203,25 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     @EntityGraph(attributePaths = {"sportsItem", "student"})
     Optional<TestRecord> findWithDetailsById(Long id);
+
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.status = 'PENDING'")
+    Integer countPendingRecords();
+
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createTime >= :since")
+    Integer countRecordsSince(@Param("since") LocalDateTime since);
+
+    @Query("SELECT COUNT(t) FROM TestRecord t WHERE t.createTime >= :startTime AND t.createTime <= :endTime")
+    Integer countRecordsBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT CAST(COUNT(CASE WHEN t.score >= 60 THEN 1 END) AS double) / CAST(COUNT(*) AS double) * 100 FROM TestRecord t")
+    Double calculatePassRate();
+
+    @Query("SELECT CAST(COUNT(CASE WHEN t.status = 'COMPLETED' THEN 1 END) AS double) / CAST(COUNT(*) AS double) * 100 FROM TestRecord t")
+    Double calculateTestCompletionRate();
+
+    @Query("SELECT COUNT(DISTINCT t.className) FROM TestRecord t")
+    Integer countDistinctClasses();
+
+    @Query("SELECT COUNT(DISTINCT t.studentNumber) FROM TestRecord t")
+    Integer countDistinctStudents();
 }

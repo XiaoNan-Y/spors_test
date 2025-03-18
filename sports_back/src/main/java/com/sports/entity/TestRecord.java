@@ -60,6 +60,9 @@ public class TestRecord implements Serializable {
     @Column(name = "updated_by")
     private Long updatedBy;
 
+    @Column(name = "create_time")
+    private LocalDateTime createTime;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sports_item_id")
     private SportsItem sportsItem;
