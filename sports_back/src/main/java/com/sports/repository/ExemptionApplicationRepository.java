@@ -15,7 +15,28 @@ import java.util.List;
 @Repository
 public interface ExemptionApplicationRepository extends JpaRepository<ExemptionApplication, Long> {
     
-    @Query("SELECT COUNT(e) FROM ExemptionApplication e WHERE e.status IN ('PENDING_TEACHER', 'PENDING_ADMIN')")
+    // 使用 @Query 注解来明确指定查询
+    @Query("SELECT COUNT(e) FROM ExemptionApplication e WHERE e.studentId = :studentId AND e.status = :status")
+    long countByStudentIdAndStatus(@Param("studentId") Long studentId, @Param("status") String status);
+    
+    // 使用 @Query 注解来明确指定查询
+    @Query("SELECT e FROM ExemptionApplication e WHERE e.studentId = :studentId")
+    Page<ExemptionApplication> findByStudentId(@Param("studentId") Long studentId, Pageable pageable);
+    
+    // 根据类型和关键字查询申请列表（分页）
+    @Query("SELECT e FROM ExemptionApplication e " +
+           "WHERE (:type IS NULL OR e.type = :type) " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<ExemptionApplication> findAllWithFilters(
+        @Param("type") String type,
+        @Param("keyword") String keyword,
+        Pageable pageable
+    );
+    
+    // 统计待审核的申请数量
+    @Query("SELECT COUNT(e) FROM ExemptionApplication e WHERE e.status = 'PENDING'")
     Integer countPendingApplications();
     
     @Query("SELECT COUNT(e) FROM ExemptionApplication e WHERE " +

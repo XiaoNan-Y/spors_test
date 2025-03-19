@@ -11,6 +11,7 @@ import SportsItemManagement from '@/views/admin/SportsItemManagement.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import Profile from '@/views/admin/Profile.vue'
 import DataReview from '@/views/admin/DataReview.vue'
+import studentRoutes from './student'
 
 Vue.use(VueRouter)
 
@@ -144,6 +145,7 @@ const routes = [
       }
     ]
   },
+  studentRoutes,
   {
     path: '/',
     redirect: '/login'
@@ -158,29 +160,14 @@ const router = new VueRouter({
 
 // 简化路由守卫逻辑
 router.beforeEach((to, from, next) => {
-  const user = JSON.parse(localStorage.getItem('user'))
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-  
-  if (!requiresAuth) {
-    // 不需要认证的路由，直接通过
+  const token = localStorage.getItem('token')
+  if (to.path === '/login') {
     next()
-    return
-  }
-
-  if (!user) {
-    // 需要认证但未登录，重定向到登录页
+  } else if (!token) {
     next('/login')
-    return
+  } else {
+    next()
   }
-
-  // 检查角色权限
-  const requiredRole = to.matched.find(record => record.meta.role)?.meta.role
-  if (requiredRole && requiredRole !== user.userType) {
-    next('/login')
-    return
-  }
-
-  next()
 })
 
 export default router

@@ -19,6 +19,9 @@ public class ExemptionApplication {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "student_id")
+    private Long studentId;
+
     @Column(name = "student_number")
     private String studentNumber;
 
@@ -31,14 +34,11 @@ public class ExemptionApplication {
     @Column(name = "type")
     private String type; // EXEMPTION(免测) 或 RETEST(重测)
 
-    @Column(length = 500)
+    @Column(name = "reason")
     private String reason;
 
-    @Column(name = "attachment_url")
-    private String attachmentUrl;
-
-    @Column(name = "status", length = 20)
-    private String status;
+    @Column(name = "status")
+    private String status; // PENDING: 待审核, APPROVED: 已通过, REJECTED: 已驳回
 
     @Column(name = "teacher_review_comment")
     private String teacherReviewComment;
@@ -51,6 +51,15 @@ public class ExemptionApplication {
 
     @Column(name = "admin_review_time")
     private LocalDateTime adminReviewTime;
+
+    @Column(name = "create_time")
+    private LocalDateTime createTime;
+
+    @Column(name = "update_time")
+    private LocalDateTime updateTime;
+
+    @Column(name = "attachment_url")
+    private String attachmentUrl;
 
     @Column(name = "review_comment")
     private String reviewComment;
@@ -66,10 +75,6 @@ public class ExemptionApplication {
 
     @JsonIgnore
     @Transient
-    private Long studentId;
-
-    @JsonIgnore
-    @Transient
     private Long sportsItemId;
 
     @Column(name = "apply_time")
@@ -81,11 +86,8 @@ public class ExemptionApplication {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "update_time")
-    private LocalDateTime updateTime;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "student_id")
+    @JoinColumn(name = "student_id", insertable = false, updatable = false)
     private User student;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -128,7 +130,11 @@ public class ExemptionApplication {
     }
 
     public Long getStudentId() {
-        return student != null ? student.getId() : studentId;
+        return studentId;
+    }
+
+    public void setStudentId(Long studentId) {
+        this.studentId = studentId;
     }
 
     public SportsItem getSportsItem() {
