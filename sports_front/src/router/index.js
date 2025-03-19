@@ -21,49 +21,7 @@ const routes = [
     component: Login,
     meta: { requiresAuth: false }
   },
-  {
-    path: '/student',
-    component: () => import('@/layouts/StudentLayout'),
-    meta: { requiresAuth: true, role: 'STUDENT' },
-    children: [
-      {
-        path: 'dashboard',
-        name: 'StudentDashboard',
-        component: () => import('@/views/student/Dashboard'),
-        meta: { title: '首页' }
-      },
-      {
-        path: 'test-items',
-        name: 'TestItems',
-        component: () => import('@/views/student/TestItems'),
-        meta: { title: '体测项目' }
-      },
-      {
-        path: 'test-records',
-        name: 'TestRecords',
-        component: () => import('@/views/student/TestRecords'),
-        meta: { title: '体测成绩' }
-      },
-      {
-        path: 'notices',
-        name: 'StudentNotices',
-        component: () => import('@/views/student/Notices'),
-        meta: { title: '通知公告' }
-      },
-      {
-        path: 'feedback',
-        name: 'StudentFeedback',
-        component: () => import('@/views/student/Feedback'),
-        meta: { title: '反馈建议' }
-      },
-      {
-        path: 'profile',
-        name: 'StudentProfile',
-        component: () => import('@/views/profile/index'),
-        meta: { title: '个人信息' }
-      }
-    ]
-  },
+  
   {
     path: '/admin',
     component: AdminLayout,
