@@ -53,7 +53,11 @@
       <el-table-column label="学生姓名" prop="studentName" min-width="100" align="center"></el-table-column>
       <el-table-column label="学号" prop="studentNumber" min-width="120" align="center"></el-table-column>
       <el-table-column label="班级" prop="className" min-width="100" align="center"></el-table-column>
-      <el-table-column label="测试项目" prop="sportsItem.name" min-width="120" align="center"></el-table-column>
+      <el-table-column label="测试项目" min-width="120" align="center">
+        <template slot-scope="scope">
+          {{ scope.row.sportsItem ? scope.row.sportsItem.name : '-' }}
+        </template>
+      </el-table-column>
       <el-table-column label="申请类型" min-width="100" align="center">
         <template slot-scope="scope">
           {{ scope.row.type === 'EXEMPTION' ? '免测' : '重测' }}
@@ -252,18 +256,33 @@ export default {
       ])
     },
     async getList() {
+      this.loading = true
       try {
-        this.loading = true
-        const res = await this.$http.get('/api/teacher/exemptions', {
-          params: this.queryParams
-        })
-        if (res.data.code === 200) {
-          this.tableData = res.data.data.content
-          this.total = res.data.data.totalElements
+        const params = {
+          className: this.queryParams.className,
+          type: this.queryParams.type,
+          status: this.queryParams.status,
+          keyword: this.queryParams.keyword,
+          page: this.queryParams.pageNum - 1,
+          size: this.queryParams.pageSize
+        }
+        console.log('Request params:', params)
+
+        const response = await this.$http.get('/api/teacher/exemption-applications', { params })
+        
+        if (response.data.code === 200) {
+          const { content, totalElements } = response.data.data || {}
+          this.tableData = content || []
+          this.total = totalElements || 0
+          
+          console.log('Loaded records:', this.tableData)
+          console.log('Total elements:', this.total)
+        } else {
+          this.$message.error(response.data.msg || '获取数据失败')
         }
       } catch (error) {
-        console.error('获取列表失败:', error)
-        this.$message.error('获取列表失败')
+        console.error('获取记录失败:', error)
+        this.$message.error('获取记录失败')
       } finally {
         this.loading = false
       }

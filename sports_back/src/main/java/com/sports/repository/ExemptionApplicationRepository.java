@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.EntityGraph;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,12 +23,19 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
            "e.status IN ('APPROVED', 'REJECTED', 'REJECTED_TEACHER')")
     Integer countReviewedSince(@Param("since") LocalDateTime since);
 
-    @Query("SELECT e FROM ExemptionApplication e " +
-           "WHERE (:type IS NULL OR e.type = :type) AND " +
-           "(:keyword IS NULL OR e.studentNumber LIKE %:keyword% OR " +
-           "e.studentName LIKE %:keyword%)")
+    @Query("SELECT DISTINCT e FROM ExemptionApplication e " +
+           "LEFT JOIN e.sportsItem " +
+           "WHERE (:className IS NULL OR e.className = :className) AND " +
+           "(:type IS NULL OR e.type = :type) AND " +
+           "(:status IS NULL OR e.status = :status) AND " +
+           "(:keyword IS NULL OR " +
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    @EntityGraph(attributePaths = {"sportsItem"})
     Page<ExemptionApplication> findAllWithFilters(
+        @Param("className") String className,
         @Param("type") String type,
+        @Param("status") String status,
         @Param("keyword") String keyword,
         Pageable pageable
     );

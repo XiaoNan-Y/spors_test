@@ -33,7 +33,12 @@ public class TestExemptionServiceImpl implements TestExemptionService {
                  type, keyword, pageable.getPageNumber(), pageable.getPageSize());
                  
         Page<ExemptionApplication> result = exemptionApplicationRepository.findAllWithFilters(
-            type, keyword, pageable);
+            null,  // className
+            type,  // type
+            null,  // status
+            keyword, // keyword
+            pageable
+        );
             
         log.info("Found {} applications", result.getTotalElements());
         

@@ -405,30 +405,32 @@ public class TeacherController {
         }
     }
 
-    @GetMapping("/exemptions")
-    public Result getExemptionList(
-            @RequestParam(required = false) String className,
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+    @GetMapping("/exemption-applications")
+    public Result getExemptionApplications(
+        @RequestParam(required = false) String className,
+        @RequestParam(required = false) String type,
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
         try {
-            log.debug("查询参数: className={}, type={}, status={}, keyword={}, page={}, size={}",
+            // 处理空字符串参数
+            className = (className != null && className.trim().isEmpty()) ? null : className;
+            type = (type != null && type.trim().isEmpty()) ? null : type;
+            status = (status != null && status.trim().isEmpty()) ? null : status;
+            keyword = (keyword != null && keyword.trim().isEmpty()) ? null : keyword;
+            
+            log.debug("查询参数: className={}, type={}, status={}, keyword={}, page={}, size={}", 
                 className, type, status, keyword, page, size);
             
-            Page<ExemptionApplication> exemptions = exemptionApplicationRepository.findAllWithFilters(
-                type,
-                keyword,
-                PageRequest.of(page, size)
-            );
+            Page<ExemptionApplication> applications = exemptionApplicationRepository.findAllWithFilters(
+                className, type, status, keyword, PageRequest.of(page, size));
             
-            log.debug("查询结果: 总数={}, 当前页数据量={}", 
-                exemptions.getTotalElements(), exemptions.getContent().size());
+            log.info("查询到 {} 条申请记录", applications.getTotalElements());
             
-            return Result.success(exemptions);
+            return Result.success(applications);
         } catch (Exception e) {
-            log.error("获取申请列表失败", e);
+            log.error("获取免测申请列表失败", e);
             return Result.error("获取申请列表失败：" + e.getMessage());
         }
     }

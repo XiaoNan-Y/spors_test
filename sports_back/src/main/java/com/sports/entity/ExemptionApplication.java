@@ -2,9 +2,12 @@ package com.sports.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 @Data
 @Entity
@@ -61,12 +64,13 @@ public class ExemptionApplication {
     @Column(name = "reviewer_name")
     private String reviewerName;
 
-    @Column(name = "sports_item_id")
-    private Long sportsItemId;
-
     @JsonIgnore
     @Transient
     private Long studentId;
+
+    @JsonIgnore
+    @Transient
+    private Long sportsItemId;
 
     @Column(name = "apply_time")
     private LocalDateTime applyTime;
@@ -83,6 +87,10 @@ public class ExemptionApplication {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id")
     private User student;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sports_item_id")
+    private SportsItem sportsItem;
 
     @PrePersist
     protected void onCreate() {
@@ -121,5 +129,36 @@ public class ExemptionApplication {
 
     public Long getStudentId() {
         return student != null ? student.getId() : studentId;
+    }
+
+    public SportsItem getSportsItem() {
+        return sportsItem;
+    }
+
+    public void setSportsItem(SportsItem sportsItem) {
+        this.sportsItem = sportsItem;
+    }
+
+    public Long getSportsItemId() {
+        return sportsItem != null ? sportsItem.getId() : sportsItemId;
+    }
+
+    public void setSportsItemId(Long sportsItemId) {
+        this.sportsItemId = sportsItemId;
+        if (this.sportsItem == null) {
+            this.sportsItem = new SportsItem();
+            this.sportsItem.setId(sportsItemId);
+        }
+    }
+
+    @JsonProperty("sportsItem")
+    public Map<String, Object> getSportsItemInfo() {
+        Map<String, Object> info = new HashMap<>();
+        if (sportsItem != null) {
+            info.put("id", sportsItem.getId());
+            info.put("name", sportsItem.getName());
+            info.put("unit", sportsItem.getUnit());
+        }
+        return info;
     }
 } 
