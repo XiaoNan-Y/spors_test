@@ -49,6 +49,12 @@ const studentRouter = {
       component: () => import('@/views/student/NoticeList'),
       meta: { title: '通知公告' }
     },
+    {
+      path: 'feedback',
+      name: 'StudentFeedback',
+      component: () => import('@/views/student/Feedback'),
+      meta: { title: '意见反馈' }
+    },
     // 其他学生相关路由...
   ]
 }

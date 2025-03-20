@@ -4,9 +4,14 @@ import com.sports.common.Result;
 import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
 import com.sports.entity.Notice;
+import com.sports.entity.Feedback;
+import com.sports.entity.User;
 import com.sports.service.StudentService;
+import com.sports.service.FeedbackService;
 import com.sports.dto.TestRecordDTO;
 import com.sports.dto.ScoreAppealDTO;
+import com.sports.dto.FeedbackDTO;
+import com.sports.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +32,12 @@ public class StudentController {
     
     @Autowired
     private StudentService studentService;
+
+    @Autowired
+    private FeedbackService feedbackService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @GetMapping("/dashboard/stats")
     public Result getDashboardStats(@RequestAttribute Long userId) {
@@ -165,6 +176,46 @@ public class StudentController {
         } catch (Exception e) {
             log.error("获取通知列表失败", e);
             return Result.error("获取通知列表失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/feedback")
+    public Result submitFeedback(@RequestBody Feedback feedback, @RequestAttribute Long userId) {
+        try {
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            feedback.setStudent(student);
+            
+            FeedbackDTO savedFeedback = feedbackService.submitFeedback(feedback);
+            return Result.success(savedFeedback);
+        } catch (Exception e) {
+            return Result.error("提交反馈失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/feedback")
+    public Result getFeedbacks(
+        @RequestParam(required = false) String type,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestAttribute Long userId
+    ) {
+        try {
+            Page<FeedbackDTO> feedbacks = feedbackService.getStudentFeedbacks(
+                userId, type, PageRequest.of(page, size));
+            return Result.success(feedbacks);
+        } catch (Exception e) {
+            return Result.error("获取反馈列表失败：" + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/feedback/{id}")
+    public Result deleteFeedback(@PathVariable Long id, @RequestAttribute Long userId) {
+        try {
+            feedbackService.deleteFeedback(id, userId);
+            return Result.success("删除成功");
+        } catch (Exception e) {
+            return Result.error("删除反馈失败：" + e.getMessage());
         }
     }
 } 

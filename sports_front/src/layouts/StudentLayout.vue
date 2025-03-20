@@ -23,6 +23,10 @@
           <i class="el-icon-bell"></i>
           <span>通知公告</span>
         </el-menu-item>
+        <el-menu-item index="/student/feedback">
+          <i class="el-icon-chat-line-round"></i>
+          <span>意见反馈</span>
+        </el-menu-item>
         <!-- 其他菜单项 -->
       </el-menu>
     </el-aside>
