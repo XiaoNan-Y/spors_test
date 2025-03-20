@@ -43,6 +43,12 @@ const studentRouter = {
       component: () => import('@/views/student/ScoreAppeal'),
       meta: { title: '成绩申诉' }
     },
+    {
+      path: 'notices',
+      name: 'StudentNotices',
+      component: () => import('@/views/student/NoticeList'),
+      meta: { title: '通知公告' }
+    },
     // 其他学生相关路由...
   ]
 }

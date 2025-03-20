@@ -3,16 +3,19 @@ package com.sports.repository;
 import com.sports.entity.Notice;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
-public interface NoticeRepository extends JpaRepository<Notice, Long> {
+public interface NoticeRepository extends JpaRepository<Notice, Long>, JpaSpecificationExecutor<Notice> {
     
     @Query("SELECT n FROM Notice n WHERE " +
            "(:title IS NULL OR n.title LIKE %:title%) AND " +
@@ -45,4 +48,7 @@ public interface NoticeRepository extends JpaRepository<Notice, Long> {
 
     @Query("SELECT COUNT(n) FROM Notice n WHERE n.createTime >= :startTime AND n.createTime <= :endTime")
     Integer countNoticesBetween(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
+    @EntityGraph(attributePaths = {"createBy"})
+    Page<Notice> findAll(Specification<Notice> spec, Pageable pageable);
 }

@@ -19,6 +19,10 @@
           <i class="el-icon-warning"></i>
           <span>成绩申诉</span>
         </el-menu-item>
+        <el-menu-item index="/student/notices">
+          <i class="el-icon-bell"></i>
+          <span>通知公告</span>
+        </el-menu-item>
         <!-- 其他菜单项 -->
       </el-menu>
     </el-aside>

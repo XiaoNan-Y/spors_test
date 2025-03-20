@@ -4,6 +4,7 @@ import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
 import com.sports.dto.TestRecordDTO;
 import com.sports.dto.ScoreAppealDTO;
+import com.sports.entity.Notice;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -39,4 +40,6 @@ public interface StudentService {
     ScoreAppealDTO submitAppeal(ScoreAppealDTO appealDTO, Long userId);
     
     Page<ScoreAppealDTO> getStudentAppeals(Long userId, String status, Pageable pageable);
+
+    Page<Notice> getNotices(String keyword, String type, Pageable pageable);
 } 

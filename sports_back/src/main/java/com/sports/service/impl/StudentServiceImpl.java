@@ -23,8 +23,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.data.jpa.domain.Specification;
+import javax.persistence.criteria.Predicate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -306,6 +308,40 @@ public class StudentServiceImpl implements StudentService {
         } catch (Exception e) {
             log.error("获取学生申诉列表失败", e);
             throw new RuntimeException("获取申诉列表失败", e);
+        }
+    }
+
+    @Override
+    public Page<Notice> getNotices(String keyword, String type, Pageable pageable) {
+        try {
+            // 构建查询条件
+            Specification<Notice> spec = (root, query, cb) -> {
+                List<Predicate> predicates = new ArrayList<>();
+                
+                // 只查询已发布的通知
+                predicates.add(cb.equal(root.get("status"), 1));
+                
+                // 按关键字搜索标题
+                if (keyword != null && !keyword.trim().isEmpty()) {
+                    predicates.add(cb.like(root.get("title"), "%" + keyword.trim() + "%"));
+                }
+                
+                // 按类型筛选
+                if (type != null && !type.trim().isEmpty()) {
+                    predicates.add(cb.equal(root.get("type"), type.trim()));
+                }
+                
+                // 按创建时间倒序排序
+                query.orderBy(cb.desc(root.get("createTime")));
+                
+                return cb.and(predicates.toArray(new Predicate[0]));
+            };
+            
+            // 使用 EntityGraph 来解决 N+1 问题
+            return noticeRepository.findAll(spec, pageable);
+        } catch (Exception e) {
+            log.error("获取通知列表失败", e);
+            throw new RuntimeException("获取通知列表失败", e);
         }
     }
 } 

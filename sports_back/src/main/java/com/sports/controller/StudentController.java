@@ -3,6 +3,7 @@ package com.sports.controller;
 import com.sports.common.Result;
 import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
+import com.sports.entity.Notice;
 import com.sports.service.StudentService;
 import com.sports.dto.TestRecordDTO;
 import com.sports.dto.ScoreAppealDTO;
@@ -15,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/student")
@@ -139,6 +141,30 @@ public class StudentController {
         } catch (Exception e) {
             log.error("获取申诉列表失败", e);
             return Result.error("获取申诉列表失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/notices")
+    public Result getNotices(
+        @RequestParam(required = false) String keyword,
+        @RequestParam(required = false) String type,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
+        try {
+            log.info("获取通知列表 - keyword: {}, type: {}, page: {}, size: {}", 
+                    keyword, type, page, size);
+            Page<Notice> notices = studentService.getNotices(keyword, type, PageRequest.of(page, size));
+            
+            // 构造返回数据
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", notices.getContent());
+            result.put("totalElements", notices.getTotalElements());
+            result.put("totalPages", notices.getTotalPages());
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取通知列表失败", e);
+            return Result.error("获取通知列表失败：" + e.getMessage());
         }
     }
 } 
