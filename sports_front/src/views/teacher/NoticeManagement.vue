@@ -59,7 +59,7 @@
             @change="handleStatusChange(scope.row)"
             active-color="#13ce66"
             inactive-color="#ff4949"
-            :disabled="scope.row.createBy !== $store.state.user.id"
+            :disabled="!isOwner(scope.row)"
           >
           </el-switch>
         </template>
@@ -77,14 +77,14 @@
               type="warning"
               size="mini"
               @click="handleEdit(scope.row)"
-              v-if="scope.row.createBy === $store.state.user.id">
+              v-if="isOwner(scope.row)">
               编辑
             </el-button>
             <el-button
               type="danger"
               size="mini"
               @click="handleDelete(scope.row)"
-              v-if="scope.row.createBy === $store.state.user.id">
+              v-if="isOwner(scope.row)">
               删除
             </el-button>
           </el-button-group>
@@ -97,11 +97,11 @@
       <el-pagination
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        :current-page="page.current"
+        :current-page="currentPage"
         :page-sizes="[10, 20, 50, 100]"
-        :page-size="page.size"
+        :page-size="pageSize"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="page.total"
+        :total="total"
       >
       </el-pagination>
     </div>
@@ -179,15 +179,13 @@ export default {
       searchType: '',
       noticeList: [],
       loading: false,
+      currentPage: 1,
+      pageSize: 10,
+      total: 0,
       dialogVisible: false,
       viewDialogVisible: false,
       dialogTitle: '',
       currentNotice: {},
-      page: {
-        current: 1,
-        size: 10,
-        total: 0
-      },
       form: {
         id: null,
         type: 'OTHER',
@@ -197,7 +195,7 @@ export default {
         status: 1,
         createTime: null,
         updateTime: null,
-        createBy: this.$store.state.user.id
+        createBy: null
       },
       rules: {
         type: [
@@ -214,10 +212,16 @@ export default {
           { required: true, message: '请输入内容', trigger: 'blur' },
           { max: 2000, message: '长度不能超过2000个字符', trigger: 'blur' }
         ]
-      }
+      },
+      currentUserId: null
     }
   },
   created() {
+    const userId = localStorage.getItem('userId')
+    if (userId) {
+      this.currentUserId = parseInt(userId)
+      this.form.createBy = this.currentUserId
+    }
     this.fetchNoticeList()
   },
   methods: {
@@ -244,24 +248,21 @@ export default {
     async fetchNoticeList() {
       try {
         this.loading = true
-        const res = await this.$http.get('/api/teacher/notices', {
+        const response = await this.$http.get('/api/teacher/notices', {
           params: {
             keyword: this.searchKeyword,
             type: this.searchType,
-            page: this.page.current - 1,
-            size: this.page.size
+            page: this.currentPage - 1,
+            size: this.pageSize
           }
         })
-        if (res.data.code === 200) {
-          if (Array.isArray(res.data.data)) {
-            this.noticeList = res.data.data
-            this.page.total = res.data.data.length
-          } else if (res.data.data.content) {
-            this.noticeList = res.data.data.content
-            this.page.total = res.data.data.totalElements
-          }
+        
+        if (response.data.code === 200) {
+          const data = response.data.data
+          this.noticeList = data.content || []
+          this.total = data.totalElements || 0
         } else {
-          this.$message.error(res.data.msg || '获取通知列表失败')
+          this.$message.error(response.data.msg || '获取通知列表失败')
         }
       } catch (error) {
         console.error('获取通知列表失败:', error)
@@ -271,15 +272,15 @@ export default {
       }
     },
     handleSearch() {
-      this.page.current = 1
+      this.currentPage = 1
       this.fetchNoticeList()
     },
     handleSizeChange(val) {
-      this.page.size = val
+      this.pageSize = val
       this.fetchNoticeList()
     },
     handleCurrentChange(val) {
-      this.page.current = val
+      this.currentPage = val
       this.fetchNoticeList()
     },
     handleAdd() {
@@ -293,7 +294,7 @@ export default {
         status: 1,
         createTime: null,
         updateTime: null,
-        createBy: this.$store.state.user.id
+        createBy: this.currentUserId
       }
       this.dialogVisible = true
     },
@@ -302,7 +303,7 @@ export default {
       this.viewDialogVisible = true
     },
     handleEdit(row) {
-      if (row.createBy !== this.$store.state.user.id) {
+      if (!this.isOwner(row)) {
         this.$message.warning('只能编辑自己发布的通知')
         return
       }
@@ -333,7 +334,7 @@ export default {
       })
     },
     async handleDelete(row) {
-      if (row.createBy !== this.$store.state.user.id) {
+      if (!this.isOwner(row)) {
         this.$message.warning('只能删除自己发布的通知')
         return
       }
@@ -353,8 +354,9 @@ export default {
       }
     },
     async handleStatusChange(row) {
-      if (row.createBy !== this.$store.state.user.id) {
+      if (!this.isOwner(row)) {
         this.$message.warning('只能修改自己发布的通知')
+        row.status = row.status === 1 ? 0 : 1 // 恢复状态
         return
       }
       try {
@@ -371,6 +373,9 @@ export default {
         console.error('状态更新失败:', error)
         this.$message.error('状态更新失败')
       }
+    },
+    isOwner(notice) {
+      return notice && notice.createBy === this.currentUserId
     }
   }
 }
@@ -443,22 +448,3 @@ export default {
   }
 }
 </style>
-      if (row.createBy !== this.$store.state.user.id) {
-        this.$message.warning('只能修改自己发布的通知')
-        return
-      }
-      try {
-        const res = await this.$http.put(`/api/teacher/notices/${row.id}/status`, {
-          status: row.status
-        })
-        if (res.data.code === 200) {
-          this.$message.success('状态更新成功')
-          this.fetchNoticeList()
-        } else {
-          this.$message.error(res.data.msg || '状态更新失败')
-        }
-      } catch (error) {
-        console.error('状态更新失败:', error)
-        this.$message.error('状态更新失败')
-      }
-    }
