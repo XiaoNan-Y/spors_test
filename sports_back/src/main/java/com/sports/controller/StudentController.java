@@ -4,6 +4,7 @@ import com.sports.common.Result;
 import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
 import com.sports.service.StudentService;
+import com.sports.dto.TestRecordDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/student")
+@CrossOrigin
 public class StudentController {
     
     private static final Logger log = LoggerFactory.getLogger(StudentController.class);
@@ -35,13 +37,26 @@ public class StudentController {
 
     @GetMapping("/test-records")
     public Result getTestRecords(
-            @RequestAttribute Long userId,
-            @RequestParam(required = false) Long sportsItemId,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
-            Page<TestRecord> records = studentService.getTestRecords(
-                userId, sportsItemId, PageRequest.of(page, size));
+            if (page < 0) {
+                return Result.error("页码不能小于0");
+            }
+            if (size <= 0) {
+                return Result.error("每页大小必须大于0");
+            }
+            
+            Long userId = 1L;  // 测试用，实际应该从认证信息中获取
+            Page<TestRecordDTO> records = studentService.getStudentTestRecords(
+                userId, status, PageRequest.of(page, size));
+            
+            if (records.getContent().isEmpty() && page > 0) {
+                // 如果当前页没有数据，且不是第一页，返回错误提示
+                return Result.error("没有更多数据了");
+            }
+            
             return Result.success(records);
         } catch (Exception e) {
             log.error("获取测试记录失败", e);

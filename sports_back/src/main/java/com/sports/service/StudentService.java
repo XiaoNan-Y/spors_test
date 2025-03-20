@@ -2,6 +2,7 @@ package com.sports.service;
 
 import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
+import com.sports.dto.TestRecordDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -27,4 +28,6 @@ public interface StudentService {
      * 获取学生的免测/重测申请列表
      */
     Page<ExemptionApplication> getExemptions(Long userId, Pageable pageable);
+
+    Page<TestRecordDTO> getStudentTestRecords(Long userId, String status, Pageable pageable);
 } 

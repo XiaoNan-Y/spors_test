@@ -232,4 +232,5 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     List<TestRecord> findTop5ByStudentIdOrderByCreatedAtDesc(Long studentId);
     Page<TestRecord> findByStudentIdAndSportsItemId(Long studentId, Long sportsItemId, Pageable pageable);
     Page<TestRecord> findByStudentId(Long studentId, Pageable pageable);
+    Page<TestRecord> findByStudentIdAndStatus(Long studentId, String status, Pageable pageable);
 }

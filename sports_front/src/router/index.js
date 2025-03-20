@@ -11,7 +11,7 @@ import SportsItemManagement from '@/views/admin/SportsItemManagement.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import Profile from '@/views/admin/Profile.vue'
 import DataReview from '@/views/admin/DataReview.vue'
-import studentRoutes from './student'
+import studentRouter from './student'
 
 Vue.use(VueRouter)
 
@@ -145,7 +145,7 @@ const routes = [
       }
     ]
   },
-  studentRoutes,
+  studentRouter,
   {
     path: '/',
     redirect: '/login'

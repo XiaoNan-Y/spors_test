@@ -1,12 +1,15 @@
 package com.sports.service.impl;
 
+import com.sports.dto.TestRecordDTO;
 import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
 import com.sports.entity.Notice;
 import com.sports.repository.TestRecordRepository;
 import com.sports.repository.ExemptionApplicationRepository;
 import com.sports.repository.NoticeRepository;
+import com.sports.repository.SportsItemRepository;
 import com.sports.service.StudentService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +32,9 @@ public class StudentServiceImpl implements StudentService {
 
     @Autowired
     private NoticeRepository noticeRepository;
+
+    @Autowired
+    private SportsItemRepository sportsItemRepository;
 
     @Override
     public Map<String, Object> getDashboardStats(Long userId) {
@@ -85,5 +91,47 @@ public class StudentServiceImpl implements StudentService {
     @Override
     public Page<ExemptionApplication> getExemptions(Long userId, Pageable pageable) {
         return exemptionApplicationRepository.findByStudentId(userId, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TestRecordDTO> getStudentTestRecords(Long userId, String status, Pageable pageable) {
+        Page<TestRecord> records;
+        if (status != null && !status.trim().isEmpty()) {
+            records = testRecordRepository.findByStudentIdAndStatus(userId, status, pageable);
+        } else {
+            records = testRecordRepository.findByStudentId(userId, pageable);
+        }
+        
+        return records.map(record -> {
+            TestRecordDTO dto = new TestRecordDTO();
+            dto.setId(record.getId());
+            dto.setCreatedAt(record.getCreatedAt());
+            dto.setScore(record.getScore());
+            dto.setStatus(record.getStatus());
+            dto.setReviewComment(record.getReviewComment());
+            dto.setReviewTime(record.getReviewTime());
+            dto.setClassName(record.getClassName());
+            dto.setStudentName(record.getStudentName());
+            
+            // 设置体育项目名称
+            if (record.getSportsItem() != null) {
+                dto.setSportsItemName(record.getSportsItem().getName());
+            }
+            
+            // 计算等级
+            dto.setGrade(calculateGrade(record.getScore()));
+            
+            return dto;
+        });
+    }
+    
+    private String calculateGrade(Double score) {
+        if (score == null) return "N/A";
+        
+        if (score >= 90) return "A";
+        if (score >= 80) return "B";
+        if (score >= 70) return "C";
+        return "D";
     }
 } 
