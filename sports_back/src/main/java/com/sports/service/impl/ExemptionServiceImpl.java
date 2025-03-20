@@ -215,6 +215,35 @@ public class ExemptionServiceImpl implements ExemptionService {
         return exemptionRepository.findDistinctClassNames();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ExemptionApplication> getTeacherExemptionApplications(String keyword, Pageable pageable) {
+        try {
+            Page<ExemptionApplication> applications = exemptionRepository.findTeacherPendingApplications(
+                keyword != null ? keyword.trim() : "", 
+                keyword != null ? keyword.trim() : "", 
+                pageable
+            );
+            
+            // 手动初始化懒加载的关联对象
+            applications.getContent().forEach(app -> {
+                if (app.getSportsItem() != null) {
+                    app.getSportsItem().getId();  // 触发懒加载
+                    app.getSportsItem().getName();
+                }
+                if (app.getStudent() != null) {
+                    app.getStudent().getId();  // 触发懒加载
+                    app.getStudent().getRealName();
+                }
+            });
+            
+            return applications;
+        } catch (Exception e) {
+            log.error("获取教师待审核申请列表失败", e);
+            throw new RuntimeException("获取教师待审核申请列表失败: " + e.getMessage());
+        }
+    }
+
     private ExemptionApplicationDTO convertToDTO(ExemptionApplication application) {
         if (application == null) return null;
         

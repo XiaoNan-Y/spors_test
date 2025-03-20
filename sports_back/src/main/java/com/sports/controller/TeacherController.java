@@ -416,26 +416,49 @@ public class TeacherController {
      */
     @GetMapping("/exemptions")
     public Result getExemptions(
-            @RequestParam(required = false) String className,
-            @RequestParam(required = false) String type,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
-            log.info("Getting teacher exemption applications - className: {}, type: {}, keyword: {}, page: {}, size: {}", 
-                    className, type, keyword, page, size);
+            log.info("Getting teacher exemption applications - keyword: {}, page: {}, size: {}", 
+                    keyword, page, size);
+            Page<ExemptionApplication> exemptions = exemptionService.getTeacherExemptionApplications(
+                keyword, PageRequest.of(page, size));
             
-            // 获取教师待审核的申请
-            Page<ExemptionApplicationDTO> applications = exemptionService.getTeacherPendingApplications(
-                className, type, keyword, PageRequest.of(page, size));
+            // 构造返回数据，只返回需要的字段
+            List<Map<String, Object>> content = exemptions.getContent().stream()
+                .map(app -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", app.getId());
+                    item.put("studentId", app.getStudentId());
+                    item.put("studentNumber", app.getStudentNumber());
+                    item.put("studentName", app.getStudentName());
+                    item.put("className", app.getClassName());
+                    item.put("type", app.getType());
+                    item.put("reason", app.getReason());
+                    item.put("status", app.getStatus());
+                    item.put("teacherReviewComment", app.getTeacherReviewComment());
+                    item.put("adminReviewComment", app.getAdminReviewComment());
+                    item.put("createdAt", app.getCreatedAt());
+                    item.put("applyTime", app.getApplyTime());
+                    
+                    // 添加体育项目信息
+                    if (app.getSportsItem() != null) {
+                        item.put("sportsItemId", app.getSportsItem().getId());
+                        item.put("sportsItemName", app.getSportsItem().getName());
+                    }
+                    
+                    return item;
+                })
+                .collect(Collectors.toList());
             
-            // 构造返回数据
+            // 构造分页信息
             Map<String, Object> result = new HashMap<>();
-            result.put("content", applications.getContent());
-            result.put("totalElements", applications.getTotalElements());
-            result.put("totalPages", applications.getTotalPages());
-            result.put("size", applications.getSize());
-            result.put("number", applications.getNumber());
+            result.put("content", content);
+            result.put("totalElements", exemptions.getTotalElements());
+            result.put("totalPages", exemptions.getTotalPages());
+            result.put("size", exemptions.getSize());
+            result.put("number", exemptions.getNumber());
             
             return Result.success(result);
         } catch (Exception e) {

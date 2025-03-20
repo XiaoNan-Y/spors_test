@@ -76,12 +76,13 @@ const routes = [
   {
     path: '/admin',
     component: AdminLayout,
-    meta: { requiresAuth: true, role: 'ADMIN' },
+    redirect: '/admin/dashboard',
     children: [
       {
         path: 'dashboard',
-        name: 'AdminDashboard',
-        component: Dashboard
+        name: 'AdminHome',
+        component: () => import('@/views/admin/AdminHome.vue'),
+        meta: { title: '首页', icon: 'dashboard' }
       },
       {
         path: 'users/student',

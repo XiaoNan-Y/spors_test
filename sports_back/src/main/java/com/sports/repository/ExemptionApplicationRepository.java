@@ -99,4 +99,27 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
         String studentNumber, 
         Pageable pageable
     );
+
+    @Query("SELECT e FROM ExemptionApplication e " +
+           "WHERE (:className IS NULL OR e.className = :className) " +
+           "AND (:type IS NULL OR e.type = :type) " +
+           "AND (e.status = 'PENDING_TEACHER' OR e.status = 'PENDING') " +
+           "AND (:keyword IS NULL OR " +
+           "e.studentNumber LIKE CONCAT('%', :keyword, '%') OR " +
+           "e.studentName LIKE CONCAT('%', :keyword, '%'))")
+    List<ExemptionApplication> findAllWithFiltersNoPage(
+        @Param("className") String className,
+        @Param("type") String type,
+        @Param("keyword") String keyword
+    );
+
+    @Query("SELECT e FROM ExemptionApplication e " +
+           "WHERE (e.status = 'PENDING_TEACHER' OR e.status = 'PENDING') " +
+           "AND (LOWER(e.studentName) LIKE LOWER(CONCAT('%', :studentName, '%')) " +
+           "OR LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :studentNumber, '%')))")
+    Page<ExemptionApplication> findTeacherPendingApplications(
+        String studentName,
+        String studentNumber,
+        Pageable pageable
+    );
 } 

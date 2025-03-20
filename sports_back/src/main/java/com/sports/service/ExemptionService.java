@@ -86,4 +86,6 @@ public interface ExemptionService {
     Page<ExemptionApplication> getExemptionApplications(String keyword, Pageable pageable);
 
     List<String> getDistinctClassNames();
+
+    Page<ExemptionApplication> getTeacherExemptionApplications(String keyword, Pageable pageable);
 } 
