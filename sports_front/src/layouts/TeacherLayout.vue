@@ -74,20 +74,47 @@ export default {
   name: 'TeacherLayout',
   data() {
     return {
-      username: '',
+      username: localStorage.getItem('username') || '教师',
       activeMenu: ''
     }
   },
   created() {
-    const user = JSON.parse(localStorage.getItem('user'))
-    this.username = user ? user.username : ''
+    // 检查用户信息
+    const userId = localStorage.getItem('userId')
+    const userRole = localStorage.getItem('userRole')
+    const token = localStorage.getItem('token')
+    
+    console.log('TeacherLayout created - 用户信息:', {
+      userId,
+      userRole,
+      token
+    })
+    
+    if (!token || !userId || !userRole || userRole !== 'TEACHER') {
+      console.log('用户信息无效，重定向到登录页')
+      localStorage.clear() // 清除可能存在的无效信息
+      this.$router.push('/login')
+    }
     this.activeMenu = this.$route.path
   },
   methods: {
     handleCommand(command) {
       if (command === 'logout') {
-        localStorage.removeItem('user')
-        this.$router.push('/login')
+        // 清除所有本地存储数据
+        localStorage.clear()
+        
+        // 使用 $nextTick 确保状态更新
+        this.$nextTick(async () => {
+          try {
+            // 跳转到登录页
+            await this.$router.push('/login')
+            
+            // 显示退出成功消息
+            this.$message.success('已退出登录')
+          } catch (error) {
+            console.error('退出登录时发生错误:', error)
+          }
+        })
       } else if (command === 'profile') {
         this.$router.push('/teacher/profile')
       }

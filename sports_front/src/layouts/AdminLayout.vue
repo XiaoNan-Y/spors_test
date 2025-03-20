@@ -79,20 +79,29 @@ export default {
   name: 'AdminLayout',
   data() {
     return {
-      username: '',
+      username: localStorage.getItem('username') || '管理员',
       activeMenu: ''
     }
   },
   created() {
-    const user = JSON.parse(localStorage.getItem('user'))
-    this.username = user ? user.username : ''
     this.activeMenu = this.$route.path
   },
   methods: {
     handleCommand(command) {
       if (command === 'logout') {
-        localStorage.removeItem('user')
-        this.$router.push('/login')
+        localStorage.clear()
+        
+        this.$nextTick(async () => {
+          try {
+            await this.$router.push('/login')
+            
+            this.$message.success('已退出登录')
+          } catch (error) {
+            console.error('退出登录时发生错误:', error)
+          }
+        })
+      } else if (command === 'profile') {
+        this.$router.push('/admin/profile')
       }
     }
   }
