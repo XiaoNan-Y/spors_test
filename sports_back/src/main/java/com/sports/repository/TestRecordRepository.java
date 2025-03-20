@@ -243,4 +243,17 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
 
     Page<TestRecord> findByStudentNumber(String studentNumber, Pageable pageable);
     Page<TestRecord> findByStudentNumberAndStatusEquals(String studentNumber, String status, Pageable pageable);
+
+    // 添加新方法
+    List<TestRecord> findByStudentIdAndStatus(Long studentId, String status);
+
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
+           "LEFT JOIN FETCH t.sportsItem si " +
+           "WHERE t.studentNumber = :studentNumber " +
+           "AND t.status = :status " +
+           "ORDER BY t.createdAt DESC")
+    List<TestRecord> findByStudentNumberAndStatusWithSportsItem(
+        @Param("studentNumber") String studentNumber, 
+        @Param("status") String status
+    );
 }

@@ -37,6 +37,12 @@ const studentRouter = {
       component: () => import('@/views/student/SportsStandard'),
       meta: { title: '体测标准' }
     },
+    {
+      path: 'score-appeal',
+      name: 'ScoreAppeal',
+      component: () => import('@/views/student/ScoreAppeal'),
+      meta: { title: '成绩申诉' }
+    },
     // 其他学生相关路由...
   ]
 }

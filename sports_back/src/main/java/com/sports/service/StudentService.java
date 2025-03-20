@@ -3,9 +3,11 @@ package com.sports.service;
 import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
 import com.sports.dto.TestRecordDTO;
+import com.sports.dto.ScoreAppealDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Map;
 
 public interface StudentService {
@@ -30,4 +32,11 @@ public interface StudentService {
     Page<ExemptionApplication> getExemptions(Long userId, Pageable pageable);
 
     Page<TestRecordDTO> getStudentTestRecords(Long userId, String status, Pageable pageable);
+
+    // 添加成绩申诉相关的方法
+    List<TestRecordDTO> getAppealableRecords(Long userId);
+    
+    ScoreAppealDTO submitAppeal(ScoreAppealDTO appealDTO, Long userId);
+    
+    Page<ScoreAppealDTO> getStudentAppeals(Long userId, String status, Pageable pageable);
 } 

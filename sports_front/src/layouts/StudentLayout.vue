@@ -15,6 +15,10 @@
           <i class="el-icon-document-checked"></i>
           <span>体测标准</span>
         </el-menu-item>
+        <el-menu-item index="/student/score-appeal">
+          <i class="el-icon-warning"></i>
+          <span>成绩申诉</span>
+        </el-menu-item>
         <!-- 其他菜单项 -->
       </el-menu>
     </el-aside>

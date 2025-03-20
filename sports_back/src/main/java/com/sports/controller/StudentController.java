@@ -5,6 +5,7 @@ import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
 import com.sports.service.StudentService;
 import com.sports.dto.TestRecordDTO;
+import com.sports.dto.ScoreAppealDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -95,6 +97,48 @@ public class StudentController {
         } catch (Exception e) {
             log.error("获取免测申请列表失败", e);
             return Result.error("获取申请列表失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/test-records/appealable")
+    public Result getAppealableRecords(@RequestAttribute Long userId) {
+        try {
+            log.info("获取可申诉记录请求 - userId: {}", userId);
+            List<TestRecordDTO> records = studentService.getAppealableRecords(userId);
+            log.info("找到 {} 条可申诉记录", records.size());
+            return Result.success(records);
+        } catch (Exception e) {
+            log.error("获取可申诉记录失败 - userId: {}", userId, e);
+            return Result.error("获取可申诉记录失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/appeals")
+    public Result submitAppeal(@RequestBody ScoreAppealDTO appealDTO, @RequestAttribute Long userId) {
+        try {
+            ScoreAppealDTO saved = studentService.submitAppeal(appealDTO, userId);
+            return Result.success(saved);
+        } catch (Exception e) {
+            log.error("提交申诉失败", e);
+            return Result.error("提交申诉失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/appeals")
+    public Result getAppeals(
+            @RequestAttribute Long userId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            log.info("获取学生申诉列表 - userId: {}, status: {}, page: {}, size: {}", 
+                    userId, status, page, size);
+            Page<ScoreAppealDTO> appeals = studentService.getStudentAppeals(
+                userId, status, PageRequest.of(page, size));
+            return Result.success(appeals.getContent());
+        } catch (Exception e) {
+            log.error("获取申诉列表失败", e);
+            return Result.error("获取申诉列表失败：" + e.getMessage());
         }
     }
 } 
