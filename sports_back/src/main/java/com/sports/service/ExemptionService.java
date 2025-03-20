@@ -4,6 +4,7 @@ import com.sports.entity.ExemptionApplication;
 import com.sports.dto.ExemptionApplicationDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.util.List;
 
 public interface ExemptionService {
     /**
@@ -81,4 +82,8 @@ public interface ExemptionService {
         String keyword,
         Pageable pageable
     );
+
+    Page<ExemptionApplication> getExemptionApplications(String keyword, Pageable pageable);
+
+    List<String> getDistinctClassNames();
 } 

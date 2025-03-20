@@ -198,42 +198,24 @@ export default {
   },
   methods: {
     async fetchRecords() {
-      this.loading = true
       try {
-        const params = {
-          type: this.filters.type,
-          status: this.filters.status,
-          keyword: this.filters.keyword,
-          page: this.currentPage - 1,
-          size: this.pageSize
-        }
-        console.log('Request params:', params)
-
-        const response = await this.$http.get('/api/exemptions', { params })
-        
-        console.log('API Response:', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-          data: response.data
-        })
+        const response = await this.$axios.get('/api/admin/exemptions', {
+          params: {
+            keyword: this.filters.keyword,
+            page: this.currentPage - 1,
+            size: this.pageSize
+          }
+        });
         
         if (response.data.code === 200) {
-          const { content, totalElements } = response.data.data || {}
-          this.records = content || []
-          this.total = totalElements || 0
-          
-          console.log('Loaded records:', this.records)
-          console.log('Total elements:', this.total)
+          this.records = response.data.data.content;
+          this.total = response.data.data.totalElements;
         } else {
-          this.$message.error(response.data.msg || '获取数据失败')
-          console.error('API error:', response.data)
+          this.$message.error(response.data.message);
         }
       } catch (error) {
-        console.error('获取记录失败:', error)
-        this.$message.error('获取记录失败')
-      } finally {
-        this.loading = false
+        console.error('获取记录失败:', error);
+        this.$message.error('获取记录失败: ' + error.message);
       }
     },
     handleSearch() {

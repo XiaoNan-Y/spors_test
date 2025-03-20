@@ -37,15 +37,33 @@ public class TestExemptionServiceImpl implements TestExemptionService {
         log.info("Getting applications with type: {}, keyword: {}, page: {}, size: {}", 
                  type, keyword, pageable.getPageNumber(), pageable.getPageSize());
                  
-        Page<ExemptionApplication> result = new PageImpl<>(
-            exemptionApplicationRepository.findAllWithFilters(type, keyword, pageable),
-            pageable,
-            exemptionApplicationRepository.countWithFilters(type, keyword)
-        );
+        try {
+            // 添加调试日志
+            log.info("Searching for applications with status: PENDING_TEACHER");
             
-        log.info("Found {} applications", result.getTotalElements());
-        
-        return result;
+            // 获取总数
+            long total = exemptionApplicationRepository.countWithFilters(type, keyword);
+            log.info("Total count: {}", total);
+            
+            // 获取当前页数据
+            List<ExemptionApplication> applications = exemptionApplicationRepository.findAllWithFilters(
+                type,
+                keyword,
+                pageable
+            );
+            log.info("Found {} applications in current page", applications.size());
+            
+            // 打印每条申请的基本信息
+            applications.forEach(app -> {
+                log.debug("Application: id={}, studentName={}, type={}, status={}", 
+                    app.getId(), app.getStudentName(), app.getType(), app.getStatus());
+            });
+            
+            return new PageImpl<>(applications, pageable, total);
+        } catch (Exception e) {
+            log.error("Error getting applications", e);
+            throw new RuntimeException("获取申请列表失败", e);
+        }
     }
 
     @Override
@@ -59,6 +77,7 @@ public class TestExemptionServiceImpl implements TestExemptionService {
             }
         }
         
+        // 设置初始状态为待教师审核
         application.setStatus("PENDING_TEACHER");
         application.setCreatedAt(LocalDateTime.now());
         return exemptionApplicationRepository.save(application);

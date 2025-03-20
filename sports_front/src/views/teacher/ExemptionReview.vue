@@ -268,7 +268,7 @@ export default {
         }
         console.log('Request params:', params)
 
-        const response = await this.$http.get('/api/teacher/exemption-applications', { params })
+        const response = await this.$http.get('/api/teacher/exemptions', { params })
         
         if (response.data.code === 200) {
           const { content, totalElements } = response.data.data || {}
@@ -289,7 +289,7 @@ export default {
     },
     async getClassList() {
       try {
-        const res = await this.$http.get('/api/teacher/classes')
+        const res = await this.$http.get('/api/teacher/exemptions/class-list')
         if (res.data.code === 200) {
           this.classList = res.data.data || []
         }

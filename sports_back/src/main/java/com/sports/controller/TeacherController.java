@@ -414,54 +414,67 @@ public class TeacherController {
     /**
      * 获取免测/重测申请列表
      */
-    @GetMapping("/exemption-applications")
-    public Result getExemptionApplications(
+    @GetMapping("/exemptions")
+    public Result getExemptions(
             @RequestParam(required = false) String className,
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
-            log.info("获取免测/重测申请列表 - 参数: className={}, type={}, status={}, keyword={}, page={}, size={}", 
-                className, type, status, keyword, page, size);
-                
-            // 检查数据库中是否有待教师审核的申请
-            long pendingCount = exemptionApplicationRepository.countByStatus("PENDING_TEACHER");
-            log.info("数据库中待教师审核的申请数量: {}", pendingCount);
+            log.info("Getting teacher exemption applications - className: {}, type: {}, keyword: {}, page: {}, size: {}", 
+                    className, type, keyword, page, size);
             
-            PageRequest pageRequest = PageRequest.of(page, size);
+            // 获取教师待审核的申请
             Page<ExemptionApplicationDTO> applications = exemptionService.getTeacherPendingApplications(
-                className, type, keyword, pageRequest);
-                
-            log.info("查询到 {} 条记录", applications.getTotalElements());
-            return Result.success(applications);
+                className, type, keyword, PageRequest.of(page, size));
+            
+            // 构造返回数据
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", applications.getContent());
+            result.put("totalElements", applications.getTotalElements());
+            result.put("totalPages", applications.getTotalPages());
+            result.put("size", applications.getSize());
+            result.put("number", applications.getNumber());
+            
+            return Result.success(result);
         } catch (Exception e) {
-            log.error("获取免测/重测申请列表失败", e);
-            return Result.error("获取申请列表失败：" + e.getMessage());
+            log.error("Failed to get teacher exemption applications", e);
+            return Result.error("获取教师免测申请列表失败：" + e.getMessage());
         }
     }
 
     /**
      * 教师审核免测/重测申请
      */
-    @PostMapping("/exemption-applications/{id}/review")
-    public Result reviewExemptionApplication(
+    @PostMapping("/exemptions/{id}/review")
+    public Result reviewExemption(
             @PathVariable Long id,
-            @RequestBody Map<String, String> params,
+            @RequestBody Map<String, String> reviewData,
             @RequestAttribute Long userId) {
         try {
-            String status = params.get("status");
-            String reviewComment = params.get("reviewComment");
+            String status = reviewData.get("status");
+            String comment = reviewData.get("comment");
             
-            log.info("教师审核免测/重测申请 - id: {}, status: {}, reviewComment: {}, reviewerId: {}", 
-                id, status, reviewComment, userId);
-                
-            ExemptionApplicationDTO result = exemptionService.teacherReview(id, status, reviewComment, userId);
+            log.info("Teacher reviewing exemption - id: {}, status: {}, comment: {}, teacherId: {}", 
+                    id, status, comment, userId);
+            
+            ExemptionApplicationDTO result = exemptionService.teacherReview(id, status, comment, userId);
             return Result.success(result);
         } catch (Exception e) {
-            log.error("审核免测/重测申请失败", e);
-            return Result.error("审核失败：" + e.getMessage());
+            log.error("Failed to review exemption", e);
+            return Result.error("审核免测申请失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/exemptions/class-list")
+    public Result getExemptionsClassList() {
+        try {
+            List<String> classList = exemptionService.getDistinctClassNames();
+            return Result.success(classList);
+        } catch (Exception e) {
+            log.error("Failed to get class list", e);
+            return Result.error("获取班级列表失败：" + e.getMessage());
         }
     }
 

@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 @Service
 public class ExemptionServiceImpl implements ExemptionService {
@@ -32,52 +33,64 @@ public class ExemptionServiceImpl implements ExemptionService {
     private UserRepository userRepository;
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<ExemptionApplication> getExemptionApplications(String keyword, Pageable pageable) {
+        try {
+            Page<ExemptionApplication> applications = exemptionRepository.findByStudentNameContainingOrStudentNumberContaining(
+                keyword != null ? keyword.trim() : "", 
+                keyword != null ? keyword.trim() : "", 
+                pageable
+            );
+            
+            // 手动初始化懒加载的关联对象
+            applications.getContent().forEach(app -> {
+                if (app.getSportsItem() != null) {
+                    app.getSportsItem().getId();  // 触发懒加载
+                    app.getSportsItem().getName();
+                }
+                if (app.getStudent() != null) {
+                    app.getStudent().getId();  // 触发懒加载
+                    app.getStudent().getRealName();
+                }
+            });
+            
+            return applications;
+        } catch (Exception e) {
+            log.error("获取免测申请列表失败", e);
+            throw new RuntimeException("获取免测申请列表失败: " + e.getMessage());
+        }
+    }
+
+    @Override
     @Transactional
     public ExemptionApplicationDTO submitApplication(ExemptionApplication application) {
-        // 设置初始状态和时间
         application.setStatus("PENDING_TEACHER");
-        application.setCreateTime(LocalDateTime.now());
-        application.setUpdateTime(LocalDateTime.now());
-        
         ExemptionApplication saved = exemptionRepository.save(application);
         return convertToDTO(saved);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ExemptionApplicationDTO> getStudentApplications(Long studentId, String type, Pageable pageable) {
-        // 获取分页数据
         Page<ExemptionApplication> applications = exemptionRepository.findByStudentId(studentId, pageable);
-        
-        // 转换为DTO
-        List<ExemptionApplicationDTO> dtoList = applications.getContent().stream()
+        List<ExemptionApplicationDTO> dtos = applications.getContent().stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
-        
-        // 创建新的分页对象
-        return new PageImpl<>(dtoList, pageable, applications.getTotalElements());
+        return new PageImpl<>(dtos, pageable, applications.getTotalElements());
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<ExemptionApplicationDTO> getAllApplications(
             String className, String type, String status, String keyword, Pageable pageable) {
-        try {
-            // 获取总数
-            long total = exemptionRepository.countWithFilters(type, keyword);
-            
-            // 获取当前页数据
-            List<ExemptionApplication> applications = exemptionRepository.findAllWithFilters(
-                type, keyword, pageable);
-            
-            // 转换为DTO
-            List<ExemptionApplicationDTO> dtoList = applications.stream()
+        List<ExemptionApplication> applications = exemptionRepository.findAllWithFilters(type, keyword, pageable);
+        long total = exemptionRepository.countWithFilters(type, keyword);
+        
+        List<ExemptionApplicationDTO> dtos = applications.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
-            
-            return new PageImpl<>(dtoList, pageable, total);
-        } catch (Exception e) {
-            log.error("获取申请列表失败", e);
-            throw new RuntimeException("获取申请列表失败", e);
-        }
+                
+        return new PageImpl<>(dtos, pageable, total);
     }
 
     @Override
@@ -158,7 +171,37 @@ public class ExemptionServiceImpl implements ExemptionService {
     @Override
     public Page<ExemptionApplicationDTO> getTeacherPendingApplications(
             String className, String type, String keyword, Pageable pageable) {
-        return getAllApplications(className, type, "PENDING_TEACHER", keyword, pageable);
+        try {
+            // 构建查询条件
+            List<ExemptionApplication> applications;
+            if (className != null && !className.isEmpty()) {
+                // 如果指定了班级，则按班级筛选
+                applications = exemptionRepository.findAllWithFiltersNoPage(
+                    className, type, "PENDING_TEACHER", keyword);
+            } else {
+                // 否则查询所有待教师审核的申请
+                applications = exemptionRepository.findAllWithFiltersNoPage(
+                    null, type, "PENDING_TEACHER", keyword);
+            }
+            
+            // 手动分页
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), applications.size());
+            
+            List<ExemptionApplication> pageContent = start < end ? 
+                applications.subList(start, end) : 
+                new ArrayList<>();
+                
+            // 转换为DTO
+            List<ExemptionApplicationDTO> dtos = pageContent.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+                
+            return new PageImpl<>(dtos, pageable, applications.size());
+        } catch (Exception e) {
+            log.error("获取教师待审核申请失败", e);
+            throw new RuntimeException("获取教师待审核申请失败: " + e.getMessage());
+        }
     }
 
     @Override
@@ -167,11 +210,17 @@ public class ExemptionServiceImpl implements ExemptionService {
         return getAllApplications(className, type, "PENDING_ADMIN", keyword, pageable);
     }
 
+    @Override
+    public List<String> getDistinctClassNames() {
+        return exemptionRepository.findDistinctClassNames();
+    }
+
     private ExemptionApplicationDTO convertToDTO(ExemptionApplication application) {
-        ExemptionApplicationDTO dto = new ExemptionApplicationDTO();
-        BeanUtils.copyProperties(application, dto);
+        if (application == null) return null;
         
-        // 设置体育项目信息
+        ExemptionApplicationDTO dto = new ExemptionApplicationDTO();
+        BeanUtils.copyProperties(application, dto, "sportsItem");
+        
         if (application.getSportsItem() != null) {
             dto.setSportsItemId(application.getSportsItem().getId());
             dto.setSportsItemName(application.getSportsItem().getName());

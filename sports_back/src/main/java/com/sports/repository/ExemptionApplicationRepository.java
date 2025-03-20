@@ -29,7 +29,8 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
            "WHERE (:type IS NULL OR e.type = :type) " +
            "AND (:keyword IS NULL OR " +
            "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "AND e.status IN ('PENDING', 'PENDING_TEACHER')")
     List<ExemptionApplication> findAllWithFilters(
         @Param("type") String type,
         @Param("keyword") String keyword,
@@ -65,7 +66,8 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
            "WHERE (:type IS NULL OR e.type = :type) " +
            "AND (:keyword IS NULL OR " +
            "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "AND e.status IN ('PENDING', 'PENDING_TEACHER')")
     long countWithFilters(
         @Param("type") String type,
         @Param("keyword") String keyword
@@ -90,4 +92,11 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
 
     @Query("SELECT COUNT(e) FROM ExemptionApplication e WHERE e.status = :status")
     long countByStatus(@Param("status") String status);
+
+    // 根据学生姓名或学号模糊查询
+    Page<ExemptionApplication> findByStudentNameContainingOrStudentNumberContaining(
+        String studentName, 
+        String studentNumber, 
+        Pageable pageable
+    );
 } 
