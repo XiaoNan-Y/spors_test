@@ -460,9 +460,11 @@ export default {
     },
     async getSportsItems() {
       try {
-        const res = await this.$http.get('/api/admin/sports-items')
-        if (res.data.code === 200) {
-          this.sportsItems = res.data.data || []
+        const response = await this.$http.get('/api/sports-items')
+        if (response.data.code === 200) {
+          this.sportsItems = response.data.data.content || []
+        } else {
+          this.$message.error(response.data.msg || '获取体测项目列表失败')
         }
       } catch (error) {
         console.error('获取体测项目列表失败:', error)

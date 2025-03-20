@@ -95,11 +95,11 @@
       <el-pagination
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        :current-page="page.current"
+        :current-page="currentPage"
         :page-sizes="[10, 20, 50, 100]"
-        :page-size="page.size"
+        :page-size="pageSize"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="page.total"
+        :total="total"
       >
       </el-pagination>
     </div>
@@ -182,11 +182,9 @@ export default {
       viewDialogVisible: false,
       dialogTitle: '',
       currentNotice: {},
-      page: {
-        current: 1,
-        size: 10,
-        total: 0
-      },
+      currentPage: 1,
+      pageSize: 10,
+      total: 0,
       form: {
         id: null,
         type: 'OTHER',
@@ -196,7 +194,7 @@ export default {
         status: 1,
         createTime: null,
         updateTime: null,
-        createBy: this.$store.state.user.id
+        createBy: null
       },
       rules: {
         type: [
@@ -217,6 +215,10 @@ export default {
     }
   },
   created() {
+    const userId = localStorage.getItem('userId')
+    if (userId) {
+      this.form.createBy = parseInt(userId)
+    }
     this.fetchNoticeList()
   },
   methods: {
@@ -249,19 +251,16 @@ export default {
         const res = await this.$http.get('/api/admin/notices', {
           params: {
             keyword: this.searchKeyword,
-            page: this.page.current - 1,
-            size: this.page.size
+            type: this.searchType,
+            page: this.currentPage - 1,
+            size: this.pageSize
           }
         })
-        console.log('Response:', res.data)
+        
         if (res.data.code === 200) {
-          if (Array.isArray(res.data.data)) {
-            this.noticeList = res.data.data
-            this.page.total = res.data.data.length
-          } else if (res.data.data.content) {
-            this.noticeList = res.data.data.content
-            this.page.total = res.data.data.totalElements
-          }
+          const data = res.data.data
+          this.noticeList = Array.isArray(data) ? data : (data.content || [])
+          this.total = data.totalElements || this.noticeList.length
         } else {
           this.$message.error(res.data.msg || '获取通知列表失败')
         }
@@ -273,15 +272,15 @@ export default {
       }
     },
     handleSearch() {
-      this.page.current = 1
+      this.currentPage = 1
       this.fetchNoticeList()
     },
     handleSizeChange(val) {
-      this.page.size = val
+      this.pageSize = val
       this.fetchNoticeList()
     },
     handleCurrentChange(val) {
-      this.page.current = val
+      this.currentPage = val
       this.fetchNoticeList()
     },
     handleAdd() {

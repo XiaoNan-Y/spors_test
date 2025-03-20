@@ -67,11 +67,11 @@
       <el-pagination
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
-        :current-page="page.current"
+        :current-page="currentPage"
         :page-sizes="[10, 20, 50, 100]"
-        :page-size="page.size"
+        :page-size="pageSize"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="page.total"
+        :total="total"
       >
       </el-pagination>
     </div>
@@ -114,20 +114,17 @@ export default {
       searchKeyword: '',
       tableData: [],
       loading: false,
+      currentPage: 1,
+      pageSize: 10,
+      total: 0,
       dialogVisible: false,
       dialogTitle: '',
       form: {
-        id: null,
         name: '',
         type: '',
         description: '',
         unit: '',
         isActive: true
-      },
-      page: {
-        current: 1,
-        size: 10,
-        total: 0
       },
       rules: {
         name: [
@@ -135,70 +132,54 @@ export default {
         ],
         type: [
           { required: true, message: '请选择项目类型', trigger: 'change' }
-        ],
-        unit: [
-          { required: true, message: '请输入计量单位', trigger: 'blur' }
         ]
       }
     }
   },
   created() {
-    this.initData()
+    this.fetchItemList()
   },
   methods: {
-    async initData() {
-      await this.fetchItemList()
-    },
     async fetchItemList() {
       try {
         this.loading = true
-        const res = await this.$http.get('/api/admin/sports-items', {
+        const response = await this.$http.get('/api/sports-items', {
           params: {
             keyword: this.searchKeyword,
-            page: this.page.current - 1,
-            size: this.page.size
+            page: this.currentPage - 1,
+            size: this.pageSize
           }
         })
         
-        console.log('API Response:', res.data)
-        
-        if (res.data.code === 200 && res.data.data) {
-          const data = res.data.data
-          if (Array.isArray(data.content)) {
-            this.tableData = data.content
-          } else {
-            console.error('Invalid data format:', data)
-            this.tableData = []
-          }
-          this.page.total = data.totalElements || 0
+        if (response.data.code === 200) {
+          const data = response.data.data
+          this.tableData = data.content
+          this.total = data.totalElements
         } else {
-          this.$message.error(res.data.message || '获取数据失败')
-          this.tableData = []
+          this.$message.error(response.data.msg || '获取体测项目列表失败')
         }
       } catch (error) {
         console.error('获取体测项目列表失败:', error)
         this.$message.error('获取体测项目列表失败')
-        this.tableData = []
       } finally {
         this.loading = false
       }
     },
     handleSearch() {
-      this.page.current = 1
+      this.currentPage = 1
       this.fetchItemList()
     },
     handleSizeChange(val) {
-      this.page.size = val
+      this.pageSize = val
       this.fetchItemList()
     },
     handleCurrentChange(val) {
-      this.page.current = val
+      this.currentPage = val
       this.fetchItemList()
     },
     handleAdd() {
       this.dialogTitle = '添加体测项目'
       this.form = {
-        id: null,
         name: '',
         type: '',
         description: '',
@@ -217,17 +198,21 @@ export default {
         if (valid) {
           try {
             const url = this.form.id ? 
-              `/api/admin/sports-items/${this.form.id}` : 
-              '/api/admin/sports-items'
-            const method = this.form.id ? 'put' : 'post'
+              `/api/sports-items/${this.form.id}` : 
+              '/api/sports-items'
             
-            const res = await this.$http[method](url, this.form)
-            if (res.data.code === 200) {
+            const method = this.form.id ? 'put' : 'post'
+            const response = await this.$http[method](url, this.form)
+            
+            if (response.data.code === 200) {
               this.$message.success(this.form.id ? '更新成功' : '添加成功')
               this.dialogVisible = false
               this.fetchItemList()
+            } else {
+              this.$message.error(response.data.msg || '操作失败')
             }
           } catch (error) {
+            console.error('操作失败:', error)
             this.$message.error('操作失败')
           }
         }
@@ -238,30 +223,34 @@ export default {
         await this.$confirm('确认删除该体测项目吗？', '提示', {
           type: 'warning'
         })
-        const res = await this.$http.delete(`/api/admin/sports-items/${row.id}`)
-        if (res.data.code === 200) {
+        const response = await this.$http.delete(`/api/sports-items/${row.id}`)
+        if (response.data.code === 200) {
           this.$message.success('删除成功')
           this.fetchItemList()
+        } else {
+          this.$message.error(response.data.msg || '删除失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
+          console.error('删除失败:', error)
           this.$message.error('删除失败')
         }
       }
     },
     async handleStatusChange(row) {
       try {
-        const res = await this.$http.put(`/api/admin/sports-items/${row.id}/status`, {
+        const response = await this.$http.put(`/api/sports-items/${row.id}/status`, {
           isActive: row.isActive
         })
-        if (res.data.code === 200) {
+        if (response.data.code === 200) {
           this.$message.success(`${row.isActive ? '启用' : '禁用'}成功`)
         } else {
           row.isActive = !row.isActive // 恢复状态
-          this.$message.error('操作失败')
+          this.$message.error(response.data.msg || '操作失败')
         }
       } catch (error) {
         row.isActive = !row.isActive // 恢复状态
+        console.error('操作失败:', error)
         this.$message.error('操作失败')
       }
     }
