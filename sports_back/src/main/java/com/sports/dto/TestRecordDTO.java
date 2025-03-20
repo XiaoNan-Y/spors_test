@@ -9,7 +9,7 @@ public class TestRecordDTO {
     private Long id;
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createdAt;  // 对应前端的测试时间
+    private LocalDateTime createdAt;  // 这个字段名和前端的 testTime 不匹配
     
     private String sportsItemName;    // 体育项目名称
     private Double score;             // 成绩

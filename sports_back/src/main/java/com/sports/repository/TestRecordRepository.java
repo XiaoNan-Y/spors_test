@@ -232,5 +232,15 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     List<TestRecord> findTop5ByStudentIdOrderByCreatedAtDesc(Long studentId);
     Page<TestRecord> findByStudentIdAndSportsItemId(Long studentId, Long sportsItemId, Pageable pageable);
     Page<TestRecord> findByStudentId(Long studentId, Pageable pageable);
-    Page<TestRecord> findByStudentIdAndStatus(Long studentId, String status, Pageable pageable);
+    Page<TestRecord> findByStudentIdAndStatusEquals(Long studentId, String status, Pageable pageable);
+
+    default Page<TestRecord> findByStudentNumberAndStatus(String studentNumber, String status, Pageable pageable) {
+        if (status == null || status.trim().isEmpty()) {
+            return findByStudentNumber(studentNumber, pageable);
+        }
+        return findByStudentNumberAndStatusEquals(studentNumber, status.trim(), pageable);
+    }
+
+    Page<TestRecord> findByStudentNumber(String studentNumber, Pageable pageable);
+    Page<TestRecord> findByStudentNumberAndStatusEquals(String studentNumber, String status, Pageable pageable);
 }

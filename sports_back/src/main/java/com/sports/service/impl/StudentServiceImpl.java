@@ -4,10 +4,12 @@ import com.sports.dto.TestRecordDTO;
 import com.sports.entity.TestRecord;
 import com.sports.entity.ExemptionApplication;
 import com.sports.entity.Notice;
+import com.sports.entity.User;
 import com.sports.repository.TestRecordRepository;
 import com.sports.repository.ExemptionApplicationRepository;
 import com.sports.repository.NoticeRepository;
 import com.sports.repository.SportsItemRepository;
+import com.sports.repository.UserRepository;
 import com.sports.service.StudentService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -23,6 +27,8 @@ import java.util.Map;
 
 @Service
 public class StudentServiceImpl implements StudentService {
+
+    private static final Logger log = LoggerFactory.getLogger(StudentServiceImpl.class);
 
     @Autowired
     private TestRecordRepository testRecordRepository;
@@ -35,6 +41,9 @@ public class StudentServiceImpl implements StudentService {
 
     @Autowired
     private SportsItemRepository sportsItemRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public Map<String, Object> getDashboardStats(Long userId) {
@@ -96,34 +105,52 @@ public class StudentServiceImpl implements StudentService {
     @Override
     @Transactional(readOnly = true)
     public Page<TestRecordDTO> getStudentTestRecords(Long userId, String status, Pageable pageable) {
-        Page<TestRecord> records;
-        if (status != null && !status.trim().isEmpty()) {
-            records = testRecordRepository.findByStudentIdAndStatus(userId, status, pageable);
-        } else {
-            records = testRecordRepository.findByStudentId(userId, pageable);
-        }
-        
-        return records.map(record -> {
-            TestRecordDTO dto = new TestRecordDTO();
-            dto.setId(record.getId());
-            dto.setCreatedAt(record.getCreatedAt());
-            dto.setScore(record.getScore());
-            dto.setStatus(record.getStatus());
-            dto.setReviewComment(record.getReviewComment());
-            dto.setReviewTime(record.getReviewTime());
-            dto.setClassName(record.getClassName());
-            dto.setStudentName(record.getStudentName());
+        try {
+            log.info("Getting student test records - userId: {}, status: {}, page: {}", 
+                    userId, status, pageable);
             
-            // 设置体育项目名称
-            if (record.getSportsItem() != null) {
-                dto.setSportsItemName(record.getSportsItem().getName());
+            // 先获取学生信息
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            String studentNumber = student.getStudentNumber();
+            if (studentNumber == null) {
+                throw new RuntimeException("学生学号不存在");
             }
             
-            // 计算等级
-            dto.setGrade(calculateGrade(record.getScore()));
+            // 根据学号和状态查询测试记录
+            Page<TestRecord> records = testRecordRepository.findByStudentNumberAndStatus(
+                studentNumber, 
+                status, 
+                pageable
+            );
             
-            return dto;
-        });
+            log.info("Found {} records for student number {}", records.getTotalElements(), studentNumber);
+            
+            // 将 TestRecord 转换为 TestRecordDTO
+            return records.map(record -> {
+                TestRecordDTO dto = new TestRecordDTO();
+                BeanUtils.copyProperties(record, dto);
+                
+                // 确保设置创建时间
+                if (record.getCreatedAt() != null) {
+                    dto.setCreatedAt(record.getCreatedAt());
+                }
+                
+                // 设置体育项目名称
+                if (record.getSportsItem() != null) {
+                    dto.setSportsItemName(record.getSportsItem().getName());
+                }
+                
+                // 计算等级
+                dto.setGrade(calculateGrade(record.getScore()));
+                
+                return dto;
+            });
+        } catch (Exception e) {
+            log.error("Error getting student test records", e);
+            throw e;
+        }
     }
     
     private String calculateGrade(Double score) {

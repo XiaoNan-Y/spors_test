@@ -1,6 +1,7 @@
 package com.sports.service;
 
 import com.sports.entity.SportsItem;
+import com.sports.dto.SportsItemStandardDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -24,9 +25,11 @@ public interface SportsItemService {
     
     boolean updateStatus(Long id, boolean isActive);
     
-    List<SportsItem> getAllActiveItems();
-    
     boolean existsById(Long id);
     
     void deleteById(Long id);
+    
+    List<SportsItemStandardDTO> getAllItemsWithStandards();
+    
+    SportsItemStandardDTO getItemStandards(Long id);
 }

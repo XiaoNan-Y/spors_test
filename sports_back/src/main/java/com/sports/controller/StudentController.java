@@ -38,22 +38,30 @@ public class StudentController {
     @GetMapping("/test-records")
     public Result getTestRecords(
             @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestAttribute(required = false) Long userId) {
         try {
-            if (page < 0) {
-                return Result.error("页码不能小于0");
+            log.info("Getting test records - userId: {}, status: {}, page: {}, size: {}", 
+                    userId, status, page, size);
+                    
+            if (userId == null) {
+                return Result.error("未提供有效的用户ID");
+            }
+            
+            if (page < 1) {
+                return Result.error("页码必须大于0");
             }
             if (size <= 0) {
                 return Result.error("每页大小必须大于0");
             }
             
-            Long userId = 1L;  // 测试用，实际应该从认证信息中获取
             Page<TestRecordDTO> records = studentService.getStudentTestRecords(
-                userId, status, PageRequest.of(page, size));
+                userId, status, PageRequest.of(page - 1, size));
             
-            if (records.getContent().isEmpty() && page > 0) {
-                // 如果当前页没有数据，且不是第一页，返回错误提示
+            log.info("Found {} records", records.getTotalElements());
+            
+            if (records.getContent().isEmpty() && page > 1) {
                 return Result.error("没有更多数据了");
             }
             

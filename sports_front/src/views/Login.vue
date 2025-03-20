@@ -47,36 +47,52 @@ export default {
     }
   },
   methods: {
-    handleLogin() {
-      this.$refs.loginForm.validate(async valid => {
-        if (valid) {
-          try {
-            this.loading = true
-            const response = await this.$http.post('/api/users/login', this.loginForm)
-            
-            if (response.data.code === 200) {
-              localStorage.setItem('user', JSON.stringify(response.data.data))
-              localStorage.setItem('token', response.data.data.token)
-              
-              const userType = response.data.data.userType
-              if (userType === 'ADMIN') {
-                this.$router.push('/admin/dashboard')
-              } else if (userType === 'TEACHER') {
-                this.$router.push('/teacher/dashboard')
-              } else if (userType === 'STUDENT') {
-                this.$router.push('/student/dashboard')
-              }
-            } else {
-              this.$message.error(response.data.msg || '登录失败')
-            }
-          } catch (error) {
-            console.error('Login error:', error)
-            this.$message.error(error.message || '登录失败')
-          } finally {
-            this.loading = false
+    async handleLogin() {
+      try {
+        const response = await this.$axios.post('/api/users/login', this.loginForm)
+        if (response.data.code === 200) {
+          const user = response.data.data
+          console.log('登录成功，用户信息：', user)
+          
+          // 保存用户信息
+          localStorage.setItem('token', user.token)
+          localStorage.setItem('username', user.username)
+          localStorage.setItem('userRole', user.userType)
+          localStorage.setItem('userId', user.id.toString())
+          
+          console.log('保存到localStorage的信息:', {
+            token: localStorage.getItem('token'),
+            username: localStorage.getItem('username'),
+            userRole: localStorage.getItem('userRole'),
+            userId: localStorage.getItem('userId')
+          })
+          
+          // 等待一下确保数据已保存
+          await this.$nextTick()
+          
+          // 根据用户角色重定向到不同的首页
+          switch (user.userType) {
+            case 'STUDENT':
+              await this.$router.push('/student/test-records')
+              break
+            case 'TEACHER':
+              await this.$router.push('/teacher/dashboard')
+              break
+            case 'ADMIN':
+              await this.$router.push('/admin/dashboard')
+              break
+            default:
+              await this.$router.push('/login')
           }
+          
+          this.$message.success('登录成功')
+        } else {
+          this.$message.error(response.data.message || '登录失败')
         }
-      })
+      } catch (error) {
+        console.error('登录失败:', error)
+        this.$message.error('登录失败')
+      }
     }
   }
 }

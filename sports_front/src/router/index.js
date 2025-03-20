@@ -11,9 +11,35 @@ import SportsItemManagement from '@/views/admin/SportsItemManagement.vue'
 import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import Profile from '@/views/admin/Profile.vue'
 import DataReview from '@/views/admin/DataReview.vue'
-import studentRouter from './student'
+import TestRecords from '@/views/student/TestRecords'
 
 Vue.use(VueRouter)
+
+// 修改学生路由配置
+const studentRouter = {
+  path: '/student',
+  component: () => import('@/layouts/StudentLayout'),  // 需要创建这个布局组件
+  meta: { requiresAuth: true, role: 'STUDENT' },
+  children: [
+    {
+      path: '',  // 默认子路由
+      redirect: 'test-records'  // 重定向到体测记录页面
+    },
+    {
+      path: 'test-records',
+      name: 'StudentTestRecords',
+      component: TestRecords,
+      meta: { title: '体测成绩' }
+    },
+    {
+      path: 'sports-standard',
+      name: 'SportsStandard',
+      component: () => import('@/views/student/SportsStandard'),
+      meta: { title: '体测标准' }
+    },
+    // 其他学生相关路由...
+  ]
+}
 
 const routes = [
   {
@@ -145,10 +171,25 @@ const routes = [
       }
     ]
   },
-  studentRouter,
+  studentRouter,  // 添加学生路由
   {
     path: '/',
-    redirect: '/login'
+    redirect: to => {
+      const token = localStorage.getItem('token')
+      const userRole = localStorage.getItem('userRole')
+      if (!token) return '/login'
+      
+      switch (userRole) {
+        case 'STUDENT':
+          return '/student/test-records'
+        case 'TEACHER':
+          return '/teacher/dashboard'
+        case 'ADMIN':
+          return '/admin/dashboard'
+        default:
+          return '/login'
+      }
+    }
   }
 ]
 
@@ -158,15 +199,72 @@ const router = new VueRouter({
   routes
 })
 
-// 简化路由守卫逻辑
+// 路由守卫
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
+  const userRole = localStorage.getItem('userRole')
+  const userId = localStorage.getItem('userId')
+  
+  console.log('路由守卫 - 当前状态:', {
+    to: to.path,
+    from: from.path,
+    token,
+    userRole,
+    userId
+  })
+
+  // 如果是访问登录页
   if (to.path === '/login') {
-    next()
-  } else if (!token) {
-    next('/login')
+    if (token && userRole) {
+      console.log('已登录，重定向到对应首页')
+      // 已登录则根据角色重定向到对应的首页
+      switch (userRole) {
+        case 'STUDENT':
+          next('/student/test-records')
+          break
+        case 'TEACHER':
+          next('/teacher/dashboard')
+          break
+        case 'ADMIN':
+          next('/admin/dashboard')
+          break
+        default:
+          next()
+      }
+    } else {
+      console.log('未登录，允许访问登录页')
+      next()
+    }
   } else {
-    next()
+    // 非登录页面
+    if (!token || !userRole) {
+      console.log('未登录，重定向到登录页')
+      // 未登录则重定向到登录页
+      next('/login')
+    } else {
+      // 检查页面是否需要特定角色
+      const requireRole = to.meta.role
+      if (requireRole && requireRole !== userRole) {
+        console.log('角色不匹配，重定向到对应首页')
+        // 角色不匹配，重定向到对应角色的首页
+        switch (userRole) {
+          case 'STUDENT':
+            next('/student/test-records')
+            break
+          case 'TEACHER':
+            next('/teacher/dashboard')
+            break
+          case 'ADMIN':
+            next('/admin/dashboard')
+            break
+          default:
+            next('/login')
+        }
+      } else {
+        console.log('验证通过，允许访问')
+        next()
+      }
+    }
   }
 })
 

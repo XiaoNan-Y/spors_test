@@ -172,11 +172,12 @@ public class TeacherController {
 
     // 获取体育项目列表
     @GetMapping("/sports-items")
-    public Result getSportsItems() {
+    public Result getActiveSportsItems() {
         try {
-            List<SportsItem> items = sportsItemService.getAllActiveItems();
+            List<SportsItem> items = sportsItemService.findActiveItems();
             return Result.success(items);
         } catch (Exception e) {
+            log.error("获取体育项目列表失败", e);
             return Result.error("获取体育项目列表失败：" + e.getMessage());
         }
     }
