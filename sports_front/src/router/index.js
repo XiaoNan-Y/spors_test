@@ -55,6 +55,12 @@ const studentRouter = {
       component: () => import('@/views/student/Feedback'),
       meta: { title: '意见反馈' }
     },
+    {
+      path: 'exemption',
+      name: 'StudentExemption',
+      component: () => import('@/views/student/Exemption'),
+      meta: { title: '免测/重测申请' }
+    },
     // 其他学生相关路由...
   ]
 }

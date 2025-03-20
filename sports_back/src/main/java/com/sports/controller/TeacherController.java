@@ -36,6 +36,8 @@ import javax.persistence.criteria.Predicate;
 
 import com.sports.dto.ClassStatisticsDTO;
 import com.sports.dto.TeacherDashboardDTO;
+import com.sports.dto.ExemptionApplicationDTO;
+import com.sports.service.ExemptionService;
 
 @RestController
 @RequestMapping("/api/teacher")
@@ -102,6 +104,9 @@ public class TeacherController {
     private final TestRecordRepository testRecordRepository;
     private final UserRepository userRepository;
     private final ExemptionApplicationRepository exemptionApplicationRepository;
+
+    @Autowired
+    private ExemptionService exemptionService;
 
     public TeacherController(TestRecordRepository testRecordRepository, ExemptionApplicationRepository exemptionApplicationRepository, UserRepository userRepository) {
         this.testRecordRepository = testRecordRepository;
@@ -406,174 +411,57 @@ public class TeacherController {
         }
     }
 
+    /**
+     * 获取免测/重测申请列表
+     */
     @GetMapping("/exemption-applications")
     public Result getExemptionApplications(
-        @RequestParam(required = false) String className,
-        @RequestParam(required = false) String type,
-        @RequestParam(required = false) String status,
-        @RequestParam(required = false) String keyword,
-        @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(required = false) String className,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
         try {
-            // 处理空字符串参数
-            className = (className != null && className.trim().isEmpty()) ? null : className;
-            type = (type != null && type.trim().isEmpty()) ? null : type;
-            status = (status != null && status.trim().isEmpty()) ? null : status;
-            keyword = (keyword != null && keyword.trim().isEmpty()) ? null : keyword;
-            
-            log.debug("查询参数: className={}, type={}, status={}, keyword={}, page={}, size={}", 
+            log.info("获取免测/重测申请列表 - 参数: className={}, type={}, status={}, keyword={}, page={}, size={}", 
                 className, type, status, keyword, page, size);
+                
+            // 检查数据库中是否有待教师审核的申请
+            long pendingCount = exemptionApplicationRepository.countByStatus("PENDING_TEACHER");
+            log.info("数据库中待教师审核的申请数量: {}", pendingCount);
             
-            Page<ExemptionApplication> applications = exemptionApplicationRepository.findAllWithFilters(
-                className, type, status, keyword, PageRequest.of(page, size));
-            
-            log.info("查询到 {} 条申请记录", applications.getTotalElements());
-            
+            PageRequest pageRequest = PageRequest.of(page, size);
+            Page<ExemptionApplicationDTO> applications = exemptionService.getTeacherPendingApplications(
+                className, type, keyword, pageRequest);
+                
+            log.info("查询到 {} 条记录", applications.getTotalElements());
             return Result.success(applications);
         } catch (Exception e) {
-            log.error("获取免测申请列表失败", e);
+            log.error("获取免测/重测申请列表失败", e);
             return Result.error("获取申请列表失败：" + e.getMessage());
         }
     }
 
-    @PutMapping("/exemptions/{id}/review")
-    public Result reviewExemption(
+    /**
+     * 教师审核免测/重测申请
+     */
+    @PostMapping("/exemption-applications/{id}/review")
+    public Result reviewExemptionApplication(
             @PathVariable Long id,
-            @RequestBody ExemptionApplication exemption) {
+            @RequestBody Map<String, String> params,
+            @RequestAttribute Long userId) {
         try {
-            ExemptionApplication existing = exemptionApplicationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("申请不存在"));
-
-            existing.setStatus(exemption.getStatus());
-            existing.setTeacherReviewComment(exemption.getTeacherReviewComment());
-            existing.setTeacherReviewTime(LocalDateTime.now());
-            existing.setUpdateTime(LocalDateTime.now());
-
-            exemptionApplicationRepository.save(existing);
-            return Result.success(existing);
+            String status = params.get("status");
+            String reviewComment = params.get("reviewComment");
+            
+            log.info("教师审核免测/重测申请 - id: {}, status: {}, reviewComment: {}, reviewerId: {}", 
+                id, status, reviewComment, userId);
+                
+            ExemptionApplicationDTO result = exemptionService.teacherReview(id, status, reviewComment, userId);
+            return Result.success(result);
         } catch (Exception e) {
+            log.error("审核免测/重测申请失败", e);
             return Result.error("审核失败：" + e.getMessage());
-        }
-    }
-
-    @PutMapping("/exemptions/{id}/modify")
-    public Result modifyExemption(
-            @PathVariable Long id,
-            @RequestBody ExemptionApplication exemption) {
-        try {
-            log.info("开始修改审核，id={}", id);
-            ExemptionApplication existing = exemptionApplicationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("申请不存在"));
-
-            // 更新审核状态和意见
-            existing.setStatus(exemption.getStatus());
-            existing.setTeacherReviewComment(exemption.getTeacherReviewComment());
-            existing.setTeacherReviewTime(LocalDateTime.now());
-            existing.setUpdateTime(LocalDateTime.now());
-
-            // 如果状态改为待审核，清除管理员的审核信息
-            if ("PENDING".equals(exemption.getStatus())) {
-                existing.setAdminReviewComment(null);
-                existing.setAdminReviewTime(null);
-            }
-
-            log.debug("修改审核信息：status={}, comment={}", 
-                exemption.getStatus(), exemption.getTeacherReviewComment());
-            
-            ExemptionApplication saved = exemptionApplicationRepository.save(existing);
-            log.info("修改审核成功");
-            
-            return Result.success(saved);
-        } catch (Exception e) {
-            log.error("修改审核失败", e);
-            return Result.error("修改审核失败：" + e.getMessage());
-        }
-    }
-
-    @GetMapping("/exemptions/export")
-    public ResponseEntity<byte[]> exportExemptions(
-            @RequestParam(required = false) String className,
-            @RequestParam(required = false) String type,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String keyword) {
-        try {
-            // 修改这里，移除多余的 null 参数
-            List<ExemptionApplication> exemptions = exemptionApplicationRepository.findByFiltersForExport(
-                className, type, status, keyword);
-
-            // 创建工作簿
-            Workbook workbook = new XSSFWorkbook();
-            Sheet sheet = workbook.createSheet("免测重测申请记录");
-
-            // 创建标题行
-            Row headerRow = sheet.createRow(0);
-            String[] columnHeaders = {"序号", "学号", "学生姓名", "班级", "申请类型", "申请原因", 
-                              "状态", "教师审核意见", "教师审核时间", "管理员审核意见", "管理员审核时间"};
-            
-            // 设置列宽
-            sheet.setColumnWidth(0, 2500);  // 序号
-            sheet.setColumnWidth(1, 4000);  // 学号
-            sheet.setColumnWidth(2, 4000);  // 学生姓名
-            sheet.setColumnWidth(3, 4000);  // 班级
-            sheet.setColumnWidth(4, 3000);  // 申请类型
-            sheet.setColumnWidth(5, 8000);  // 申请原因
-            sheet.setColumnWidth(6, 3000);  // 状态
-            sheet.setColumnWidth(7, 8000);  // 教师审核意见
-            sheet.setColumnWidth(8, 6000);  // 教师审核时间
-            sheet.setColumnWidth(9, 8000);  // 管理员审核意见
-            sheet.setColumnWidth(10, 6000); // 管理员审核时间
-
-            // 创建标题样式
-            CellStyle headerStyle = workbook.createCellStyle();
-            headerStyle.setAlignment(HorizontalAlignment.CENTER);
-            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            
-            // 设置标题
-            for (int i = 0; i < columnHeaders.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(columnHeaders[i]);
-                cell.setCellStyle(headerStyle);
-            }
-
-            // 填充数据
-            int rowNum = 1;
-            for (ExemptionApplication exemption : exemptions) {
-                Row row = sheet.createRow(rowNum++);
-                row.createCell(0).setCellValue(rowNum - 1);
-                row.createCell(1).setCellValue(exemption.getStudentNumber());
-                row.createCell(2).setCellValue(exemption.getStudentName());
-                row.createCell(3).setCellValue(exemption.getClassName());
-                row.createCell(4).setCellValue("EXEMPTION".equals(exemption.getType()) ? "免测" : "重测");
-                row.createCell(5).setCellValue(exemption.getReason());
-                row.createCell(6).setCellValue(getStatusText(exemption.getStatus()));
-                row.createCell(7).setCellValue(exemption.getTeacherReviewComment());
-                row.createCell(8).setCellValue(formatDateTime(exemption.getTeacherReviewTime()));
-                row.createCell(9).setCellValue(exemption.getAdminReviewComment());
-                row.createCell(10).setCellValue(formatDateTime(exemption.getAdminReviewTime()));
-            }
-
-            // 导出文件
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            workbook.write(outputStream);
-            workbook.close();
-
-            // 设置响应头
-            HttpHeaders responseHeaders = new HttpHeaders();
-            responseHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            String fileName = String.format("免测重测申请记录_%s.xlsx", 
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
-            responseHeaders.setContentDispositionFormData("attachment", 
-                new String(fileName.getBytes("UTF-8"), "ISO-8859-1"));
-
-            return ResponseEntity
-                .ok()
-                .headers(responseHeaders)
-                .body(outputStream.toByteArray());
-
-        } catch (Exception e) {
-            log.error("导出失败", e);
-            throw new RuntimeException("导出失败：" + e.getMessage());
         }
     }
 

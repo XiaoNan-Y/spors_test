@@ -12,6 +12,8 @@ import com.sports.dto.TestRecordDTO;
 import com.sports.dto.ScoreAppealDTO;
 import com.sports.dto.FeedbackDTO;
 import com.sports.repository.UserRepository;
+import com.sports.service.ExemptionService;
+import com.sports.dto.ExemptionApplicationDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +40,9 @@ public class StudentController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ExemptionService exemptionService;
 
     @GetMapping("/dashboard/stats")
     public Result getDashboardStats(@RequestAttribute Long userId) {
@@ -216,6 +221,96 @@ public class StudentController {
             return Result.success("删除成功");
         } catch (Exception e) {
             return Result.error("删除反馈失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/exemptions")
+    public Result getExemptions(
+        @RequestParam(required = false) String type,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestAttribute Long userId
+    ) {
+        try {
+            Page<ExemptionApplicationDTO> applications = exemptionService.getStudentApplications(
+                userId, type, PageRequest.of(page, size));
+            
+            // 构造前端需要的分页格式
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", applications.getContent());
+            result.put("totalElements", applications.getTotalElements());
+            result.put("totalPages", applications.getTotalPages());
+            result.put("number", applications.getNumber());
+            result.put("size", applications.getSize());
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取免测/重测申请列表失败", e);
+            return Result.error("获取申请列表失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/exemptions")
+    public Result submitExemption(
+        @RequestBody ExemptionApplication application,
+        @RequestAttribute Long userId
+    ) {
+        try {
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            application.setStudent(student);
+            
+            ExemptionApplicationDTO savedApplication = exemptionService.submitApplication(application);
+            return Result.success(savedApplication);
+        } catch (Exception e) {
+            log.error("提交免测/重测申请失败", e);
+            return Result.error("提交申请失败：" + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/exemptions/{id}")
+    public Result deleteExemption(
+        @PathVariable Long id,
+        @RequestAttribute Long userId
+    ) {
+        try {
+            exemptionService.deleteApplication(id, userId);
+            return Result.success("删除成功");
+        } catch (Exception e) {
+            log.error("删除免测/重测申请失败", e);
+            return Result.error("删除申请失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/exemptions/{id}")
+    public Result updateExemption(
+        @PathVariable Long id,
+        @RequestBody ExemptionApplication application,
+        @RequestAttribute Long userId
+    ) {
+        try {
+            // 检查是否是本人的申请
+            ExemptionApplicationDTO existingDTO = exemptionService.getApplicationById(id);
+            if (!existingDTO.getStudentId().equals(userId)) {
+                return Result.error("无权修改此申请");
+            }
+            
+            // 检查申请状态是否允许修改
+            if (!existingDTO.getStatus().startsWith("PENDING")) {
+                return Result.error("只能修改待审核的申请");
+            }
+            
+            // 设置必要的字段
+            application.setId(id);
+            application.setStudentId(userId);
+            application.setStatus(existingDTO.getStatus());
+            
+            // 更新申请
+            ExemptionApplicationDTO updated = exemptionService.updateApplication(application);
+            return Result.success(updated);
+        } catch (Exception e) {
+            log.error("修改免测/重测申请失败", e);
+            return Result.error("修改申请失败：" + e.getMessage());
         }
     }
 } 

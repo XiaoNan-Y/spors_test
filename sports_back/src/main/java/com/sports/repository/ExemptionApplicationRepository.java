@@ -24,12 +24,13 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
     Page<ExemptionApplication> findByStudentId(@Param("studentId") Long studentId, Pageable pageable);
     
     // 根据类型和关键字查询申请列表（分页）
-    @Query("SELECT e FROM ExemptionApplication e " +
+    @Query("SELECT DISTINCT e FROM ExemptionApplication e " +
+           "LEFT JOIN FETCH e.sportsItem " +
            "WHERE (:type IS NULL OR e.type = :type) " +
            "AND (:keyword IS NULL OR " +
-           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<ExemptionApplication> findAllWithFilters(
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    List<ExemptionApplication> findAllWithFilters(
         @Param("type") String type,
         @Param("keyword") String keyword,
         Pageable pageable
@@ -45,20 +46,29 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
     Integer countReviewedSince(@Param("since") LocalDateTime since);
 
     @Query("SELECT DISTINCT e FROM ExemptionApplication e " +
-           "LEFT JOIN e.sportsItem " +
-           "WHERE (:className IS NULL OR e.className = :className) AND " +
-           "(:type IS NULL OR e.type = :type) AND " +
-           "(:status IS NULL OR e.status = :status) AND " +
-           "(:keyword IS NULL OR " +
+           "LEFT JOIN FETCH e.sportsItem " +
+           "WHERE (:className IS NULL OR e.className = :className) " +
+           "AND (:type IS NULL OR e.type = :type) " +
+           "AND e.status = :status " +
+           "AND (:keyword IS NULL OR " +
            "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
            "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    @EntityGraph(attributePaths = {"sportsItem"})
-    Page<ExemptionApplication> findAllWithFilters(
+    List<ExemptionApplication> findAllWithFiltersNoPage(
         @Param("className") String className,
         @Param("type") String type,
         @Param("status") String status,
-        @Param("keyword") String keyword,
-        Pageable pageable
+        @Param("keyword") String keyword
+    );
+
+    // 计数查询
+    @Query("SELECT COUNT(DISTINCT e) FROM ExemptionApplication e " +
+           "WHERE (:type IS NULL OR e.type = :type) " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    long countWithFilters(
+        @Param("type") String type,
+        @Param("keyword") String keyword
     );
 
     @Query("SELECT e FROM ExemptionApplication e " +
@@ -77,4 +87,7 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
 
     @Query("SELECT DISTINCT e.className FROM ExemptionApplication e WHERE e.className IS NOT NULL ORDER BY e.className")
     List<String> findDistinctClassNames();
+
+    @Query("SELECT COUNT(e) FROM ExemptionApplication e WHERE e.status = :status")
+    long countByStatus(@Param("status") String status);
 } 
