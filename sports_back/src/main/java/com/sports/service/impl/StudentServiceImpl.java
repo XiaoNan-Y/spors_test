@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.sports.entity.SportsItem;
 
 @Service
 public class StudentServiceImpl implements StudentService {
@@ -102,7 +103,7 @@ public class StudentServiceImpl implements StudentService {
     @Transactional
     public ExemptionApplication submitExemption(ExemptionApplication application) {
         application.setStatus("PENDING");
-        application.setCreateTime(LocalDateTime.now());
+        application.setApplyTime(LocalDateTime.now());
         application.setUpdateTime(LocalDateTime.now());
         return exemptionApplicationRepository.save(application);
     }
@@ -343,5 +344,29 @@ public class StudentServiceImpl implements StudentService {
             log.error("获取通知列表失败", e);
             throw new RuntimeException("获取通知列表失败", e);
         }
+    }
+
+    @Override
+    @Transactional
+    public ExemptionApplication createExemptionApplication(ExemptionApplication application, Long userId) {
+        User student = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+        application.setStudentId(userId);
+        application.setStudentNumber(student.getStudentNumber());
+        application.setStudentName(student.getRealName());
+        application.setClassName(student.getClassName());
+        application.setStatus("PENDING_TEACHER");
+        application.setApplyTime(LocalDateTime.now());
+        application.setUpdateTime(LocalDateTime.now());
+        
+        // 如果是重测申请，验证并设置体育项目
+        if ("RETEST".equals(application.getType()) && application.getSportsItemId() != null) {
+            SportsItem sportsItem = sportsItemRepository.findById(application.getSportsItemId())
+                .orElseThrow(() -> new RuntimeException("体育项目不存在"));
+            application.setSportsItem(sportsItem);
+        }
+        
+        return exemptionApplicationRepository.save(application);
     }
 } 

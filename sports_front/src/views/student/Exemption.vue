@@ -23,9 +23,9 @@
       style="width: 100%"
       v-loading="loading"
     >
-      <el-table-column prop="createTime" label="申请时间" width="180">
+      <el-table-column prop="applyTime" label="申请时间" width="180">
         <template slot-scope="scope">
-          {{ formatDateTime(scope.row.createTime) }}
+          {{ formatDateTime(scope.row.applyTime) }}
         </template>
       </el-table-column>
       <el-table-column prop="type" label="申请类型" width="100">
@@ -68,9 +68,9 @@
       </el-table-column>
     </el-table>
 
-    <!-- 提交申请对话框 -->
+    <!-- 提交/修改申请对话框 -->
     <el-dialog
-      title="提交申请"
+      :title="editingId ? '修改申请' : '提交申请'"
       :visible.sync="dialogVisible"
       width="500px"
       :close-on-click-modal="false"
@@ -113,8 +113,8 @@
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitForm" :loading="submitting">提交</el-button>
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitForm">确 定</el-button>
       </div>
     </el-dialog>
   </div>
@@ -125,10 +125,11 @@ export default {
   name: 'Exemption',
   data() {
     return {
-      applicationList: [],
       loading: false,
-      submitting: false,
       dialogVisible: false,
+      applicationList: [],
+      sportsItems: [],
+      editingId: null,
       form: {
         type: 'EXEMPTION',
         reason: '',
@@ -143,15 +144,13 @@ export default {
           trigger: 'change',
           validator: (rule, value, callback) => {
             if (this.form.type === 'RETEST' && !value) {
-              callback(new Error('请选择体测项目'));
+              callback(new Error('请选择体测项目'))
             } else {
-              callback();
+              callback()
             }
           }
         }]
-      },
-      sportsItems: [],
-      editingId: null
+      }
     }
   },
   created() {
@@ -161,111 +160,34 @@ export default {
   methods: {
     async fetchApplications() {
       try {
-        this.loading = true
-        const res = await this.$axios.get('/api/student/exemptions', {
+        this.loading = true;
+        console.log('Fetching applications...');
+        
+        const res = await this.$http.get('/api/student/exemptions', {
           params: {
             page: 0,
             size: 10
           }
-        })
+        });
+        
+        console.log('API response:', res.data);
         
         if (res.data.code === 200) {
-          this.applicationList = res.data.data.content || []
-          console.log('获取到的申请列表:', this.applicationList)
+          this.applicationList = res.data.data.content;
+          console.log('Applications loaded:', this.applicationList);
         } else {
-          this.$message.error(res.data.message || '获取申请列表失败')
+          this.$message.error(res.data.message || '获取申请列表失败');
         }
       } catch (error) {
-        console.error('获取申请列表失败:', error)
-        this.$message.error('获取申请列表失败')
+        console.error('获取申请列表失败:', error);
+        this.$message.error('获取申请列表失败');
       } finally {
-        this.loading = false
+        this.loading = false;
       }
-    },
-    handleSubmit() {
-      this.form = {
-        type: 'EXEMPTION',
-        reason: '',
-        sportsItemId: null
-      }
-      this.dialogVisible = true
-    },
-    async submitForm() {
-      try {
-        await this.$refs.form.validate()
-        this.submitting = true
-        
-        const data = {
-          ...this.form,
-          sportsItemId: this.form.type === 'RETEST' ? this.form.sportsItemId : null
-        }
-        
-        let res
-        if (this.editingId) {
-          // 修改申请
-          res = await this.$axios.put(`/api/student/exemptions/${this.editingId}`, data)
-        } else {
-          // 新建申请
-          res = await this.$axios.post('/api/student/exemptions', data)
-        }
-
-        if (res.data.code === 200) {
-          this.$message.success(this.editingId ? '修改成功' : '提交成功')
-          this.dialogVisible = false
-          this.fetchApplications()
-          this.resetForm()
-        } else {
-          this.$message.error(res.data.message || '提交失败')
-        }
-      } catch (error) {
-        console.error('提交失败:', error)
-        this.$message.error('提交失败')
-      } finally {
-        this.submitting = false
-      }
-    },
-    async handleDelete(row) {
-      try {
-        await this.$confirm('确认删除该申请?', '提示', {
-          type: 'warning'
-        })
-        const res = await this.$axios.delete(`/api/student/exemptions/${row.id}`)
-        if (res.data.code === 200) {
-          this.$message.success('删除成功')
-          this.fetchApplications()
-        }
-      } catch (error) {
-        if (error !== 'cancel') {
-          this.$message.error('删除失败')
-        }
-      }
-    },
-    getTypeTag(type) {
-      return type === 'EXEMPTION' ? 'warning' : 'primary'
-    },
-    getStatusType(status) {
-      const types = {
-        'PENDING': 'info',
-        'APPROVED': 'success',
-        'REJECTED': 'danger'
-      }
-      return types[status] || 'info'
-    },
-    getStatusText(status) {
-      const texts = {
-        'PENDING': '待审核',
-        'APPROVED': '已通过',
-        'REJECTED': '已驳回'
-      }
-      return texts[status] || status
-    },
-    formatDateTime(datetime) {
-      if (!datetime) return ''
-      return new Date(datetime).toLocaleString()
     },
     async fetchSportsItems() {
       try {
-        const res = await this.$axios.get('/api/sports-items/student/list')
+        const res = await this.$http.get('/api/student/sports-items')
         if (res.data.code === 200) {
           this.sportsItems = res.data.data
         }
@@ -274,30 +196,60 @@ export default {
         this.$message.error('获取体测项目列表失败')
       }
     },
-    resetForm() {
+    handleSubmit() {
+      this.editingId = null
       this.form = {
         type: 'EXEMPTION',
         reason: '',
         sportsItemId: null
       }
-      this.editingId = null
-      if (this.$refs.form) {
-        this.$refs.form.resetFields()
-      }
+      this.dialogVisible = true
     },
-    canEdit(row) {
-      return row.status === 'PENDING_TEACHER'
-    },
-    canCancel(row) {
-      return row.status === 'PENDING_TEACHER'
+    async submitForm() {
+      this.$refs.form.validate(async valid => {
+        if (valid) {
+          try {
+            const url = this.editingId 
+              ? `/api/student/exemptions/${this.editingId}`
+              : '/api/student/exemptions'
+            const method = this.editingId ? 'put' : 'post'
+            
+            // 构造请求数据
+            const data = {
+              type: this.form.type,
+              reason: this.form.reason,
+              sportsItemId: this.form.type === 'RETEST' ? this.form.sportsItemId : null
+            }
+            
+            console.log('Submitting data:', data); // 添加日志
+            
+            const res = await this.$http[method](url, data, {
+              headers: {
+                'Authorization': `Bearer ${this.$store.state.userId}`
+              }
+            })
+            
+            if (res.data.code === 200) {
+              this.$message.success(this.editingId ? '修改成功' : '提交成功')
+              this.dialogVisible = false
+              this.fetchApplications()
+            } else {
+              this.$message.error(res.data.message || '操作失败')
+            }
+          } catch (error) {
+            console.error('提交失败:', error)
+            this.$message.error(error.response?.data?.message || '提交失败')
+          }
+        }
+      })
     },
     handleEdit(row) {
+      this.editingId = row.id
       this.form = {
         type: row.type,
         reason: row.reason,
         sportsItemId: row.sportsItemId
       }
-      this.editingId = row.id
       this.dialogVisible = true
     },
     async handleCancel(row) {
@@ -307,13 +259,11 @@ export default {
           cancelButtonText: '取消',
           type: 'warning'
         })
-
-        const res = await this.$axios.delete(`/api/student/exemptions/${row.id}`)
+        
+        const res = await this.$http.delete(`/api/student/exemptions/${row.id}`)
         if (res.data.code === 200) {
           this.$message.success('撤销成功')
           this.fetchApplications()
-        } else {
-          this.$message.error(res.data.message || '撤销失败')
         }
       } catch (error) {
         if (error !== 'cancel') {
@@ -321,6 +271,39 @@ export default {
           this.$message.error('撤销失败')
         }
       }
+    },
+    getTypeTag(type) {
+      return type === 'EXEMPTION' ? 'warning' : 'primary'
+    },
+    getStatusType(status) {
+      switch (status) {
+        case 'PENDING_TEACHER': return 'info'
+        case 'PENDING_ADMIN': return 'warning'
+        case 'APPROVED': return 'success'
+        case 'REJECTED_TEACHER':
+        case 'REJECTED': return 'danger'
+        default: return 'info'
+      }
+    },
+    getStatusText(status) {
+      switch (status) {
+        case 'PENDING_TEACHER': return '待教师审核'
+        case 'PENDING_ADMIN': return '待管理员审核'
+        case 'APPROVED': return '已通过'
+        case 'REJECTED_TEACHER': return '教师已驳回'
+        case 'REJECTED': return '已驳回'
+        default: return status
+      }
+    },
+    formatDateTime(datetime) {
+      if (!datetime) return ''
+      return new Date(datetime).toLocaleString()
+    },
+    canEdit(row) {
+      return row.status === 'PENDING_TEACHER'
+    },
+    canCancel(row) {
+      return row.status === 'PENDING_TEACHER'
     }
   }
 }

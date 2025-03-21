@@ -52,8 +52,8 @@ public class ExemptionApplication {
     @Column(name = "admin_review_time")
     private LocalDateTime adminReviewTime;
 
-    @Column(name = "create_time")
-    private LocalDateTime createTime;
+    @Column(name = "apply_time")
+    private LocalDateTime applyTime;
 
     @Column(name = "update_time")
     private LocalDateTime updateTime;
@@ -76,9 +76,6 @@ public class ExemptionApplication {
     @JsonIgnore
     @Transient
     private Long sportsItemId;
-
-    @Column(name = "apply_time")
-    private LocalDateTime applyTime;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

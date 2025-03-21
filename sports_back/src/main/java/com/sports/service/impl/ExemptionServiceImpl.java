@@ -71,12 +71,14 @@ public class ExemptionServiceImpl implements ExemptionService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ExemptionApplicationDTO> getStudentApplications(Long studentId, String type, Pageable pageable) {
-        Page<ExemptionApplication> applications = exemptionRepository.findByStudentId(studentId, pageable);
-        List<ExemptionApplicationDTO> dtos = applications.getContent().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-        return new PageImpl<>(dtos, pageable, applications.getTotalElements());
+    public Page<ExemptionApplication> getStudentApplications(Long studentId, Pageable pageable) {
+        try {
+            log.info("Getting student applications for studentId: {}", studentId);
+            return exemptionRepository.findByStudentId(studentId, pageable);
+        } catch (Exception e) {
+            log.error("获取学生申请列表失败 - studentId: " + studentId, e);
+            throw new RuntimeException("获取学生申请列表失败: " + e.getMessage());
+        }
     }
 
     @Override

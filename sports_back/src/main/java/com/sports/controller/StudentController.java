@@ -14,16 +14,22 @@ import com.sports.dto.FeedbackDTO;
 import com.sports.repository.UserRepository;
 import com.sports.service.ExemptionService;
 import com.sports.dto.ExemptionApplicationDTO;
+import com.sports.repository.SportsItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.sports.entity.SportsItem;
+import com.sports.repository.ExemptionApplicationRepository;
 
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/student")
@@ -43,6 +49,12 @@ public class StudentController {
 
     @Autowired
     private ExemptionService exemptionService;
+
+    @Autowired
+    private SportsItemRepository sportsItemRepository;
+
+    @Autowired
+    private ExemptionApplicationRepository exemptionRepository;
 
     @GetMapping("/dashboard/stats")
     public Result getDashboardStats(@RequestAttribute Long userId) {
@@ -224,47 +236,99 @@ public class StudentController {
         }
     }
 
+    @PostMapping("/exemptions")
+    public Result createExemption(
+        @RequestBody ExemptionApplication application,
+        @RequestAttribute Long userId
+    ) {
+        try {
+            // 获取用户信息
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            log.info("Creating exemption application for student: {}", student.getStudentNumber());
+
+            // 设置必要字段
+            application.setStudentNumber(student.getStudentNumber());
+            application.setStudentName(student.getRealName());
+            application.setClassName(student.getClassName());
+            application.setStatus("PENDING_TEACHER");
+            application.setApplyTime(LocalDateTime.now());
+
+            // 如果是重测申请，验证体育项目
+            if ("RETEST".equals(application.getType()) && application.getSportsItemId() == null) {
+                return Result.error("重测申请必须选择体育项目");
+            }
+
+            // 保存申请
+            ExemptionApplication saved = exemptionRepository.save(application);
+            log.info("Saved application: {}", saved);
+
+            return Result.success(saved);
+        } catch (Exception e) {
+            log.error("创建免测/重测申请失败", e);
+            return Result.error("创建申请失败：" + e.getMessage());
+        }
+    }
+
     @GetMapping("/exemptions")
     public Result getExemptions(
-        @RequestParam(required = false) String type,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size,
         @RequestAttribute Long userId
     ) {
         try {
-            Page<ExemptionApplicationDTO> applications = exemptionService.getStudentApplications(
-                userId, type, PageRequest.of(page, size));
-            
-            // 构造前端需要的分页格式
-            Map<String, Object> result = new HashMap<>();
-            result.put("content", applications.getContent());
-            result.put("totalElements", applications.getTotalElements());
-            result.put("totalPages", applications.getTotalPages());
-            result.put("number", applications.getNumber());
-            result.put("size", applications.getSize());
-            
-            return Result.success(result);
-        } catch (Exception e) {
-            log.error("获取免测/重测申请列表失败", e);
-            return Result.error("获取申请列表失败：" + e.getMessage());
-        }
-    }
-
-    @PostMapping("/exemptions")
-    public Result submitExemption(
-        @RequestBody ExemptionApplication application,
-        @RequestAttribute Long userId
-    ) {
-        try {
+            // 1. 先获取用户信息以获取学号
             User student = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
-            application.setStudent(student);
             
-            ExemptionApplicationDTO savedApplication = exemptionService.submitApplication(application);
-            return Result.success(savedApplication);
+            log.info("Getting exemptions for student: {}, number: {}", userId, student.getStudentNumber());
+            
+            // 2. 使用学号获取申请记录
+            List<ExemptionApplication> applications = exemptionRepository
+                .findAllByStudentNumber(student.getStudentNumber());
+            
+            log.info("Found {} applications", applications.size());
+
+            // 3. 手动分页
+            int start = page * size;
+            int end = Math.min(start + size, applications.size());
+            List<Map<String, Object>> content = new ArrayList<>();
+
+            // 4. 处理分页数据
+            for (int i = start; i < end; i++) {
+                ExemptionApplication app = applications.get(i);
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", app.getId());
+                item.put("type", app.getType());
+                item.put("reason", app.getReason());
+                item.put("status", app.getStatus());
+                item.put("applyTime", app.getApplyTime());
+                item.put("reviewComment", app.getReviewComment());
+                item.put("teacherReviewComment", app.getTeacherReviewComment());
+                item.put("adminReviewComment", app.getAdminReviewComment());
+                
+                // 如果有关联的体育项目，也添加进去
+                if (app.getSportsItem() != null) {
+                    item.put("sportsItemId", app.getSportsItem().getId());
+                    item.put("sportsItemName", app.getSportsItem().getName());
+                }
+                
+                content.add(item);
+            }
+
+            // 5. 构造分页结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", content);
+            result.put("totalElements", applications.size());
+            result.put("totalPages", (int) Math.ceil((double) applications.size() / size));
+            result.put("number", page);
+            result.put("size", size);
+
+            return Result.success(result);
         } catch (Exception e) {
-            log.error("提交免测/重测申请失败", e);
-            return Result.error("提交申请失败：" + e.getMessage());
+            log.error("Error getting exemption applications", e);
+            return Result.error("获取申请列表失败：" + e.getMessage());
         }
     }
 
@@ -311,6 +375,17 @@ public class StudentController {
         } catch (Exception e) {
             log.error("修改免测/重测申请失败", e);
             return Result.error("修改申请失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/sports-items")
+    public Result getSportsItems() {
+        try {
+            List<SportsItem> items = sportsItemRepository.findByIsActiveTrue();
+            return Result.success(items);
+        } catch (Exception e) {
+            log.error("获取体育项目列表失败", e);
+            return Result.error("获取体育项目列表失败：" + e.getMessage());
         }
     }
 } 

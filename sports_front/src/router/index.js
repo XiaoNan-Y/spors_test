@@ -59,7 +59,10 @@ const studentRouter = {
       path: 'exemption',
       name: 'StudentExemption',
       component: () => import('@/views/student/Exemption'),
-      meta: { title: '免测/重测申请' }
+      meta: {
+        requiresAuth: true,
+        role: 'STUDENT'
+      }
     },
     // 其他学生相关路由...
   ]

@@ -3,6 +3,7 @@ package com.sports.entity;
 import lombok.Data;
 import javax.persistence.*;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -41,8 +42,31 @@ public class User implements Serializable {
     @Column(name = "class_name")
     private String className;
 
+    @Column(name = "name")
+    private String name;
+
     @Column(name = "created_at", nullable = false)
     private java.util.Date createdAt;
+
+    @Column(name = "is_active")
+    private Boolean isActive = true;
+
+    @Column(name = "create_time")
+    private LocalDateTime createTime;
+
+    @Column(name = "update_time")
+    private LocalDateTime updateTime;
+
+    @PrePersist
+    protected void onCreate() {
+        createTime = LocalDateTime.now();
+        updateTime = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updateTime = LocalDateTime.now();
+    }
 
     public User() {
         this.createdAt = new java.util.Date();

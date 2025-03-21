@@ -11,25 +11,15 @@ public class UserInterceptor implements HandlerInterceptor {
     
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String userIdStr = request.getHeader("userId");
-        log.info("Received userId header: {}", userIdStr);
-        
-        // 检查 userIdStr 是否为 null 或 "null" 字符串
-        if (userIdStr != null && !userIdStr.equals("null") && !userIdStr.trim().isEmpty()) {
-            try {
-                Long userId = Long.parseLong(userIdStr);
-                request.setAttribute("userId", userId);
-                log.info("Set userId attribute: {}", userId);
-            } catch (NumberFormatException e) {
-                log.error("Invalid userId format: {}", userIdStr, e);
-                // 不设置 userId 属性，让控制器处理
-            }
-        } else {
-            log.warn("No valid userId provided in request header");
-            // 可以选择设置一个默认值或者不设置
-            // request.setAttribute("userId", null);
+        // 从请求头中获取用户ID
+        String userId = request.getHeader("X-User-ID");
+        if (userId != null) {
+            request.setAttribute("userId", Long.parseLong(userId));
+            return true;
         }
         
+        // 开发测试时，可以使用固定用户ID
+        request.setAttribute("userId", 3L);
         return true;
     }
 } 

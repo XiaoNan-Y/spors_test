@@ -15,13 +15,16 @@ import java.util.List;
 @Repository
 public interface ExemptionApplicationRepository extends JpaRepository<ExemptionApplication, Long> {
     
-    // 使用 @Query 注解来明确指定查询
+    // 添加这个方法
     @Query("SELECT COUNT(e) FROM ExemptionApplication e WHERE e.studentId = :studentId AND e.status = :status")
     long countByStudentIdAndStatus(@Param("studentId") Long studentId, @Param("status") String status);
     
-    // 使用 @Query 注解来明确指定查询
-    @Query("SELECT e FROM ExemptionApplication e WHERE e.studentId = :studentId")
-    Page<ExemptionApplication> findByStudentId(@Param("studentId") Long studentId, Pageable pageable);
+    // 分页查询
+    @Query(value = "SELECT DISTINCT e FROM ExemptionApplication e " +
+           "LEFT JOIN FETCH e.sportsItem " +
+           "WHERE e.studentId = :studentId",
+           countQuery = "SELECT COUNT(DISTINCT e) FROM ExemptionApplication e WHERE e.studentId = :studentId")
+    Page<ExemptionApplication> findByStudentId(Long studentId, Pageable pageable);
     
     // 根据类型和关键字查询申请列表（分页）
     @Query("SELECT DISTINCT e FROM ExemptionApplication e " +
@@ -122,4 +125,16 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
         String studentNumber,
         Pageable pageable
     );
+
+    @Query("SELECT e FROM ExemptionApplication e " +
+           "LEFT JOIN FETCH e.sportsItem " +
+           "WHERE e.studentId = :studentId")
+    List<ExemptionApplication> findAllByStudentId(@Param("studentId") Long studentId);
+
+    // 使用学号查询
+    @Query("SELECT e FROM ExemptionApplication e " +
+           "LEFT JOIN FETCH e.sportsItem " +
+           "WHERE e.studentNumber = :studentNumber " +
+           "ORDER BY e.applyTime DESC")
+    List<ExemptionApplication> findAllByStudentNumber(@Param("studentNumber") String studentNumber);
 } 

@@ -42,4 +42,6 @@ public interface StudentService {
     Page<ScoreAppealDTO> getStudentAppeals(Long userId, String status, Pageable pageable);
 
     Page<Notice> getNotices(String keyword, String type, Pageable pageable);
+
+    ExemptionApplication createExemptionApplication(ExemptionApplication application, Long userId);
 } 

@@ -15,7 +15,7 @@ public interface ExemptionService {
     /**
      * 获取学生的申请列表
      */
-    Page<ExemptionApplicationDTO> getStudentApplications(Long studentId, String type, Pageable pageable);
+    Page<ExemptionApplication> getStudentApplications(Long studentId, Pageable pageable);
     
     /**
      * 获取所有申请列表(用于教师/管理员查看)
