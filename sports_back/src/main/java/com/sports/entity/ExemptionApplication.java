@@ -73,7 +73,9 @@ public class ExemptionApplication {
     @Column(name = "reviewer_name")
     private String reviewerName;
 
-    @JsonIgnore
+    @Column(name = "sports_item_name")
+    private String sportsItemName;
+
     @Transient
     private Long sportsItemId;
 
@@ -101,6 +103,9 @@ public class ExemptionApplication {
         applyTime = LocalDateTime.now();
         if (status == null) {
             status = "PENDING_TEACHER";
+        }
+        if ("RETEST".equals(type) && sportsItem != null) {
+            sportsItemName = sportsItem.getName();
         }
     }
 
@@ -145,15 +150,11 @@ public class ExemptionApplication {
     }
 
     public Long getSportsItemId() {
-        return sportsItem != null ? sportsItem.getId() : sportsItemId;
+        return sportsItemId;
     }
 
     public void setSportsItemId(Long sportsItemId) {
         this.sportsItemId = sportsItemId;
-        if (this.sportsItem == null) {
-            this.sportsItem = new SportsItem();
-            this.sportsItem.setId(sportsItemId);
-        }
     }
 
     @JsonProperty("sportsItem")

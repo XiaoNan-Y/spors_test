@@ -35,6 +35,11 @@
           </el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="sportsItemName" label="申请项目" width="120">
+        <template slot-scope="scope">
+          {{ scope.row.type === 'RETEST' ? (scope.row.sportsItemName || '-') : '-' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="reason" label="申请原因" show-overflow-tooltip></el-table-column>
       <el-table-column prop="status" label="状态" width="120">
         <template slot-scope="scope">
@@ -68,6 +73,20 @@
       </el-table-column>
     </el-table>
 
+    <!-- 分页器 -->
+    <div class="pagination-container">
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pagination.currentPage"
+        :page-sizes="[10, 20, 50]"
+        :page-size="pagination.pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pagination.total"
+      >
+      </el-pagination>
+    </div>
+
     <!-- 提交/修改申请对话框 -->
     <el-dialog
       :title="editingId ? '修改申请' : '提交申请'"
@@ -77,7 +96,7 @@
     >
       <el-form :model="form" :rules="rules" ref="form" label-width="100px">
         <el-form-item label="申请类型" prop="type">
-          <el-radio-group v-model="form.type">
+          <el-radio-group v-model="form.type" @change="handleTypeChange">
             <el-radio label="EXEMPTION">免测</el-radio>
             <el-radio label="RETEST">重测</el-radio>
           </el-radio-group>
@@ -88,6 +107,9 @@
           v-if="form.type === 'RETEST'" 
           label="体测项目" 
           prop="sportsItemId"
+          :rules="[
+            { required: true, message: '请选择体测项目', trigger: 'change' }
+          ]"
         >
           <el-select 
             v-model="form.sportsItemId" 
@@ -124,6 +146,15 @@
 export default {
   name: 'Exemption',
   data() {
+    // 自定义验证规则
+    const validateSportsItem = (rule, value, callback) => {
+      if (this.form.type === 'RETEST' && !this.form.sportsItemId) {
+        callback(new Error('重测申请必须选择体育项目'));
+      } else {
+        callback();
+      }
+    };
+
     return {
       loading: false,
       dialogVisible: false,
@@ -138,51 +169,47 @@ export default {
       rules: {
         type: [{ required: true, message: '请选择申请类型', trigger: 'change' }],
         reason: [{ required: true, message: '请输入申请原因', trigger: 'blur' }],
-        sportsItemId: [{ 
-          required: true, 
-          message: '请选择体测项目', 
-          trigger: 'change',
-          validator: (rule, value, callback) => {
-            if (this.form.type === 'RETEST' && !value) {
-              callback(new Error('请选择体测项目'))
-            } else {
-              callback()
-            }
-          }
-        }]
+        sportsItemId: [{ validator: validateSportsItem, trigger: 'change' }]
+      },
+      pagination: {
+        currentPage: 1,
+        pageSize: 10,
+        total: 0
       }
     }
   },
   created() {
-    this.fetchApplications()
     this.fetchSportsItems()
+    this.fetchApplications()
   },
   methods: {
     async fetchApplications() {
       try {
-        this.loading = true;
-        console.log('Fetching applications...');
+        this.loading = true
+        console.log('Fetching applications...')
         
         const res = await this.$http.get('/api/student/exemptions', {
           params: {
-            page: 0,
-            size: 10
+            page: this.pagination.currentPage - 1, // 后端页码从0开始
+            size: this.pagination.pageSize
           }
-        });
+        })
         
-        console.log('API response:', res.data);
+        console.log('API response:', res.data)
         
         if (res.data.code === 200) {
-          this.applicationList = res.data.data.content;
-          console.log('Applications loaded:', this.applicationList);
+          const { content, totalElements } = res.data.data
+          this.applicationList = content || []
+          this.pagination.total = totalElements || 0
+          console.log('Applications loaded:', this.applicationList)
         } else {
-          this.$message.error(res.data.message || '获取申请列表失败');
+          this.$message.error(res.data.message || '获取申请列表失败')
         }
       } catch (error) {
-        console.error('获取申请列表失败:', error);
-        this.$message.error('获取申请列表失败');
+        console.error('获取申请列表失败:', error)
+        this.$message.error('获取申请列表失败')
       } finally {
-        this.loading = false;
+        this.loading = false
       }
     },
     async fetchSportsItems() {
@@ -217,29 +244,37 @@ export default {
             // 构造请求数据
             const data = {
               type: this.form.type,
-              reason: this.form.reason,
-              sportsItemId: this.form.type === 'RETEST' ? this.form.sportsItemId : null
+              reason: this.form.reason
             }
             
-            console.log('Submitting data:', data); // 添加日志
+            // 只有在重测时才添加体育项目ID
+            if (this.form.type === 'RETEST') {
+              data.sportsItemId = this.form.sportsItemId
+            }
             
-            const res = await this.$http[method](url, data, {
-              headers: {
-                'Authorization': `Bearer ${this.$store.state.userId}`
-              }
-            })
+            console.log('Submitting form data:', data)
+            
+            const res = await this.$http[method](url, data)
+            console.log('Server response:', res.data)
             
             if (res.data.code === 200) {
               this.$message.success(this.editingId ? '修改成功' : '提交成功')
               this.dialogVisible = false
-              this.fetchApplications()
+              
+              // 重置分页并强制刷新
+              this.pagination.currentPage = 1
+              await this.$nextTick()
+              await this.fetchApplications()
             } else {
               this.$message.error(res.data.message || '操作失败')
             }
           } catch (error) {
             console.error('提交失败:', error)
-            this.$message.error(error.response?.data?.message || '提交失败')
+            this.$message.error(error.response?.data?.message || '提交失败，请检查网络连接')
           }
+        } else {
+          console.log('表单验证失败')
+          return false
         }
       })
     },
@@ -263,7 +298,8 @@ export default {
         const res = await this.$http.delete(`/api/student/exemptions/${row.id}`)
         if (res.data.code === 200) {
           this.$message.success('撤销成功')
-          this.fetchApplications()
+          // 强制刷新列表
+          await this.fetchApplications()
         }
       } catch (error) {
         if (error !== 'cancel') {
@@ -304,6 +340,27 @@ export default {
     },
     canCancel(row) {
       return row.status === 'PENDING_TEACHER'
+    },
+    // 当申请类型改变时重置体育项目
+    handleTypeChange() {
+      if (this.form.type === 'EXEMPTION') {
+        this.form.sportsItemId = null
+      }
+      // 手动触发表单验证
+      this.$nextTick(() => {
+        this.$refs.form.validateField('sportsItemId')
+      })
+    },
+    // 处理页码改变
+    handleCurrentChange(val) {
+      this.pagination.currentPage = val
+      this.fetchApplications()
+    },
+    // 处理每页条数改变
+    handleSizeChange(val) {
+      this.pagination.pageSize = val
+      this.pagination.currentPage = 1
+      this.fetchApplications()
     }
   }
 }
@@ -342,6 +399,11 @@ export default {
 
   .operation-bar {
     margin: 20px 0;
+  }
+
+  .pagination-container {
+    margin-top: 20px;
+    text-align: right;
   }
 }
 </style> 

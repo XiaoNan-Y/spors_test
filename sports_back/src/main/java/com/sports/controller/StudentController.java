@@ -18,6 +18,8 @@ import com.sports.repository.SportsItemRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -246,25 +248,61 @@ public class StudentController {
             User student = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
             
-            log.info("Creating exemption application for student: {}", student.getStudentNumber());
+            log.info("Creating exemption application - type: {}, sportsItemId: {}, userId: {}", 
+                application.getType(), application.getSportsItemId(), userId);
 
-            // 设置必要字段
+            // 设置必要字段 - 移到前面来确保所有必要字段都被设置
+            application.setStudentId(userId);
             application.setStudentNumber(student.getStudentNumber());
             application.setStudentName(student.getRealName());
             application.setClassName(student.getClassName());
             application.setStatus("PENDING_TEACHER");
             application.setApplyTime(LocalDateTime.now());
+            application.setUpdateTime(LocalDateTime.now());
 
-            // 如果是重测申请，验证体育项目
-            if ("RETEST".equals(application.getType()) && application.getSportsItemId() == null) {
-                return Result.error("重测申请必须选择体育项目");
+            // 如果是重测申请，验证并设置体育项目
+            if ("RETEST".equals(application.getType())) {
+                Long sportsItemId = application.getSportsItemId();
+                log.info("Received sportsItemId: {}", sportsItemId);
+                
+                if (sportsItemId == null) {
+                    return Result.error("重测申请必须选择体育项目");
+                }
+                
+                try {
+                    SportsItem sportsItem = sportsItemRepository.findById(sportsItemId)
+                        .orElseThrow(() -> new RuntimeException("体育项目不存在"));
+                    application.setSportsItem(sportsItem);
+                    application.setSportsItemName(sportsItem.getName());
+                    log.info("Set sports item: {}", sportsItem.getName());
+                } catch (Exception e) {
+                    log.error("Error setting sports item", e);
+                    return Result.error("设置体育项目失败：" + e.getMessage());
+                }
             }
 
             // 保存申请
             ExemptionApplication saved = exemptionRepository.save(application);
-            log.info("Saved application: {}", saved);
+            log.info("Saved application with ID: {}", saved.getId());
 
-            return Result.success(saved);
+            // 构造返回数据
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", saved.getId());
+            result.put("type", saved.getType());
+            result.put("reason", saved.getReason());
+            result.put("status", saved.getStatus());
+            result.put("applyTime", saved.getApplyTime());
+            result.put("studentName", saved.getStudentName());
+            result.put("studentNumber", saved.getStudentNumber());
+            result.put("className", saved.getClassName());
+            
+            // 添加体育项目信息
+            if (saved.getSportsItem() != null) {
+                result.put("sportsItemId", saved.getSportsItem().getId());
+                result.put("sportsItemName", saved.getSportsItem().getName());
+            }
+
+            return Result.success(result);
         } catch (Exception e) {
             log.error("创建免测/重测申请失败", e);
             return Result.error("创建申请失败：" + e.getMessage());
@@ -278,50 +316,56 @@ public class StudentController {
         @RequestAttribute Long userId
     ) {
         try {
-            // 1. 先获取用户信息以获取学号
+            log.info("Getting exemptions for student: {}, page: {}, size: {}", userId, page, size);
+            
+            // 获取用户信息
             User student = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
             
-            log.info("Getting exemptions for student: {}, number: {}", userId, student.getStudentNumber());
+            // 获取所有申请记录
+            List<ExemptionApplication> allApplications = exemptionRepository.findAllByStudentId(userId);
+            log.info("Found {} applications for student {}", allApplications.size(), userId);
             
-            // 2. 使用学号获取申请记录
-            List<ExemptionApplication> applications = exemptionRepository
-                .findAllByStudentNumber(student.getStudentNumber());
-            
-            log.info("Found {} applications", applications.size());
-
-            // 3. 手动分页
+            // 手动分页
             int start = page * size;
-            int end = Math.min(start + size, applications.size());
-            List<Map<String, Object>> content = new ArrayList<>();
-
-            // 4. 处理分页数据
-            for (int i = start; i < end; i++) {
-                ExemptionApplication app = applications.get(i);
+            int end = Math.min(start + size, allApplications.size());
+            List<ExemptionApplication> pageContent = start < allApplications.size() 
+                ? allApplications.subList(start, end) 
+                : new ArrayList<>();
+            
+            // 处理结果
+            List<Map<String, Object>> content = pageContent.stream().map(app -> {
                 Map<String, Object> item = new HashMap<>();
                 item.put("id", app.getId());
                 item.put("type", app.getType());
                 item.put("reason", app.getReason());
                 item.put("status", app.getStatus());
                 item.put("applyTime", app.getApplyTime());
+                
+                // 设置学生信息
+                item.put("studentName", app.getStudentName() != null ? app.getStudentName() : student.getRealName());
+                item.put("studentNumber", app.getStudentNumber() != null ? app.getStudentNumber() : student.getStudentNumber());
+                item.put("className", app.getClassName() != null ? app.getClassName() : student.getClassName());
+                
+                // 设置审核意见
                 item.put("reviewComment", app.getReviewComment());
                 item.put("teacherReviewComment", app.getTeacherReviewComment());
                 item.put("adminReviewComment", app.getAdminReviewComment());
                 
-                // 如果有关联的体育项目，也添加进去
+                // 设置体育项目信息
                 if (app.getSportsItem() != null) {
                     item.put("sportsItemId", app.getSportsItem().getId());
                     item.put("sportsItemName", app.getSportsItem().getName());
                 }
                 
-                content.add(item);
-            }
+                return item;
+            }).collect(Collectors.toList());
 
-            // 5. 构造分页结果
+            // 构造分页结果
             Map<String, Object> result = new HashMap<>();
             result.put("content", content);
-            result.put("totalElements", applications.size());
-            result.put("totalPages", (int) Math.ceil((double) applications.size() / size));
+            result.put("totalElements", allApplications.size());
+            result.put("totalPages", (int) Math.ceil((double) allApplications.size() / size));
             result.put("number", page);
             result.put("size", size);
 
@@ -353,25 +397,62 @@ public class StudentController {
         @RequestAttribute Long userId
     ) {
         try {
+            // 获取现有申请
+            ExemptionApplication existing = exemptionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("申请不存在"));
+
             // 检查是否是本人的申请
-            ExemptionApplicationDTO existingDTO = exemptionService.getApplicationById(id);
-            if (!existingDTO.getStudentId().equals(userId)) {
+            if (!existing.getStudentId().equals(userId)) {
                 return Result.error("无权修改此申请");
             }
             
             // 检查申请状态是否允许修改
-            if (!existingDTO.getStatus().startsWith("PENDING")) {
+            if (!existing.getStatus().startsWith("PENDING")) {
                 return Result.error("只能修改待审核的申请");
             }
+
+            // 获取用户信息
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
             
-            // 设置必要的字段
+            // 保留原有的基本信息
             application.setId(id);
             application.setStudentId(userId);
-            application.setStatus(existingDTO.getStatus());
+            application.setStudentNumber(student.getStudentNumber());
+            application.setStudentName(student.getRealName());
+            application.setClassName(student.getClassName());
+            application.setStatus(existing.getStatus());
+            application.setApplyTime(existing.getApplyTime());
+            application.setUpdateTime(LocalDateTime.now());
             
-            // 更新申请
-            ExemptionApplicationDTO updated = exemptionService.updateApplication(application);
-            return Result.success(updated);
+            // 如果是重测申请，处理体育项目
+            if ("RETEST".equals(application.getType()) && application.getSportsItemId() != null) {
+                SportsItem sportsItem = sportsItemRepository.findById(application.getSportsItemId())
+                    .orElseThrow(() -> new RuntimeException("体育项目不存在"));
+                application.setSportsItem(sportsItem);
+                application.setSportsItemName(sportsItem.getName());
+            }
+            
+            // 保存更新
+            ExemptionApplication updated = exemptionRepository.save(application);
+            
+            // 构造返回数据
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", updated.getId());
+            result.put("type", updated.getType());
+            result.put("reason", updated.getReason());
+            result.put("status", updated.getStatus());
+            result.put("applyTime", updated.getApplyTime());
+            result.put("studentName", updated.getStudentName());
+            result.put("studentNumber", updated.getStudentNumber());
+            result.put("className", updated.getClassName());
+            
+            if (updated.getSportsItem() != null) {
+                result.put("sportsItemId", updated.getSportsItem().getId());
+                result.put("sportsItemName", updated.getSportsItem().getName());
+            }
+
+            return Result.success(result);
         } catch (Exception e) {
             log.error("修改免测/重测申请失败", e);
             return Result.error("修改申请失败：" + e.getMessage());
