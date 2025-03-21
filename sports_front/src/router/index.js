@@ -22,6 +22,10 @@ const studentRouter = {
   meta: { requiresAuth: true, role: 'STUDENT' },
   children: [
     {
+      path: '',  // 默认子路由
+      redirect: 'home'  // 重定向到首页
+    },
+    {
       path: 'home',
       name: 'StudentHome',
       component: () => import('@/views/student/Home.vue'),
@@ -30,10 +34,6 @@ const studentRouter = {
         requiresAuth: true,
         role: 'STUDENT'
       }
-    },
-    {
-      path: '',  // 默认子路由
-      redirect: 'home'  // 修改这里，重定向到首页
     },
     {
       path: 'test-records',
@@ -74,7 +74,16 @@ const studentRouter = {
         role: 'STUDENT'
       }
     },
-    
+    {
+      path: 'profile',
+      name: 'StudentProfile',
+      component: () => import('@/views/student/Profile.vue'),
+      meta: {
+        title: '个人信息',
+        requiresAuth: true,
+        role: 'STUDENT'
+      }
+    },
     // 其他学生相关路由...
   ]
 }

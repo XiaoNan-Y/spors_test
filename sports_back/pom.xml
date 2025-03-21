@@ -67,6 +67,12 @@
             <artifactId>jackson-annotations</artifactId>
             <version>2.12.5</version>  <!-- 使用与你的 Spring Boot 版本兼容的版本 -->
         </dependency>
+
+        <!-- Spring Security -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

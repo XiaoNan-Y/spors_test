@@ -37,6 +37,10 @@
           <i class="el-icon-chat-dot-round"></i>
           <span slot="title">意见反馈</span>
         </el-menu-item>
+        <el-menu-item index="/student/profile">
+          <i class="el-icon-user"></i>
+          <span slot="title">个人信息</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -50,7 +54,6 @@
               {{ username }}<i class="el-icon-arrow-down el-icon--right"></i>
             </span>
             <el-dropdown-menu slot="dropdown">
-              <el-dropdown-item command="profile">个人信息</el-dropdown-item>
               <el-dropdown-item command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </el-dropdown>
@@ -96,14 +99,9 @@ export default {
   },
   methods: {
     handleCommand(command) {
-      switch (command) {
-        case 'profile':
-          this.$router.push('/student/profile')
-          break
-        case 'logout':
-          localStorage.clear()
-          this.$router.push('/login')
-          break
+      if (command === 'logout') {
+        localStorage.clear()
+        this.$router.push('/login')
       }
     }
   }

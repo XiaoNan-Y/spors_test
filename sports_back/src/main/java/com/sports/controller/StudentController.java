@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.sports.entity.SportsItem;
 import com.sports.repository.ExemptionApplicationRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,9 @@ public class StudentController {
 
     @Autowired
     private ExemptionApplicationRepository exemptionRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @GetMapping("/dashboard/stats")
     public Result getDashboardStats(@RequestAttribute Long userId) {
@@ -480,11 +484,74 @@ public class StudentController {
             info.put("real_name", student.getRealName());
             info.put("class_name", student.getClassName());
             info.put("student_number", student.getStudentNumber());
+            info.put("email", student.getEmail());
+            info.put("phone", student.getPhone());
             
             return Result.success(info);
         } catch (Exception e) {
             log.error("获取学生信息失败", e);
             return Result.error("获取学生信息失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/profile")
+    public Result updateProfile(@RequestAttribute Long userId, @RequestBody Map<String, String> updates) {
+        try {
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            // 更新可修改的字段
+            if (updates.containsKey("email")) {
+                student.setEmail(updates.get("email"));
+            }
+            if (updates.containsKey("phone")) {
+                student.setPhone(updates.get("phone"));
+            }
+            
+            userRepository.save(student);
+            return Result.success("更新成功");
+        } catch (Exception e) {
+            log.error("更新个人信息失败", e);
+            return Result.error("更新失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/password")
+    public Result updatePassword(
+        @RequestAttribute Long userId,
+        @RequestBody Map<String, String> passwords
+    ) {
+        try {
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            String oldPassword = passwords.get("oldPassword");
+            String newPassword = passwords.get("newPassword");
+            
+            // 验证参数
+            if (oldPassword == null || newPassword == null) {
+                return Result.error("密码不能为空");
+            }
+            
+            // 直接比较明文密码
+            if (!oldPassword.equals(student.getPassword())) {
+                return Result.error("原密码错误");
+            }
+            
+            // 验证新密码长度
+            if (newPassword.length() < 6) {
+                return Result.error("新密码长度不能小于6位");
+            }
+            
+            // 更新密码（暂时不加密）
+            student.setPassword(newPassword);
+            userRepository.save(student);
+            
+            log.info("User {} password updated successfully", userId);
+            return Result.success("密码修改成功");
+        } catch (Exception e) {
+            log.error("修改密码失败", e);
+            return Result.error("修改失败：" + e.getMessage());
         }
     }
 } 

@@ -73,7 +73,7 @@ export default {
           // 根据用户角色重定向到不同的首页
           switch (user.userType) {
             case 'STUDENT':
-              await this.$router.push('/student/test-records')
+              await this.$router.push('/student/home')
               break
             case 'TEACHER':
               await this.$router.push('/teacher/dashboard')

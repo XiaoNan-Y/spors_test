@@ -8,8 +8,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -17,6 +21,9 @@ public class UserServiceImpl implements UserService {
     
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private PasswordEncoder passwordEncoder;
     
     @Override
     public Page<User> getUsers(String userType, String keyword, Pageable pageable) {
@@ -37,20 +44,23 @@ public class UserServiceImpl implements UserService {
     }
     
     @Override
-    public Result login(User user) {
-        User existingUser = userRepository.findByUsername(user.getUsername());
-        if (existingUser == null) {
+    public Result login(User loginUser) {
+        User user = userRepository.findByUsername(loginUser.getUsername());
+        if (user == null) {
             return Result.error("用户不存在");
         }
         
-        // TODO: 这里应该使用加密后的密码比较，暂时使用明文比较
-        if (!existingUser.getPassword().equals(user.getPassword())) {
-            return Result.error("密码错误");
+        if (!loginUser.getPassword().equals(user.getPassword())) {
+            return Result.error("用户名或密码错误");
         }
         
-        // 登录成功，清除密码后返回用户信息
-        existingUser.setPassword(null);
-        return Result.success(existingUser);
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        data.put("userType", user.getUserType());
+        data.put("token", "token"); // 临时token
+        
+        return Result.success(data);
     }
     
     @Override
