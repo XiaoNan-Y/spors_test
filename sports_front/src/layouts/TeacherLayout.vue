@@ -55,7 +55,6 @@
               {{ username }}<i class="el-icon-arrow-down el-icon--right"></i>
             </span>
             <el-dropdown-menu slot="dropdown">
-              <el-dropdown-item command="profile">个人信息</el-dropdown-item>
               <el-dropdown-item command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </el-dropdown>
@@ -100,23 +99,16 @@ export default {
   methods: {
     handleCommand(command) {
       if (command === 'logout') {
-        // 清除所有本地存储数据
         localStorage.clear()
         
-        // 使用 $nextTick 确保状态更新
         this.$nextTick(async () => {
           try {
-            // 跳转到登录页
             await this.$router.push('/login')
-            
-            // 显示退出成功消息
             this.$message.success('已退出登录')
           } catch (error) {
             console.error('退出登录时发生错误:', error)
           }
         })
-      } else if (command === 'profile') {
-        this.$router.push('/teacher/profile')
       }
     }
   }
