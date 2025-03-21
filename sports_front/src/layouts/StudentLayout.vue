@@ -2,43 +2,50 @@
   <el-container class="layout-container">
     <el-aside width="200px">
       <el-menu
-        :default-active="$route.path"
-        router
+        :default-active="activeMenu"
+        class="el-menu-vertical"
         background-color="#304156"
         text-color="#fff"
-        active-text-color="#409EFF">
+        active-text-color="#409EFF"
+        :router="true"
+      >
+        <el-menu-item index="/student/home">
+          <i class="el-icon-s-home"></i>
+          <span slot="title">首页</span>
+        </el-menu-item>
         <el-menu-item index="/student/test-records">
-          <i class="el-icon-document"></i>
-          <span>体测成绩</span>
+          <i class="el-icon-data-line"></i>
+          <span slot="title">体测成绩</span>
         </el-menu-item>
         <el-menu-item index="/student/sports-standard">
-          <i class="el-icon-document-checked"></i>
-          <span>体测标准</span>
+          <i class="el-icon-document"></i>
+          <span slot="title">体测标准</span>
         </el-menu-item>
         <el-menu-item index="/student/score-appeal">
           <i class="el-icon-warning"></i>
-          <span>成绩申诉</span>
+          <span slot="title">成绩申诉</span>
         </el-menu-item>
         <el-menu-item index="/student/exemption">
-          <i class="el-icon-document-remove"></i>
-          <span>免测/重测申请</span>
+          <i class="el-icon-document-checked"></i>
+          <span slot="title">免测/重测申请</span>
         </el-menu-item>
         <el-menu-item index="/student/notices">
           <i class="el-icon-bell"></i>
-          <span>通知公告</span>
+          <span slot="title">通知公告</span>
         </el-menu-item>
         <el-menu-item index="/student/feedback">
-          <i class="el-icon-chat-line-round"></i>
-          <span>意见反馈</span>
+          <i class="el-icon-chat-dot-round"></i>
+          <span slot="title">意见反馈</span>
         </el-menu-item>
-        <!-- 其他菜单项 -->
       </el-menu>
     </el-aside>
     <el-container>
       <el-header>
-        <span>体育测试管理系统 - 学生端</span>
+        <div class="header-left">
+          <h2>体育测试管理系统 - 学生端</h2>
+        </div>
         <div class="header-right">
-          <el-dropdown @command="handleCommand">
+          <el-dropdown trigger="click" @command="handleCommand">
             <span class="el-dropdown-link">
               {{ username }}<i class="el-icon-arrow-down el-icon--right"></i>
             </span>
@@ -64,6 +71,11 @@ export default {
       username: localStorage.getItem('username') || '学生'
     }
   },
+  computed: {
+    activeMenu() {
+      return this.$route.path
+    }
+  },
   created() {
     // 检查用户信息
     const userId = localStorage.getItem('userId')
@@ -84,43 +96,84 @@ export default {
   },
   methods: {
     handleCommand(command) {
-      if (command === 'logout') {
-        localStorage.clear()
-        this.$router.push('/login')
-      } else if (command === 'profile') {
-        this.$router.push('/student/profile')
+      switch (command) {
+        case 'profile':
+          this.$router.push('/student/profile')
+          break
+        case 'logout':
+          localStorage.clear()
+          this.$router.push('/login')
+          break
       }
     }
   }
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .layout-container {
   height: 100vh;
+
+  .el-aside {
+    background-color: #304156;
+    color: #fff;
+
+    .el-menu {
+      border-right: none;
+    }
+  }
+
+  .el-header {
+    background-color: #fff;
+    color: #333;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 4px rgba(0,21,41,.08);
+
+    .header-left {
+      h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+    }
+
+    .header-right {
+      .el-dropdown-link {
+        cursor: pointer;
+        color: #409EFF;
+      }
+    }
+  }
+
+  .el-main {
+    background-color: #f0f2f5;
+    padding: 20px;
+  }
 }
-.el-aside {
-  background-color: #304156;
-  color: #fff;
-}
-.el-header {
-  background-color: #fff;
-  color: #333;
-  line-height: 60px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #e6e6e6;
-}
-.header-right {
-  margin-right: 20px;
-}
-.el-dropdown-link {
-  cursor: pointer;
-  color: #409EFF;
-}
-.el-main {
-  background-color: #f0f2f5;
-  padding: 20px;
+
+.el-menu-vertical {
+  height: 100%;
+  .el-menu-item {
+    &:hover {
+      background-color: transparent !important;
+      color: #409EFF;
+    }
+    &.is-active {
+      background-color: transparent !important;
+      color: #409EFF !important;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 20px;
+        background-color: #409EFF;
+      }
+    }
+  }
 }
 </style> 

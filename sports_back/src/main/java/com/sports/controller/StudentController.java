@@ -469,4 +469,22 @@ public class StudentController {
             return Result.error("获取体育项目列表失败：" + e.getMessage());
         }
     }
+
+    @GetMapping("/info")
+    public Result getStudentInfo(@RequestAttribute Long userId) {
+        try {
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+            
+            Map<String, Object> info = new HashMap<>();
+            info.put("real_name", student.getRealName());
+            info.put("class_name", student.getClassName());
+            info.put("student_number", student.getStudentNumber());
+            
+            return Result.success(info);
+        } catch (Exception e) {
+            log.error("获取学生信息失败", e);
+            return Result.error("获取学生信息失败：" + e.getMessage());
+        }
+    }
 } 

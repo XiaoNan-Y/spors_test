@@ -22,8 +22,18 @@ const studentRouter = {
   meta: { requiresAuth: true, role: 'STUDENT' },
   children: [
     {
+      path: 'home',
+      name: 'StudentHome',
+      component: () => import('@/views/student/Home.vue'),
+      meta: {
+        title: '首页',
+        requiresAuth: true,
+        role: 'STUDENT'
+      }
+    },
+    {
       path: '',  // 默认子路由
-      redirect: 'test-records'  // 重定向到体测记录页面
+      redirect: 'home'  // 修改这里，重定向到首页
     },
     {
       path: 'test-records',
@@ -64,6 +74,7 @@ const studentRouter = {
         role: 'STUDENT'
       }
     },
+    
     // 其他学生相关路由...
   ]
 }
@@ -209,7 +220,7 @@ const routes = [
       
       switch (userRole) {
         case 'STUDENT':
-          return '/student/test-records'
+          return '/student/home'  // 修改这里，重定向到学生首页
         case 'TEACHER':
           return '/teacher/dashboard'
         case 'ADMIN':
