@@ -24,17 +24,18 @@ public class TeacherScoreAppealController {
     @GetMapping
     public Result getAppeals(
         @RequestParam(required = false) String status,
-        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size,
         @RequestAttribute Long userId
     ) {
         try {
-            log.info("获取教师申诉列表 - 教师ID: {}, 状态: {}, 页码: {}, 大小: {}", userId, status, page, size);
+            log.info("获取教师申诉列表 - 教师ID: {}, 状态: {}, 页码: {}, 大小: {}", 
+                     userId, status, page, size);
             
             Page<ScoreAppealDTO> appeals = appealService.getTeacherAppeals(
-                userId, status, PageRequest.of(page - 1, size));
-                
-            log.info("成功获取申诉列表，共 {} 条记录", appeals.getTotalElements());
+                userId, status, PageRequest.of(page, size));
+            
+            log.info("成功获取申诉列表，总数: {}", appeals.getTotalElements());
             
             return Result.success(appeals);
         } catch (Exception e) {

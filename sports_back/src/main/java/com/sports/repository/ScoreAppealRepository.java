@@ -8,20 +8,28 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
 public interface ScoreAppealRepository extends JpaRepository<ScoreAppeal, Long> {
     
-    // 教师查询需要审核的申诉
+    // 教师查询方法 - 基础查询
     @Query("SELECT sa FROM ScoreAppeal sa " +
-           "WHERE (sa.reviewer.id = :teacherId OR sa.reviewer IS NULL) " +
-           "AND (:status IS NULL OR sa.status = :status)")
-    Page<ScoreAppeal> findByReviewerId(
-        @Param("teacherId") Long teacherId,
+           "WHERE (:status IS NULL OR sa.status = :status)")
+    Page<ScoreAppeal> findAllByStatus(
         @Param("status") String status,
         Pageable pageable
     );
+
+    // 批量获取详细数据
+    @Query("SELECT DISTINCT sa FROM ScoreAppeal sa " +
+           "LEFT JOIN FETCH sa.student s " +
+           "LEFT JOIN FETCH sa.testRecord tr " +
+           "LEFT JOIN FETCH tr.sportsItem si " +
+           "LEFT JOIN FETCH sa.reviewer r " +
+           "WHERE sa IN :appeals")
+    List<ScoreAppeal> findByAppealsWithDetails(@Param("appeals") Collection<ScoreAppeal> appeals);
 
     // 获取单个申诉详情
     @Query("SELECT sa FROM ScoreAppeal sa " +
@@ -35,7 +43,7 @@ public interface ScoreAppealRepository extends JpaRepository<ScoreAppeal, Long> 
     // 检查是否存在未完成的申诉
     boolean existsByTestRecordIdAndStatusNot(Long testRecordId, String status);
 
-    // 修改学生查询方法，添加 FETCH JOIN
+    // 学生查询方法
     @Query("SELECT DISTINCT sa FROM ScoreAppeal sa " +
            "LEFT JOIN FETCH sa.student s " +
            "LEFT JOIN FETCH sa.testRecord tr " +

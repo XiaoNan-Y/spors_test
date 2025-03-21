@@ -175,7 +175,7 @@ const routes = [
   },
   {
     path: '/teacher',
-    component: () => import('@/layouts/TeacherLayout'),
+    component: () => import('@/layouts/TeacherLayout.vue'),
     meta: { requiresAuth: true, role: 'TEACHER' },
     children: [
       {
@@ -227,10 +227,14 @@ const routes = [
         meta: { title: '学生成绩管理', roles: ['TEACHER'] }
       },
       {
-        path: '/teacher/score-appeals',
+        path: 'score-appeals',
         name: 'TeacherScoreAppeals',
-        component: () => import('../views/teacher/ScoreAppealReview.vue'),
-        meta: { requiresAuth: true, role: 'TEACHER' }
+        component: () => import('@/views/teacher/ScoreAppealReview.vue'),
+        meta: { 
+          title: '成绩申诉审核',
+          requiresAuth: true, 
+          role: 'TEACHER' 
+        }
       }
     ]
   },
