@@ -13,4 +13,13 @@ public interface FeedbackService {
     FeedbackDTO getFeedbackById(Long id);
     
     void deleteFeedback(Long id, Long studentId);
+    
+    // 管理员获取反馈列表
+    Page<FeedbackDTO> getAdminFeedbacks(String type, String status, Pageable pageable);
+    
+    // 回复反馈
+    FeedbackDTO replyFeedback(Long id, String reply, Long adminId);
+    
+    // 更新反馈状态
+    FeedbackDTO updateFeedbackStatus(Long id, String status, Long adminId);
 } 

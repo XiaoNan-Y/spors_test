@@ -149,6 +149,15 @@ const routes = [
         name: 'ExemptionReview',
         component: () => import('@/views/admin/ExemptionReview.vue'),
         meta: { title: '免测/重测申请', icon: 'el-icon-document-checked' }
+      },
+      {
+        path: 'feedback',
+        name: 'AdminFeedback',
+        component: () => import('@/views/admin/FeedbackManagement.vue'),
+        meta: {
+          requiresAuth: true,
+          roles: ['ADMIN']
+        }
       }
     ]
   },

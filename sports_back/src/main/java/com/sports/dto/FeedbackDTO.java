@@ -17,4 +17,5 @@ public class FeedbackDTO {
     private String reply;
     private String replyByName;
     private LocalDateTime replyTime;
+    private String className;
 } 

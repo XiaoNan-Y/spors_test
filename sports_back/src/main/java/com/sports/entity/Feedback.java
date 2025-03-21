@@ -12,8 +12,8 @@ public class Feedback {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "student_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "student_id")
     private User student;
 
     @Column(nullable = false)
@@ -36,7 +36,7 @@ public class Feedback {
 
     private String reply;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne
     @JoinColumn(name = "reply_by")
     private User replyBy;
 

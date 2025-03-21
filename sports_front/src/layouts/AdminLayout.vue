@@ -44,10 +44,17 @@
           <span slot="title">免测/重测申请</span>
         </el-menu-item>
 
+        <el-menu-item index="/admin/feedback">
+          <i class="el-icon-message"></i>
+          <span slot="title">反馈管理</span>
+        </el-menu-item>
+
         <el-menu-item index="/admin/profile">
           <i class="el-icon-user"></i>
           <span slot="title">个人信息</span>
         </el-menu-item>
+
+        
       </el-menu>
     </el-aside>
     

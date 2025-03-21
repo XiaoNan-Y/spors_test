@@ -12,11 +12,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 
 @Service
 public class FeedbackServiceImpl implements FeedbackService {
+
+    private static final Logger log = LoggerFactory.getLogger(FeedbackServiceImpl.class);
 
     @Autowired
     private FeedbackRepository feedbackRepository;
@@ -75,6 +79,78 @@ public class FeedbackServiceImpl implements FeedbackService {
         feedbackRepository.delete(feedback);
     }
 
+    @Override
+    public Page<FeedbackDTO> getAdminFeedbacks(String type, String status, Pageable pageable) {
+        try {
+            Page<Feedback> feedbacks;
+            
+            // 根据条件查询
+            if (type != null && !type.isEmpty() && status != null && !status.isEmpty()) {
+                feedbacks = feedbackRepository.findByTypeAndStatus(type, status, pageable);
+            } else if (type != null && !type.isEmpty()) {
+                feedbacks = feedbackRepository.findByType(type, pageable);
+            } else if (status != null && !status.isEmpty()) {
+                feedbacks = feedbackRepository.findByStatus(status, pageable);
+            } else {
+                feedbacks = feedbackRepository.findAll(pageable);
+            }
+            
+            // 转换为DTO
+            return feedbacks.map(feedback -> {
+                FeedbackDTO dto = new FeedbackDTO();
+                BeanUtils.copyProperties(feedback, dto);
+                
+                // 设置学生信息
+                if (feedback.getStudent() != null) {
+                    dto.setStudentName(feedback.getStudent().getRealName());
+                    dto.setStudentNumber(feedback.getStudent().getStudentNumber());
+                    dto.setClassName(feedback.getStudent().getClassName());
+                }
+                
+                // 设置回复人信息
+                if (feedback.getReplyBy() != null) {
+                    dto.setReplyByName(feedback.getReplyBy().getRealName());
+                }
+                
+                return dto;
+            });
+        } catch (Exception e) {
+            log.error("获取管理员反馈列表失败", e);
+            throw new RuntimeException("获取反馈列表失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public FeedbackDTO replyFeedback(Long id, String reply, Long adminId) {
+        Feedback feedback = feedbackRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("反馈不存在"));
+            
+        User admin = userRepository.findById(adminId)
+            .orElseThrow(() -> new RuntimeException("管理员不存在"));
+            
+        feedback.setReply(reply);
+        feedback.setReplyTime(LocalDateTime.now());
+        feedback.setReplyBy(admin);
+        feedback.setStatus("REPLIED");
+        
+        Feedback updated = feedbackRepository.save(feedback);
+        return convertToDTO(updated);
+    }
+
+    @Override
+    @Transactional
+    public FeedbackDTO updateFeedbackStatus(Long id, String status, Long adminId) {
+        Feedback feedback = feedbackRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("反馈不存在"));
+            
+        feedback.setStatus(status);
+        feedback.setUpdateTime(LocalDateTime.now());
+        
+        Feedback updated = feedbackRepository.save(feedback);
+        return convertToDTO(updated);
+    }
+
     private FeedbackDTO convertToDTO(Feedback feedback) {
         FeedbackDTO dto = new FeedbackDTO();
         BeanUtils.copyProperties(feedback, dto);
@@ -82,6 +158,7 @@ public class FeedbackServiceImpl implements FeedbackService {
         if (feedback.getStudent() != null) {
             dto.setStudentName(feedback.getStudent().getRealName());
             dto.setStudentNumber(feedback.getStudent().getStudentNumber());
+            dto.setClassName(feedback.getStudent().getClassName());
         }
         
         if (feedback.getReplyBy() != null) {
