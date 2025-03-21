@@ -29,6 +29,11 @@
           <span slot="title">免测/重测审核</span>
         </el-menu-item>
 
+        <el-menu-item index="/teacher/score-appeals">
+          <i class="el-icon-warning"></i>
+          <span slot="title">成绩申诉审核</span>
+        </el-menu-item>
+
         <el-menu-item index="/teacher/student-management">
           <i class="el-icon-user-solid"></i>
           <span slot="title">学生管理</span>

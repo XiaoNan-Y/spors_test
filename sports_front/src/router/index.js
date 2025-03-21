@@ -225,6 +225,12 @@ const routes = [
         name: 'TeacherStudentRecords',
         component: () => import('@/views/teacher/StudentRecords.vue'),
         meta: { title: '学生成绩管理', roles: ['TEACHER'] }
+      },
+      {
+        path: '/teacher/score-appeals',
+        name: 'TeacherScoreAppeals',
+        component: () => import('../views/teacher/ScoreAppealReview.vue'),
+        meta: { requiresAuth: true, role: 'TEACHER' }
       }
     ]
   },

@@ -35,7 +35,7 @@ public class ScoreAppeal {
     private String reviewComment;
 
     @Column(nullable = false)
-    private LocalDateTime createTime;
+    private LocalDateTime createTime = LocalDateTime.now();
 
     private LocalDateTime reviewTime;
 

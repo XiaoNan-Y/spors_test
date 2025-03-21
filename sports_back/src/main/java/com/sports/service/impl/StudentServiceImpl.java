@@ -256,9 +256,10 @@ public class StudentServiceImpl implements StudentService {
     }
 
     @Override
-    public Page<ScoreAppealDTO> getStudentAppeals(Long userId, String status, Pageable pageable) {
+    @Transactional(readOnly = true)
+    public Page<ScoreAppealDTO> getStudentAppeals(Long studentId, String status, Pageable pageable) {
         try {
-            List<ScoreAppeal> appeals = scoreAppealRepository.findByStudentIdAndStatusWithDetails(userId, status);
+            List<ScoreAppeal> appeals = scoreAppealRepository.findByStudentIdAndStatusWithDetails(studentId, status);
             
             List<ScoreAppealDTO> dtoList = appeals.stream()
                 .map(appeal -> {
@@ -278,18 +279,22 @@ public class StudentServiceImpl implements StudentService {
                     if (appeal.getTestRecord() != null) {
                         dto.setTestRecordId(appeal.getTestRecord().getId());
                         if (appeal.getTestRecord().getSportsItem() != null) {
+                            dto.setTestItem(appeal.getTestRecord().getSportsItem().getName());
                             dto.setSportsItemName(appeal.getTestRecord().getSportsItem().getName());
                         }
                     }
                     
                     // 设置学生信息
                     if (appeal.getStudent() != null) {
+                        dto.setStudentId(appeal.getStudent().getId());
                         dto.setStudentName(appeal.getStudent().getRealName());
                         dto.setStudentNumber(appeal.getStudent().getStudentNumber());
+                        dto.setClassName(appeal.getStudent().getClassName());
                     }
                     
                     // 设置审核人信息
                     if (appeal.getReviewer() != null) {
+                        dto.setReviewByName(appeal.getReviewer().getRealName());
                         dto.setReviewerName(appeal.getReviewer().getRealName());
                     }
                     
@@ -368,5 +373,40 @@ public class StudentServiceImpl implements StudentService {
         }
         
         return exemptionApplicationRepository.save(application);
+    }
+
+    private ScoreAppealDTO convertToDTO(ScoreAppeal appeal) {
+        ScoreAppealDTO dto = new ScoreAppealDTO();
+        
+        dto.setId(appeal.getId());
+        dto.setStatus(appeal.getStatus());
+        dto.setCreateTime(appeal.getCreateTime());
+        dto.setReviewTime(appeal.getReviewTime());
+        dto.setOriginalScore(appeal.getOriginalScore());
+        dto.setExpectedScore(appeal.getExpectedScore());
+        dto.setReason(appeal.getReason());
+        dto.setReviewComment(appeal.getReviewComment());
+        
+        if (appeal.getStudent() != null) {
+            dto.setStudentId(appeal.getStudent().getId());
+            dto.setStudentName(appeal.getStudent().getRealName());
+            dto.setStudentNumber(appeal.getStudent().getStudentNumber());
+            dto.setClassName(appeal.getStudent().getClassName());
+        }
+        
+        if (appeal.getTestRecord() != null) {
+            dto.setTestRecordId(appeal.getTestRecord().getId());
+            if (appeal.getTestRecord().getSportsItem() != null) {
+                dto.setTestItem(appeal.getTestRecord().getSportsItem().getName());
+                dto.setSportsItemName(appeal.getTestRecord().getSportsItem().getName());
+            }
+        }
+        
+        if (appeal.getReviewer() != null) {
+            dto.setReviewByName(appeal.getReviewer().getRealName());
+            dto.setReviewerName(appeal.getReviewer().getRealName());
+        }
+        
+        return dto;
     }
 } 

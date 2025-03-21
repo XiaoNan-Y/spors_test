@@ -7,8 +7,11 @@ import java.time.LocalDateTime;
 public class ScoreAppealDTO {
     private Long id;
     private Long testRecordId;
+    private Long studentId;
     private String studentName;
     private String studentNumber;
+    private String className;
+    private String testItem;
     private String sportsItemName;
     private Double originalScore;
     private Double expectedScore;
@@ -17,5 +20,6 @@ public class ScoreAppealDTO {
     private String reviewComment;
     private LocalDateTime createTime;
     private LocalDateTime reviewTime;
+    private String reviewByName;
     private String reviewerName;
 } 
