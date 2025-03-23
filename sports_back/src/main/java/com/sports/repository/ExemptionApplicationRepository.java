@@ -147,15 +147,32 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
     List<ExemptionApplication> findAllByStudentId(@Param("studentId") Long studentId);
 
     // 查询管理员待审核的免测申请
-    @Query("SELECT e FROM ExemptionApplication e WHERE e.type = 'EXEMPTION' " +
-           "AND (:keyword IS NULL OR " +
-           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<ExemptionApplication> findPendingExemptionApplications(
-        @Param("keyword") String keyword, 
+    @Query("SELECT DISTINCT e FROM ExemptionApplication e " +
+           "LEFT JOIN User u ON e.studentNumber = u.studentNumber " +
+           "WHERE e.type = 'EXEMPTION' " +
+           "AND (:status IS NULL OR :status = '' OR e.status = :status) " +
+           "AND (:keyword IS NULL OR :keyword = '' OR " +
+           "LOWER(u.realName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(u.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY e.applyTime DESC")
+    Page<ExemptionApplication> findByTypeAndStatusAndKeyword(
+        @Param("status") String status,
+        @Param("keyword") String keyword,
         Pageable pageable
     );
-    
+
+    @Query("SELECT count(e) FROM ExemptionApplication e " +
+           "LEFT JOIN User u ON e.studentNumber = u.studentNumber " +
+           "WHERE e.type = 'EXEMPTION' " +
+           "AND (:status IS NULL OR :status = '' OR e.status = :status) " +
+           "AND (:keyword IS NULL OR :keyword = '' OR " +
+           "LOWER(u.realName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(u.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    long countByTypeAndStatusAndKeyword(
+        @Param("status") String status,
+        @Param("keyword") String keyword
+    );
+
     // 查询教师待审核的重测申请
     @Query("SELECT e FROM ExemptionApplication e WHERE e.type = 'RETEST' " +
            "AND e.status = 'PENDING' " +
@@ -168,24 +185,26 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
     );
 
     @Query("SELECT e FROM ExemptionApplication e WHERE e.type = :type " +
+           "AND e.status = :status " +
            "AND (:keyword IS NULL OR " +
            "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<ExemptionApplication> findByTypeAndKeyword(
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY e.applyTime DESC")
+    Page<ExemptionApplication> findByTypeAndStatusAndKeyword(
         @Param("type") String type,
-        @Param("keyword") String keyword, 
+        @Param("status") String status,
+        @Param("keyword") String keyword,
         Pageable pageable
     );
 
     @Query("SELECT e FROM ExemptionApplication e WHERE e.type = :type " +
-           "AND e.status = :status " +
            "AND (:keyword IS NULL OR " +
            "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<ExemptionApplication> findByTypeAndStatusAndKeyword(
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY e.applyTime DESC")
+    Page<ExemptionApplication> findByTypeAndKeyword(
         @Param("type") String type,
-        @Param("status") String status,
-        @Param("keyword") String keyword, 
+        @Param("keyword") String keyword,
         Pageable pageable
     );
 
@@ -194,5 +213,17 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
     List<ExemptionApplication> findByTypeAndStatus(
         @Param("type") String type,
         @Param("status") String status
+    );
+
+    // 添加待审核免测申请查询方法
+    @Query("SELECT e FROM ExemptionApplication e WHERE e.type = 'EXEMPTION' " +
+           "AND e.status = 'PENDING' " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY e.applyTime DESC")
+    Page<ExemptionApplication> findPendingExemptionApplications(
+        @Param("keyword") String keyword,
+        Pageable pageable
     );
 } 

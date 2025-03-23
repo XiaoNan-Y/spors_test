@@ -207,27 +207,31 @@ export default {
   methods: {
     async fetchRecords() {
       try {
-        this.loading = true
-        const response = await this.$axios.get('/api/exemptions/admin/list', {
+        this.loading = true;
+        const response = await this.$http.get('/api/exemptions/admin/list', {
           params: {
-            status: this.filters.status,
-            keyword: this.filters.keyword,
-            page: this.currentPage - 1,
+            status: this.filters.status || '',
+            keyword: this.filters.keyword || '',
+            page: this.currentPage - 1,  // 后端分页从0开始
             size: this.pageSize
           }
-        })
+        });
+        
+        console.log('API Response:', response.data); // 添加调试日志
         
         if (response.data.code === 200) {
-          this.records = response.data.data.content
-          this.total = response.data.data.totalElements
+          this.records = response.data.data.content;
+          this.total = response.data.data.totalElements;
+          
+          console.log('Loaded records:', this.records); // 添加调试日志
         } else {
-          this.$message.error(response.data.message)
+          this.$message.error(response.data.message || '获取数据失败');
         }
       } catch (error) {
-        console.error('获取记录失败:', error)
-        this.$message.error('获取记录失败: ' + error.message)
+        console.error('获取记录失败:', error);
+        this.$message.error('获取记录失败: ' + error.message);
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     handleSearch() {

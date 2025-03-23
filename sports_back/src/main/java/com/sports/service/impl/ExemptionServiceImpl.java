@@ -69,10 +69,40 @@ public class ExemptionServiceImpl implements ExemptionService {
     @Override
     @Transactional
     public ExemptionApplication submitApplication(ExemptionApplication application) {
-        application.setStatus("PENDING");
-        application.setApplyTime(LocalDateTime.now());
-        application.setUpdateTime(LocalDateTime.now());
-        return exemptionRepository.save(application);
+        try {
+            // 获取学生信息
+            User student = userRepository.findById(application.getStudentId())
+                .orElseThrow(() -> new RuntimeException("学生信息不存在"));
+            
+            // 设置学生相关信息，注意字段对应关系
+            application.setStudentNumber(student.getStudentNumber());  // 学号
+            application.setStudentName(student.getRealName());        // User表的real_name对应到ExemptionApplication表的student_name
+            application.setClassName(student.getClassName());         // 班级
+            
+            // 设置申请状态和时间
+            application.setStatus("PENDING");
+            application.setType("EXEMPTION");
+            application.setApplyTime(LocalDateTime.now());
+            application.setUpdateTime(LocalDateTime.now());
+            application.setCreatedAt(LocalDateTime.now());
+            application.setUpdatedAt(LocalDateTime.now());
+            
+            // 保存申请前添加调试日志
+            log.debug("准备保存申请 - studentId: {}, realName: {}, studentNumber: {}, className: {}", 
+                student.getId(), student.getRealName(), student.getStudentNumber(), student.getClassName());
+            
+            // 保存申请
+            ExemptionApplication saved = exemptionRepository.save(application);
+            
+            // 保存后添加调试日志
+            log.debug("申请保存成功 - id: {}, studentName: {}, studentNumber: {}, className: {}", 
+                saved.getId(), saved.getStudentName(), saved.getStudentNumber(), saved.getClassName());
+            
+            return saved;
+        } catch (Exception e) {
+            log.error("提交申请失败", e);
+            throw new RuntimeException("提交申请失败: " + e.getMessage());
+        }
     }
 
     @Override
@@ -258,17 +288,24 @@ public class ExemptionServiceImpl implements ExemptionService {
     public Page<ExemptionApplication> getAdminExemptionApplications(
             String keyword, String status, Pageable pageable) {
         try {
-            if (status != null && !status.isEmpty()) {
-                // 如果指定了状态，则按状态筛选
-                return exemptionRepository.findByTypeAndStatusAndKeyword(
-                    "EXEMPTION", status, keyword, pageable);
-            } else {
-                // 否则返回所有状态的申请
-                return exemptionRepository.findByTypeAndKeyword(
-                    "EXEMPTION", keyword, pageable);
-            }
+            // 添加调试日志
+            log.debug("Fetching admin exemption applications - keyword: {}, status: {}", keyword, status);
+            
+            // 直接使用 findByTypeAndStatusAndKeyword 方法
+            Page<ExemptionApplication> applications = exemptionRepository.findByTypeAndStatusAndKeyword(
+                status, keyword, pageable);
+            
+            // 添加调试日志
+            log.debug("Found {} applications", applications.getTotalElements());
+            applications.getContent().forEach(app -> {
+                log.debug("Application: id={}, studentName={}, status={}, applyTime={}", 
+                    app.getId(), app.getStudentName(), app.getStatus(), 
+                    app.getApplyTime().toLocalTime());
+            });
+            
+            return applications;
         } catch (Exception e) {
-            log.error("获取管理员免测申请列表失败", e);
+            log.error("Error fetching admin exemption applications", e);
             throw new RuntimeException("获取管理员免测申请列表失败: " + e.getMessage());
         }
     }

@@ -109,8 +109,12 @@
           </el-radio-group>
         </el-form-item>
 
-        <!-- 申请项目 -->
-        <el-form-item label="申请项目" prop="sportsItemId">
+        <!-- 申请项目，只在重测时显示 -->
+        <el-form-item 
+          v-if="form.type === 'RETEST'"
+          label="申请项目" 
+          prop="sportsItemId"
+        >
           <el-select v-model="form.sportsItemId" placeholder="请选择申请项目">
             <el-option
               v-for="item in sportsItems"
@@ -206,9 +210,21 @@ export default {
   },
   methods: {
     handleTypeChange(value) {
-      // 当类型改变时，重置证明材料
+      // 重置表单相关字段
       this.form.attachmentUrl = '';
+      this.form.sportsItemId = null;
       this.fileList = [];
+
+      // 重新设置验证规则
+      if (value === 'RETEST') {
+        this.$set(this.rules, 'sportsItemId', [
+          { required: true, message: '请选择申请项目', trigger: 'change' }
+        ]);
+      } else {
+        // 免测时移除体育项目的验证规则
+        this.$delete(this.rules, 'sportsItemId');
+      }
+
       // 重新验证表单
       this.$nextTick(() => {
         this.$refs.form.validateField('attachmentUrl');
@@ -336,9 +352,83 @@ export default {
       this.currentPage = newPage;
       this.fetchApplications();
     },
-    handleDelete(row) {
-      // 实现撤销逻辑
-      console.log('撤销申请:', row);
+    async handleDelete(row) {
+      try {
+        await this.$confirm('确认撤销该申请吗？', '提示', {
+          type: 'warning'
+        });
+        
+        const response = await this.$http.delete(`/api/exemptions/student/${row.id}`, {
+          params: {
+            studentId: localStorage.getItem('userId')
+          }
+        });
+        
+        if (response.data.code === 200) {
+          this.$message.success('撤销成功');
+          this.fetchApplications(); // 刷新列表
+        } else {
+          this.$message.error(response.data.message || '撤销失败');
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('撤销申请失败:', error);
+          this.$message.error('撤销失败: ' + error.message);
+        }
+      }
+    },
+    handleDetail(row) {
+      // 创建详情对话框
+      this.$dialog({
+        title: '申请详情',
+        width: '600px',
+        customClass: 'detail-dialog',
+        message: h => {
+          return (
+            <div class="detail-content">
+              <el-descriptions column={1} border>
+                <el-descriptions-item label="申请类型">
+                  {row.type === 'EXEMPTION' ? '免测申请' : '重测申请'}
+                </el-descriptions-item>
+                <el-descriptions-item label="申请时间">
+                  {this.formatDateTime(row.applyTime)}
+                </el-descriptions-item>
+                <el-descriptions-item label="申请原因">
+                  {row.reason}
+                </el-descriptions-item>
+                <el-descriptions-item label="证明材料">
+                  {row.attachmentUrl ? (
+                    <el-button 
+                      type="text" 
+                      onClick={() => this.previewAttachment(row.attachmentUrl)}
+                    >
+                      查看附件
+                    </el-button>
+                  ) : '无'}
+                </el-descriptions-item>
+                <el-descriptions-item label="状态">
+                  <el-tag type={this.getStatusType(row.status)}>
+                    {this.getStatusText(row.status)}
+                  </el-tag>
+                </el-descriptions-item>
+                <el-descriptions-item label="审核意见">
+                  {row.adminReviewComment || row.teacherReviewComment || '-'}
+                </el-descriptions-item>
+                <el-descriptions-item label="审核时间">
+                  {row.adminReviewTime ? 
+                    this.formatDateTime(row.adminReviewTime) : 
+                    (row.teacherReviewTime ? 
+                      this.formatDateTime(row.teacherReviewTime) : '-')}
+                </el-descriptions-item>
+              </el-descriptions>
+            </div>
+          )
+        }
+      }).then(() => {
+        // 关闭对话框的回调
+      }).catch(() => {
+        // 取消的回调
+      });
     },
     // 获取体育项目列表
     async fetchSportsItems() {

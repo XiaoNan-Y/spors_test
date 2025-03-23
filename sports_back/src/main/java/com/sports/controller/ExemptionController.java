@@ -89,9 +89,30 @@ public class ExemptionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
+            log.info("Getting exemption applications - keyword: {}, status: {}, page: {}, size: {}", 
+                    keyword, status, page, size);
+            
+            // 添加调试日志
+            log.debug("Query parameters - keyword: '{}', status: '{}'", keyword, status);
+            
             Page<ExemptionApplication> applications = exemptionService
                 .getAdminExemptionApplications(keyword, status, PageRequest.of(page, size));
-            return Result.success(applications);
+            
+            // 添加调试日志
+            log.debug("Found {} applications", applications.getTotalElements());
+            applications.getContent().forEach(app -> 
+                log.debug("Application: id={}, studentName={}, status={}, applyTime={}", 
+                    app.getId(), app.getStudentName(), app.getStatus(), app.getApplyTime())
+            );
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", applications.getContent());
+            result.put("totalElements", applications.getTotalElements());
+            result.put("totalPages", applications.getTotalPages());
+            result.put("size", applications.getSize());
+            result.put("number", applications.getNumber());
+            
+            return Result.success(result);
         } catch (Exception e) {
             log.error("获取免测申请列表失败", e);
             return Result.error("获取免测申请列表失败：" + e.getMessage());
@@ -174,6 +195,19 @@ public class ExemptionController {
         } catch (Exception e) {
             log.error("导出免测申请数据失败", e);
             throw new RuntimeException("导出失败：" + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/student/{id}")
+    public Result deleteApplication(
+        @PathVariable Long id,
+        @RequestParam Long studentId
+    ) {
+        try {
+            exemptionService.deleteApplication(id, studentId);
+            return Result.success(null);
+        } catch (Exception e) {
+            return Result.error("删除申请失败：" + e.getMessage());
         }
     }
 } 
