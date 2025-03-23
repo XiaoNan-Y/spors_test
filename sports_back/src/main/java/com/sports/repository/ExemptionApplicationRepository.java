@@ -126,11 +126,8 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
         Pageable pageable
     );
 
-    @Query(value = "SELECT DISTINCT e FROM ExemptionApplication e " +
-           "LEFT JOIN FETCH e.sportsItem " +
-           "WHERE e.studentId = :studentId " +
-           "ORDER BY e.applyTime DESC",
-           countQuery = "SELECT COUNT(e) FROM ExemptionApplication e WHERE e.studentId = :studentId")
+    @Query("SELECT e FROM ExemptionApplication e WHERE e.studentId = :studentId " +
+           "ORDER BY e.applyTime DESC")
     Page<ExemptionApplication> findByStudentIdWithPage(
         @Param("studentId") Long studentId, 
         Pageable pageable

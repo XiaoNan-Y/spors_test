@@ -44,7 +44,7 @@ public class ExemptionApplication {
     private LocalDateTime updateTime;
 
     @Column(name = "attachment_url")
-    private String attachmentUrl;
+    private String attachmentUrl;  // 证明材料URL
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

@@ -13,6 +13,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -28,6 +30,16 @@ public class ExemptionController {
     @PostMapping("/student/submit")
     public Result submitApplication(@RequestBody ExemptionApplication application) {
         try {
+            // 验证免测申请必须上传证明材料
+            if ("EXEMPTION".equals(application.getType()) && 
+                (application.getAttachmentUrl() == null || application.getAttachmentUrl().isEmpty())) {
+                return Result.error("免测申请必须上传证明材料");
+            }
+            
+            application.setStatus("PENDING");
+            application.setApplyTime(LocalDateTime.now());
+            application.setUpdateTime(LocalDateTime.now());
+            
             ExemptionApplication saved = exemptionService.submitApplication(application);
             return Result.success(saved);
         } catch (Exception e) {
@@ -43,9 +55,26 @@ public class ExemptionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
+            log.info("Getting applications for student: {}", studentId);
+            
+            // 添加调试日志
+            log.debug("Query params - studentId: {}, page: {}, size: {}", studentId, page, size);
+            
             Page<ExemptionApplication> applications = exemptionService
                 .getStudentApplications(studentId, PageRequest.of(page, size));
-            return Result.success(applications);
+            
+            // 添加调试日志
+            log.debug("Found applications: {}", applications.getContent());
+            
+            // 构造返回数据
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", applications.getContent());
+            result.put("totalElements", applications.getTotalElements());
+            result.put("totalPages", applications.getTotalPages());
+            result.put("size", applications.getSize());
+            result.put("number", applications.getNumber());
+            
+            return Result.success(result);
         } catch (Exception e) {
             log.error("获取申请列表失败", e);
             return Result.error("获取申请列表失败：" + e.getMessage());

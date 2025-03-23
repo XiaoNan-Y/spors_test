@@ -12,13 +12,14 @@ import NoticeManagement from '@/views/admin/NoticeManagement.vue'
 import Profile from '@/views/admin/Profile.vue'
 import DataReview from '@/views/admin/DataReview.vue'
 import TestRecords from '@/views/student/TestRecords'
+import StudentLayout from '@/layouts/StudentLayout'
 
 Vue.use(VueRouter)
 
 // 修改学生路由配置
 const studentRouter = {
   path: '/student',
-  component: () => import('@/layouts/StudentLayout'),  // 需要创建这个布局组件
+  component: StudentLayout,
   meta: { requiresAuth: true, role: 'STUDENT' },
   children: [
     {
@@ -68,7 +69,7 @@ const studentRouter = {
     {
       path: 'exemption',
       name: 'StudentExemption',
-      component: () => import('@/views/student/Exemption'),
+      component: () => import('@/views/student/ExemptionApplication'),
       meta: {
         requiresAuth: true,
         role: 'STUDENT'

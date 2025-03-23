@@ -77,7 +77,16 @@ public class ExemptionServiceImpl implements ExemptionService {
 
     @Override
     public Page<ExemptionApplication> getStudentApplications(Long studentId, Pageable pageable) {
-        return exemptionRepository.findByStudentId(studentId, pageable);
+        log.debug("Fetching applications for student: {}", studentId);
+        try {
+            // 使用 studentId 查询
+            Page<ExemptionApplication> applications = exemptionRepository.findByStudentIdWithPage(studentId, pageable);
+            log.debug("Found {} applications", applications.getTotalElements());
+            return applications;
+        } catch (Exception e) {
+            log.error("Error fetching applications for student {}", studentId, e);
+            throw new RuntimeException("获取申请记录失败: " + e.getMessage());
+        }
     }
 
     @Override
