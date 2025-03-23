@@ -167,6 +167,50 @@
         <el-button type="primary" @click="submitForm">确 定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 详情对话框 -->
+    <el-dialog
+      title="申请详情"
+      :visible.sync="detailDialogVisible"
+      width="600px"
+      class="detail-dialog"
+    >
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="申请类型">
+          {{ currentRecord?.type === 'EXEMPTION' ? '免测申请' : '重测申请' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="申请时间">
+          {{ formatDateTime(currentRecord?.applyTime) }}
+        </el-descriptions-item>
+        <el-descriptions-item label="申请原因">
+          {{ currentRecord?.reason }}
+        </el-descriptions-item>
+        <el-descriptions-item label="证明材料">
+          <el-button 
+            v-if="currentRecord?.attachmentUrl"
+            type="text" 
+            @click="previewAttachment(currentRecord.attachmentUrl)"
+          >
+            查看附件
+          </el-button>
+          <span v-else>无</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusType(currentRecord?.status)">
+            {{ getStatusText(currentRecord?.status) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="审核意见">
+          {{ currentRecord?.adminReviewComment || currentRecord?.teacherReviewComment || '-' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="审核时间">
+          {{ currentRecord?.adminReviewTime ? 
+            formatDateTime(currentRecord.adminReviewTime) : 
+            (currentRecord?.teacherReviewTime ? 
+              formatDateTime(currentRecord.teacherReviewTime) : '-') }}
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
@@ -205,7 +249,9 @@ export default {
       currentPage: 1,
       pageSize: 10,
       total: 0,
-      sportsItems: [] // 体育项目列表
+      sportsItems: [], // 体育项目列表
+      detailDialogVisible: false, // 添加这个控制详情对话框的显示
+      currentRecord: null, // 当前查看的记录
     }
   },
   methods: {
@@ -378,57 +424,8 @@ export default {
       }
     },
     handleDetail(row) {
-      // 创建详情对话框
-      this.$dialog({
-        title: '申请详情',
-        width: '600px',
-        customClass: 'detail-dialog',
-        message: h => {
-          return (
-            <div class="detail-content">
-              <el-descriptions column={1} border>
-                <el-descriptions-item label="申请类型">
-                  {row.type === 'EXEMPTION' ? '免测申请' : '重测申请'}
-                </el-descriptions-item>
-                <el-descriptions-item label="申请时间">
-                  {this.formatDateTime(row.applyTime)}
-                </el-descriptions-item>
-                <el-descriptions-item label="申请原因">
-                  {row.reason}
-                </el-descriptions-item>
-                <el-descriptions-item label="证明材料">
-                  {row.attachmentUrl ? (
-                    <el-button 
-                      type="text" 
-                      onClick={() => this.previewAttachment(row.attachmentUrl)}
-                    >
-                      查看附件
-                    </el-button>
-                  ) : '无'}
-                </el-descriptions-item>
-                <el-descriptions-item label="状态">
-                  <el-tag type={this.getStatusType(row.status)}>
-                    {this.getStatusText(row.status)}
-                  </el-tag>
-                </el-descriptions-item>
-                <el-descriptions-item label="审核意见">
-                  {row.adminReviewComment || row.teacherReviewComment || '-'}
-                </el-descriptions-item>
-                <el-descriptions-item label="审核时间">
-                  {row.adminReviewTime ? 
-                    this.formatDateTime(row.adminReviewTime) : 
-                    (row.teacherReviewTime ? 
-                      this.formatDateTime(row.teacherReviewTime) : '-')}
-                </el-descriptions-item>
-              </el-descriptions>
-            </div>
-          )
-        }
-      }).then(() => {
-        // 关闭对话框的回调
-      }).catch(() => {
-        // 取消的回调
-      });
+      this.currentRecord = row;
+      this.detailDialogVisible = true;
     },
     // 获取体育项目列表
     async fetchSportsItems() {
@@ -479,5 +476,20 @@ export default {
 .pagination-container {
   margin-top: 20px;
   text-align: right;
+}
+
+.detail-dialog {
+  .el-descriptions {
+    margin: 20px 0;
+  }
+  
+  .el-descriptions-item__label {
+    width: 120px;
+    color: #606266;
+  }
+  
+  .el-descriptions-item__content {
+    color: #303133;
+  }
 }
 </style> 
