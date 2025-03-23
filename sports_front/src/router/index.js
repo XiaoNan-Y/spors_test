@@ -209,12 +209,6 @@ const routes = [
         meta: { title: '个人信息' }
       },
       {
-        path: 'student-management',
-        name: 'TeacherStudentManagement',
-        component: () => import('@/views/teacher/StudentManagement.vue'),
-        meta: { title: '学生管理', roles: ['TEACHER'] }
-      },
-      {
         path: 'notice-management',
         name: 'TeacherNoticeManagement',
         component: () => import('@/views/teacher/NoticeManagement.vue'),

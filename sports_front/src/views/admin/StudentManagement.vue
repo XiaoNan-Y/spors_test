@@ -47,6 +47,18 @@
         @saved="handleSaved">
       </user-form>
     </el-dialog>
+
+    <!-- 添加导入按钮和上传组件 -->
+    <el-upload
+      class="upload-demo"
+      action="/api/admin/users/student/import"
+      :headers="headers"
+      :on-success="handleUploadSuccess"
+      :on-error="handleUploadError"
+      :before-upload="beforeUpload">
+      <el-button type="primary">导入学生</el-button>
+      <div slot="tip" class="el-upload__tip">只能上传xlsx文件</div>
+    </el-upload>
   </div>
 </template>
 
@@ -70,7 +82,10 @@ export default {
       },
       dialogVisible: false,
       dialogTitle: '添加学生',
-      currentUser: null
+      currentUser: null,
+      headers: {
+        'X-Token': localStorage.getItem('token')
+      }
     }
   },
   methods: {
@@ -141,6 +156,25 @@ export default {
     handleSaved() {
       this.dialogVisible = false
       this.fetchStudents()
+    },
+    beforeUpload(file) {
+      const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      if (!isExcel) {
+        this.$message.error('只能上传Excel文件!');
+        return false;
+      }
+      return true;
+    },
+    handleUploadSuccess(response) {
+      if (response.code === 200) {
+        this.$message.success('导入成功');
+        this.fetchStudents(); // 刷新列表
+      } else {
+        this.$message.error(response.message);
+      }
+    },
+    handleUploadError() {
+      this.$message.error('导入失败');
     }
   },
   created() {

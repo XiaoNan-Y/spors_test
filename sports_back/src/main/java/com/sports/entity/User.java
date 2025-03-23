@@ -9,10 +9,16 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "user", indexes = {
     @Index(name = "idx_student_number", columnList = "student_number"),
+    @Index(name = "idx_teacher_number", columnList = "teacher_number"),
     @Index(name = "idx_user_type", columnList = "user_type")
 })
 public class User implements Serializable {
     private static final long serialVersionUID = 1L;
+
+    // 用户类型常量
+    public static final String TYPE_ADMIN = "ADMIN";
+    public static final String TYPE_STUDENT = "STUDENT";
+    public static final String TYPE_TEACHER = "TEACHER";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,6 +44,9 @@ public class User implements Serializable {
     
     @Column(name = "student_number", length = 50)
     private String studentNumber;
+
+    @Column(name = "teacher_number", length = 50)
+    private String teacherNumber;
 
     @Column(name = "class_name")
     private String className;
@@ -91,11 +100,6 @@ public class User implements Serializable {
     public void setClassName(String className) {
         this.className = className;
     }
-
-    // 用户类型常量
-    public static final String TYPE_ADMIN = "ADMIN";
-    public static final String TYPE_STUDENT = "STUDENT";
-    public static final String TYPE_TEACHER = "TEACHER";
 
     // 判断用户类型的便捷方法
     public boolean isAdmin() {

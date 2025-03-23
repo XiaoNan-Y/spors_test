@@ -44,55 +44,6 @@ import com.sports.service.ExemptionService;
 @CrossOrigin
 public class TeacherController {
 
-    // 获取学生列表（分页）
-    @GetMapping("/students")
-    public Result getStudents(
-            @RequestParam(defaultValue = "1") int pageNum,
-            @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String className) {
-        try {
-            log.info("获取学生列表 - 页码: {}, 每页大小: {}, 关键字: {}, 班级: {}", pageNum, pageSize, keyword, className);
-            PageRequest pageRequest = PageRequest.of(pageNum - 1, pageSize);
-            Page<User> students;
-            
-            students = userRepository.findAll((root, query, cb) -> {
-                List<Predicate> predicates = new ArrayList<>();
-                
-                // 只查询学生用户
-                predicates.add(cb.equal(root.get("userType"), User.TYPE_STUDENT));
-                
-                // 按班级筛选
-                if (className != null && !className.trim().isEmpty()) {
-                    predicates.add(cb.equal(root.get("className"), className));
-                }
-                
-                // 关键字搜索（姓名或学号）
-                if (keyword != null && !keyword.trim().isEmpty()) {
-                    predicates.add(cb.or(
-                        cb.like(root.get("realName"), "%" + keyword + "%"),
-                        cb.like(root.get("studentNumber"), "%" + keyword + "%")
-                    ));
-                }
-                
-                return cb.and(predicates.toArray(new Predicate[0]));
-            }, pageRequest);
-            
-            Map<String, Object> result = new HashMap<>();
-            result.put("content", students.getContent());
-            result.put("totalElements", students.getTotalElements());
-            result.put("totalPages", students.getTotalPages());
-            result.put("currentPage", pageNum);
-            result.put("pageSize", pageSize);
-            
-            log.info("查询到的学生数量: {}, 总页数: {}", students.getTotalElements(), students.getTotalPages());
-            return Result.success(result);
-        } catch (Exception e) {
-            log.error("获取学生列表失败", e);
-            return Result.error("获取学生列表失败：" + e.getMessage());
-        }
-    }
-
     private static final Logger log = LoggerFactory.getLogger(TeacherController.class);
     
     @Autowired

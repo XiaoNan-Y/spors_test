@@ -2,7 +2,9 @@ package com.sports.controller;
 
 import com.sports.common.Result;
 import com.sports.entity.ExemptionApplication;
+import com.sports.entity.User;
 import com.sports.service.ExemptionService;
+import com.sports.service.ExcelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -23,6 +26,9 @@ public class AdminController {
     
     @Autowired
     private ExemptionService exemptionService;
+    
+    @Autowired
+    private ExcelService excelService;
     
     @GetMapping("/exemptions")
     public Result getExemptions(
@@ -74,6 +80,26 @@ public class AdminController {
         } catch (Exception e) {
             log.error("Failed to get exemption applications", e);
             return Result.error("获取免测申请列表失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/users/student/import")
+    public Result importStudents(@RequestParam("file") MultipartFile file) {
+        try {
+            List<User> users = excelService.importStudents(file);
+            return Result.success(users);
+        } catch (Exception e) {
+            return Result.error("导入失败：" + e.getMessage());
+        }
+    }
+
+    @PostMapping("/users/teacher/import")
+    public Result importTeachers(@RequestParam("file") MultipartFile file) {
+        try {
+            List<User> users = excelService.importTeachers(file);
+            return Result.success(users);
+        } catch (Exception e) {
+            return Result.error("导入失败：" + e.getMessage());
         }
     }
 } 

@@ -2,7 +2,7 @@
   <div class="dashboard-container">
     <!-- 欢迎信息 -->
     <div class="welcome-section">
-      <h2>欢迎回来，{{ teacherName }}</h2>
+      <h2>欢迎回来，老师</h2>
       <p>{{ currentDate }}</p>
     </div>
 
@@ -78,28 +78,7 @@
         </el-card>
       </el-col>
 
-      <!-- 学生管理 -->
-      <el-col :span="8">
-        <el-card shadow="hover" class="module-card" @click="navigateTo('/teacher/student-management')">
-          <div class="module-content">
-            <i class="el-icon-user-solid module-icon"></i>
-            <div class="module-info">
-              <h3>学生管理</h3>
-              <div class="stats-info">
-                <div class="stat-item">
-                  <span class="stat-label">总学生数</span>
-                  <span class="stat-value">{{ stats.totalStudents || 0 }}</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-label">班级数</span>
-                  <span class="stat-value">{{ stats.classCount || 0 }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-
+      
       <!-- 通知管理 -->
       <el-col :span="8">
         <el-card shadow="hover" class="module-card" @click="navigateTo('/teacher/notice-management')">
@@ -299,4 +278,4 @@ export default {
   color: #909399;
   font-size: 14px;
 }
-</style> 
+</style>
