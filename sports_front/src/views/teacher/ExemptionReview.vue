@@ -1,5 +1,12 @@
 <template>
   <div class="exemption-review">
+    <div class="header">
+      <h2>重测申请审核</h2>
+      <div class="header-desc">
+        审核学生提交的重测申请，可直接通过或驳回
+      </div>
+    </div>
+
     <!-- 搜索筛选区 -->
     <div class="filter-section">
       <el-form :inline="true" :model="queryParams" ref="queryForm">
@@ -35,15 +42,23 @@
           {{ scope.row.sportsItemName || '-' }}
         </template>
       </el-table-column>
-      <el-table-column label="申请类型" min-width="100" align="center">
+      <el-table-column label="申请原因" prop="reason" min-width="200" show-overflow-tooltip></el-table-column>
+      <el-table-column label="状态" width="100" align="center">
         <template slot-scope="scope">
-          {{ scope.row.type === 'EXEMPTION' ? '免测' : '重测' }}
+          <el-tag :type="getStatusType(scope.row.status)">
+            {{ getStatusText(scope.row.status) }}
+          </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="申请原因" prop="reason" min-width="200" show-overflow-tooltip></el-table-column>
+      <el-table-column label="申请时间" width="160" align="center">
+        <template slot-scope="scope">
+          {{ formatDateTime(scope.row.applyTime) }}
+        </template>
+      </el-table-column>
       <el-table-column label="操作" align="center" width="180">
         <template slot-scope="scope">
           <el-button
+            v-if="scope.row.status === 'PENDING'"
             size="mini"
             type="primary"
             @click="handleReview(scope.row)"
@@ -71,15 +86,18 @@
     </div>
 
     <!-- 审核对话框 -->
-    <el-dialog title="申请审核" :visible.sync="reviewDialog.visible" width="500px">
+    <el-dialog
+      title="审核重测申请"
+      :visible.sync="reviewDialog.visible"
+      width="500px"
+    >
       <div class="review-info">
-        <p>学生：{{ currentRecord?.studentName }} ({{ currentRecord?.studentNumber }})</p>
-        <p>班级：{{ currentRecord?.className }}</p>
-        <p>项目：{{ currentRecord?.sportsItemName }}</p>
-        <p>类型：{{ currentRecord?.type === 'EXEMPTION' ? '免测' : '重测' }}</p>
-        <p>原因：{{ currentRecord?.reason }}</p>
+        <p><strong>学生信息：</strong>{{ currentRecord?.studentName }} ({{ currentRecord?.studentNumber }})</p>
+        <p><strong>班级：</strong>{{ currentRecord?.className }}</p>
+        <p><strong>测试项目：</strong>{{ currentRecord?.sportsItemName }}</p>
+        <p><strong>申请原因：</strong>{{ currentRecord?.reason }}</p>
       </div>
-      <el-form :model="reviewForm" :rules="reviewRules" ref="reviewForm" label-width="80px">
+      <el-form :model="reviewForm" :rules="reviewRules" ref="reviewForm" label-width="100px">
         <el-form-item label="审核结果" prop="status">
           <el-radio-group v-model="reviewForm.status">
             <el-radio label="APPROVED">通过</el-radio>
@@ -90,64 +108,70 @@
           <el-input
             type="textarea"
             v-model="reviewForm.comment"
-            :rows="3"
+            :rows="4"
             placeholder="请输入审核意见"
           ></el-input>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="reviewDialog.visible = false">取 消</el-button>
-        <el-button type="primary" @click="submitReview">确 定</el-button>
+        <el-button @click="reviewDialog.visible = false">取消</el-button>
+        <el-button type="primary" @click="submitReview">确定</el-button>
       </div>
     </el-dialog>
 
     <!-- 详情对话框 -->
-    <el-dialog title="申请详情" :visible.sync="detailDialog.visible" width="500px">
+    <el-dialog
+      title="申请详情"
+      :visible.sync="detailDialog.visible"
+      width="500px"
+    >
       <el-descriptions :column="1" border>
         <el-descriptions-item label="学生姓名">{{ currentRecord?.studentName }}</el-descriptions-item>
         <el-descriptions-item label="学号">{{ currentRecord?.studentNumber }}</el-descriptions-item>
         <el-descriptions-item label="班级">{{ currentRecord?.className }}</el-descriptions-item>
         <el-descriptions-item label="测试项目">{{ currentRecord?.sportsItemName }}</el-descriptions-item>
-        <el-descriptions-item label="申请类型">{{ currentRecord?.type === 'EXEMPTION' ? '免测' : '重测' }}</el-descriptions-item>
         <el-descriptions-item label="申请原因">{{ currentRecord?.reason }}</el-descriptions-item>
         <el-descriptions-item label="申请时间">{{ formatDateTime(currentRecord?.applyTime) }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getStatusType(currentRecord?.status)">
+            {{ getStatusText(currentRecord?.status) }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="审核意见" v-if="currentRecord?.teacherReviewComment">
+          {{ currentRecord?.teacherReviewComment }}
+        </el-descriptions-item>
+        <el-descriptions-item label="审核时间" v-if="currentRecord?.teacherReviewTime">
+          {{ formatDateTime(currentRecord?.teacherReviewTime) }}
+        </el-descriptions-item>
       </el-descriptions>
-      <div slot="footer" class="dialog-footer">
-        <el-button @click="detailDialog.visible = false">关 闭</el-button>
-      </div>
     </el-dialog>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'ExemptionReview',
+  name: 'RetestReview',
   data() {
     return {
-      // 查询参数
+      loading: false,
       queryParams: {
         keyword: '',
         pageNum: 1,
         pageSize: 10
       },
-      // 表格数据
-      tableData: [],
-      // 总记录数
       total: 0,
-      // 加载状态
-      loading: false,
-      // 当前操作的记录
-      currentRecord: null,
-      // 审核对话框
+      tableData: [],
       reviewDialog: {
         visible: false
       },
-      // 审核表单
+      detailDialog: {
+        visible: false
+      },
+      currentRecord: null,
       reviewForm: {
         status: '',
         comment: ''
       },
-      // 审核表单校验规则
       reviewRules: {
         status: [
           { required: true, message: '请选择审核结果', trigger: 'change' }
@@ -155,10 +179,6 @@ export default {
         comment: [
           { required: true, message: '请输入审核意见', trigger: 'blur' }
         ]
-      },
-      // 详情对话框
-      detailDialog: {
-        visible: false
       }
     }
   },
@@ -169,24 +189,29 @@ export default {
     // 获取列表数据
     async getList() {
       try {
-        this.loading = true
-        const res = await this.$http.get('/api/teacher/exemptions', {
+        this.loading = true;
+        const response = await this.$http.get('/api/teacher/retest-applications', {
           params: {
             keyword: this.queryParams.keyword,
             page: this.queryParams.pageNum - 1,
             size: this.queryParams.pageSize
           }
-        })
+        });
         
-        if (res.data.code === 200) {
-          this.tableData = res.data.data.content
-          this.total = res.data.data.totalElements
+        console.log('API Response:', response.data);
+        
+        if (response.data.code === 200) {
+          this.tableData = response.data.data.content;
+          this.total = response.data.data.totalElements;
+          console.log('Loaded data:', this.tableData);
+        } else {
+          this.$message.error(response.data.message || '获取列表失败');
         }
       } catch (error) {
-        console.error('获取列表失败:', error)
-        this.$message.error('获取列表失败')
+        console.error('获取列表失败:', error);
+        this.$message.error('获取列表失败');
       } finally {
-        this.loading = false
+        this.loading = false;
       }
     },
     // 查询按钮
@@ -213,22 +238,28 @@ export default {
       this.$refs.reviewForm.validate(async (valid) => {
         if (valid) {
           try {
-            const res = await this.$http.post(`/api/teacher/exemptions/${this.currentRecord.id}/review`, {
-              status: this.reviewForm.status,
-              comment: this.reviewForm.comment
-            })
+            const response = await this.$http.post(
+              `/api/teacher/retest-applications/${this.currentRecord.id}/review`,
+              {
+                status: this.reviewForm.status,
+                comment: this.reviewForm.comment,
+                reviewerId: localStorage.getItem('userId')
+              }
+            );
             
-            if (res.data.code === 200) {
-              this.$message.success('审核成功')
-              this.reviewDialog.visible = false
-              this.getList()
+            if (response.data.code === 200) {
+              this.$message.success('审核成功');
+              this.reviewDialog.visible = false;
+              this.getList();
+            } else {
+              this.$message.error(response.data.message || '审核失败');
             }
           } catch (error) {
-            console.error('审核失败:', error)
-            this.$message.error('审核失败')
+            console.error('审核失败:', error);
+            this.$message.error('审核失败: ' + error.message);
           }
         }
-      })
+      });
     },
     // 查看详情
     handleDetail(row) {
@@ -246,17 +277,25 @@ export default {
       this.getList()
     },
     // 格式化时间
-    formatDateTime(dateTime) {
-      if (!dateTime) return '-'
-      return new Date(dateTime).toLocaleString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      })
+    formatDateTime(datetime) {
+      if (!datetime) return '-'
+      return new Date(datetime).toLocaleString()
+    },
+    getStatusType(status) {
+      const types = {
+        PENDING: 'warning',
+        APPROVED: 'success',
+        REJECTED: 'danger'
+      }
+      return types[status] || 'info'
+    },
+    getStatusText(status) {
+      const texts = {
+        PENDING: '待审核',
+        APPROVED: '已通过',
+        REJECTED: '已驳回'
+      }
+      return texts[status] || status
     }
   }
 }
@@ -265,6 +304,15 @@ export default {
 <style scoped>
 .exemption-review {
   padding: 20px;
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.header-desc {
+  color: #666;
+  margin-top: 10px;
 }
 
 .filter-section {
@@ -280,13 +328,14 @@ export default {
 }
 
 .review-info {
-  margin-bottom: 20px;
-  padding: 15px;
   background-color: #f5f7fa;
+  padding: 15px;
+  margin-bottom: 20px;
   border-radius: 4px;
 }
 
 .review-info p {
-  margin: 5px 0;
+  margin: 8px 0;
+  line-height: 1.5;
 }
 </style> 

@@ -363,16 +363,26 @@ public class TeacherController {
     }
 
     /**
-     * 获取免测/重测申请列表
+     * 获取重测申请列表
      */
-    @GetMapping("/exemptions")
-    public Result getExemptions(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+    @GetMapping("/retest-applications")
+    public Result getRetestApplications(
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
         try {
-            Page<ExemptionApplicationDTO> applications = exemptionService
-                .getTeacherPendingApplications(null, "RETEST", keyword, PageRequest.of(page, size));
+            log.info("Getting retest applications - keyword: {}, page: {}, size: {}", 
+                    keyword, page, size);
+            Page<ExemptionApplication> applications = exemptionService
+                .getTeacherRetestApplications(keyword, PageRequest.of(page, size));
+            
+            // 添加调试日志
+            log.debug("Found {} applications", applications.getTotalElements());
+            applications.getContent().forEach(app -> {
+                log.debug("Application: id={}, studentName={}, status={}", 
+                    app.getId(), app.getStudentName(), app.getStatus());
+            });
+            
             return Result.success(applications);
         } catch (Exception e) {
             log.error("获取重测申请列表失败", e);
@@ -381,16 +391,23 @@ public class TeacherController {
     }
 
     /**
-     * 教师审核免测/重测申请
+     * 教师审核重测申请
      */
-    @PostMapping("/exemptions/{id}/review")
-    public Result reviewExemption(
-            @PathVariable Long id,
-            @RequestParam String status,
-            @RequestParam String comment,
-            @RequestParam Long reviewerId) {
+    @PostMapping("/retest-applications/{id}/review")
+    public Result reviewRetestApplication(
+        @PathVariable Long id,
+        @RequestBody Map<String, String> params) {
         try {
-            ExemptionApplication reviewed = exemptionService.teacherReview(id, status, comment, reviewerId);
+            log.info("Reviewing retest application - id: {}, params: {}", id, params);
+            
+            String status = params.get("status");
+            String comment = params.get("comment");
+            Long reviewerId = Long.valueOf(params.get("reviewerId"));
+            
+            ExemptionApplication reviewed = exemptionService
+                .teacherReview(id, status, comment, reviewerId);
+                
+            log.info("Review completed - status: {}", reviewed.getStatus());
             return Result.success(reviewed);
         } catch (Exception e) {
             log.error("审核失败", e);

@@ -178,13 +178,15 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
            "AND e.status = 'PENDING' " +
            "AND (:keyword IS NULL OR " +
            "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY e.applyTime DESC")
     Page<ExemptionApplication> findPendingRetestApplications(
         @Param("keyword") String keyword, 
         Pageable pageable
     );
 
-    @Query("SELECT e FROM ExemptionApplication e WHERE e.type = :type " +
+    @Query("SELECT e FROM ExemptionApplication e " +
+           "WHERE e.type = :type " +
            "AND e.status = :status " +
            "AND (:keyword IS NULL OR " +
            "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +

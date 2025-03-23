@@ -2,6 +2,10 @@ package com.sports.controller;
 
 import com.sports.common.Result;
 import com.sports.entity.ExemptionApplication;
+import com.sports.entity.RetestApplication;
+import com.sports.entity.User;
+import com.sports.repository.RetestApplicationRepository;
+import com.sports.repository.UserRepository;
 import com.sports.service.ExemptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +30,12 @@ public class ExemptionController {
     @Autowired
     private ExemptionService exemptionService;
 
+    @Autowired
+    private RetestApplicationRepository retestApplicationRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
     // 学生提交申请
     @PostMapping("/student/submit")
     public Result submitApplication(@RequestBody ExemptionApplication application) {
@@ -45,6 +55,37 @@ public class ExemptionController {
         } catch (Exception e) {
             log.error("提交申请失败", e);
             return Result.error("提交申请失败：" + e.getMessage());
+        }
+    }
+
+    // 学生提交重测申请
+    @PostMapping("/student/submit-retest")
+    public Result submitRetestApplication(@RequestBody RetestApplication application) {
+        try {
+            // 验证必填字段
+            if (application.getSportsItemId() == null) {
+                return Result.error("重测申请必须选择体育项目");
+            }
+            
+            // 设置申请状态和时间
+            application.setStatus("PENDING");
+            application.setApplyTime(LocalDateTime.now());
+            application.setUpdateTime(LocalDateTime.now());
+            
+            // 获取学生信息
+            User student = userRepository.findById(application.getStudentId())
+                .orElseThrow(() -> new RuntimeException("学生信息不存在"));
+                
+            // 设置学生相关信息
+            application.setStudentNumber(student.getStudentNumber());
+            application.setStudentName(student.getRealName());
+            application.setClassName(student.getClassName());
+            
+            RetestApplication saved = retestApplicationRepository.save(application);
+            return Result.success(saved);
+        } catch (Exception e) {
+            log.error("提交重测申请失败", e);
+            return Result.error("提交重测申请失败：" + e.getMessage());
         }
     }
 
@@ -208,6 +249,33 @@ public class ExemptionController {
             return Result.success(null);
         } catch (Exception e) {
             return Result.error("删除申请失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/retest-applications/student/list")
+    public Result getStudentRetestApplications(
+            @RequestParam Long studentId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        try {
+            log.info("Getting retest applications for student: {}", studentId);
+            
+            Page<RetestApplication> applications = retestApplicationRepository.findByStudentId(
+                studentId, 
+                PageRequest.of(page, size)
+            );
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("content", applications.getContent());
+            result.put("totalElements", applications.getTotalElements());
+            result.put("totalPages", applications.getTotalPages());
+            result.put("size", applications.getSize());
+            result.put("number", applications.getNumber());
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取重测申请列表失败", e);
+            return Result.error("获取重测申请列表失败：" + e.getMessage());
         }
     }
 } 

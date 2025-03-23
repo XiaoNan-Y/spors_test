@@ -3,8 +3,10 @@ package com.sports.service.impl;
 import com.sports.dto.ExemptionApplicationDTO;
 import com.sports.entity.ExemptionApplication;
 import com.sports.entity.User;
+import com.sports.entity.RetestApplication;
 import com.sports.repository.ExemptionApplicationRepository;
 import com.sports.repository.UserRepository;
+import com.sports.repository.RetestApplicationRepository;
 import com.sports.service.ExemptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
@@ -36,6 +38,9 @@ public class ExemptionServiceImpl implements ExemptionService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private RetestApplicationRepository retestApplicationRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -154,19 +159,36 @@ public class ExemptionServiceImpl implements ExemptionService {
     @Override
     @Transactional
     public ExemptionApplication teacherReview(Long id, String status, String comment, Long reviewerId) {
-        ExemptionApplication application = exemptionRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("申请不存在"));
-
-        if (!"RETEST".equals(application.getType())) {
-            throw new RuntimeException("只能审核重测申请");
+        try {
+            RetestApplication application = retestApplicationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("申请不存在"));
+                
+            // 验证状态是否为待审核
+            if (!"PENDING".equals(application.getStatus())) {
+                throw new RuntimeException("只能审核待审核状态的申请");
+            }
+            
+            // 更新申请状态
+            application.setStatus(status);
+            application.setTeacherReviewComment(comment);
+            application.setTeacherReviewTime(LocalDateTime.now());
+            application.setReviewerId(reviewerId);
+            
+            // 获取审核教师信息
+            User reviewer = userRepository.findById(reviewerId)
+                .orElseThrow(() -> new RuntimeException("审核教师不存在"));
+            application.setReviewerName(reviewer.getRealName());
+            
+            RetestApplication saved = retestApplicationRepository.save(application);
+            
+            // 转换为 ExemptionApplication 对象返回
+            ExemptionApplication result = new ExemptionApplication();
+            BeanUtils.copyProperties(saved, result);
+            return result;
+        } catch (Exception e) {
+            log.error("审核重测申请失败", e);
+            throw new RuntimeException("审核失败: " + e.getMessage());
         }
-
-        application.setStatus(status);
-        application.setTeacherReviewComment(comment);
-        application.setTeacherReviewTime(LocalDateTime.now());
-        application.setUpdateTime(LocalDateTime.now());
-        
-        return exemptionRepository.save(application);
     }
 
     @Override
@@ -313,10 +335,21 @@ public class ExemptionServiceImpl implements ExemptionService {
     @Override
     public Page<ExemptionApplication> getTeacherRetestApplications(String keyword, Pageable pageable) {
         try {
-            return exemptionRepository.findPendingRetestApplications(keyword, pageable);
+            // 使用 RetestApplicationRepository 获取数据
+            Page<RetestApplication> retestApplications = retestApplicationRepository.findPendingApplications(
+                keyword, 
+                pageable
+            );
+            
+            // 转换为 ExemptionApplication 对象（为了保持接口兼容）
+            return retestApplications.map(retest -> {
+                ExemptionApplication exemption = new ExemptionApplication();
+                BeanUtils.copyProperties(retest, exemption);
+                return exemption;
+            });
         } catch (Exception e) {
-            log.error("获取教师待审核重测申请列表失败", e);
-            throw new RuntimeException("获取教师待审核重测申请列表失败: " + e.getMessage());
+            log.error("获取重测申请列表失败", e);
+            throw new RuntimeException("获取重测申请列表失败: " + e.getMessage());
         }
     }
 

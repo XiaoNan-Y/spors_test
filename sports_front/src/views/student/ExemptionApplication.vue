@@ -283,10 +283,24 @@ export default {
     async submitForm() {
       try {
         await this.$refs.form.validate();
-        const response = await this.$http.post('/api/exemptions/student/submit', {
+        
+        // 构造申请数据
+        const applicationData = {
           ...this.form,
-          studentId: localStorage.getItem('userId')
-        });
+          studentId: localStorage.getItem('userId'),
+          // 根据申请类型设置不同的API路径
+          type: this.form.type, // 确保type正确传递
+          sportsItemId: this.form.type === 'RETEST' ? this.form.sportsItemId : null,
+          sportsItemName: this.form.type === 'RETEST' ? 
+            this.sportsItems.find(item => item.id === this.form.sportsItemId)?.name : null
+        };
+
+        // 根据申请类型选择不同的API端点
+        const apiEndpoint = this.form.type === 'RETEST' ? 
+          '/api/exemptions/student/submit-retest' : 
+          '/api/exemptions/student/submit';
+
+        const response = await this.$http.post(apiEndpoint, applicationData);
 
         if (response.data.code === 200) {
           this.$message.success('提交成功');
@@ -337,29 +351,43 @@ export default {
     },
     async fetchApplications() {
       try {
-        // 添加调试日志
         console.log('Fetching applications for user:', localStorage.getItem('userId'));
         
-        const response = await this.$http.get('/api/exemptions/student/list', {
-          params: {
-            studentId: localStorage.getItem('userId'),
-            page: this.currentPage - 1, // 后端分页从0开始
-            size: this.pageSize
-          }
-        });
+        // 修改请求路径，使用相对路径
+        const [exemptionResponse, retestResponse] = await Promise.all([
+          this.$http.get('/api/exemptions/student/list', {
+            params: {
+              studentId: localStorage.getItem('userId'),
+              page: this.currentPage - 1,
+              size: this.pageSize
+            }
+          }),
+          this.$http.get('/api/exemptions/retest-applications/student/list', { // 修改这里的路径
+            params: {
+              studentId: localStorage.getItem('userId'),
+              page: this.currentPage - 1,
+              size: this.pageSize
+            }
+          })
+        ]);
 
-        // 添加调试日志
-        console.log('API Response:', response);
-
-        if (response.data.code === 200) {
-          this.applications = response.data.data.content;
-          this.total = response.data.data.totalElements;
+        if (exemptionResponse.data.code === 200 && retestResponse.data.code === 200) {
+          // 合并两种申请记录
+          const exemptionApplications = exemptionResponse.data.data.content || [];
+          const retestApplications = retestResponse.data.data.content || [];
           
-          // 添加调试日志
+          // 合并并按申请时间排序
+          this.applications = [...exemptionApplications, ...retestApplications]
+            .sort((a, b) => new Date(b.applyTime) - new Date(a.applyTime));
+          
+          // 计算总记录数
+          this.total = exemptionResponse.data.data.totalElements + 
+                      retestResponse.data.data.totalElements;
+          
           console.log('Loaded applications:', this.applications);
           console.log('Total records:', this.total);
         } else {
-          this.$message.error(response.data.message || '获取申请记录失败');
+          this.$message.error('获取申请记录失败');
         }
       } catch (error) {
         console.error('获取申请记录失败:', error);

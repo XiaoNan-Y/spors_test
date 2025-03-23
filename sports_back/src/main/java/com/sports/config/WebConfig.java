@@ -24,6 +24,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/**")
             .allowedOrigins(
                 "http://localhost:8081",
+                "http://10.90.56.69:8081",
                 "http://localhost:8080"
             )
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
