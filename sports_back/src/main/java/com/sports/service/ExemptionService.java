@@ -10,7 +10,7 @@ public interface ExemptionService {
     /**
      * 提交免测/重测申请
      */
-    ExemptionApplicationDTO submitApplication(ExemptionApplication application);
+    ExemptionApplication submitApplication(ExemptionApplication application);
     
     /**
      * 获取学生的申请列表
@@ -31,7 +31,7 @@ public interface ExemptionService {
     /**
      * 教师审核申请
      */
-    ExemptionApplicationDTO teacherReview(
+    ExemptionApplication teacherReview(
         Long id, 
         String status, 
         String reviewComment, 
@@ -41,7 +41,7 @@ public interface ExemptionService {
     /**
      * 管理员审核申请
      */
-    ExemptionApplicationDTO adminReview(
+    ExemptionApplication adminReview(
         Long id,
         String status,
         String reviewComment,
@@ -51,7 +51,7 @@ public interface ExemptionService {
     /**
      * 获取申请详情
      */
-    ExemptionApplicationDTO getApplicationById(Long id);
+    ExemptionApplication getApplicationById(Long id);
     
     /**
      * 删除申请(仅允许删除待审核的申请)
@@ -88,4 +88,10 @@ public interface ExemptionService {
     List<String> getDistinctClassNames();
 
     Page<ExemptionApplication> getTeacherExemptionApplications(String keyword, Pageable pageable);
+
+    // 管理员获取免测申请列表
+    Page<ExemptionApplication> getAdminExemptionApplications(String keyword, Pageable pageable);
+    
+    // 教师获取重测申请列表
+    Page<ExemptionApplication> getTeacherRetestApplications(String keyword, Pageable pageable);
 } 

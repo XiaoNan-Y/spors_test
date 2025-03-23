@@ -41,7 +41,7 @@
         <!-- 添加免测/重测申请菜单项 -->
         <el-menu-item index="/admin/exemption-review">
           <i class="el-icon-document"></i>
-          <span slot="title">免测/重测申请</span>
+          <span slot="title">免测申请审核</span>
         </el-menu-item>
 
         <el-menu-item index="/admin/feedback">

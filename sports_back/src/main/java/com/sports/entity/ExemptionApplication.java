@@ -11,7 +11,7 @@ import java.util.Map;
 
 @Data
 @Entity
-@Table(name = "test_exemption")
+@Table(name = "exemption_application")
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ExemptionApplication {
     
@@ -31,26 +31,11 @@ public class ExemptionApplication {
     @Column(name = "class_name")
     private String className;
 
-    @Column(name = "type")
-    private String type; // EXEMPTION(免测) 或 RETEST(重测)
-
-    @Column(name = "reason")
+    @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
     @Column(name = "status")
-    private String status; // PENDING: 待审核, APPROVED: 已通过, REJECTED: 已驳回
-
-    @Column(name = "teacher_review_comment")
-    private String teacherReviewComment;
-
-    @Column(name = "teacher_review_time")
-    private LocalDateTime teacherReviewTime;
-
-    @Column(name = "admin_review_comment")
-    private String adminReviewComment;
-
-    @Column(name = "admin_review_time")
-    private LocalDateTime adminReviewTime;
+    private String status; // PENDING, APPROVED, REJECTED
 
     @Column(name = "apply_time")
     private LocalDateTime applyTime;
@@ -60,6 +45,12 @@ public class ExemptionApplication {
 
     @Column(name = "attachment_url")
     private String attachmentUrl;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @Column(name = "review_comment")
     private String reviewComment;
@@ -76,14 +67,20 @@ public class ExemptionApplication {
     @Column(name = "sports_item_name")
     private String sportsItemName;
 
-    @Transient
-    private Long sportsItemId;
+    @Column(name = "type")
+    private String type; // EXEMPTION(免测) 或 RETEST(重测)
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+    @Column(name = "admin_review_comment")
+    private String adminReviewComment;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    @Column(name = "admin_review_time")
+    private LocalDateTime adminReviewTime;
+
+    @Column(name = "teacher_review_comment")
+    private String teacherReviewComment;
+
+    @Column(name = "teacher_review_time")
+    private LocalDateTime teacherReviewTime;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", insertable = false, updatable = false)
@@ -97,16 +94,12 @@ public class ExemptionApplication {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        updateTime = LocalDateTime.now();
-        applyTime = LocalDateTime.now();
-        if (status == null) {
-            status = "PENDING_TEACHER";
-        }
-        if ("RETEST".equals(type) && sportsItem != null) {
-            sportsItemName = sportsItem.getName();
-        }
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+        applyTime = now;
+        updateTime = now;
+        status = "PENDING";
     }
 
     @PreUpdate
@@ -150,11 +143,18 @@ public class ExemptionApplication {
     }
 
     public Long getSportsItemId() {
-        return sportsItemId;
+        return sportsItem != null ? sportsItem.getId() : null;
     }
 
     public void setSportsItemId(Long sportsItemId) {
-        this.sportsItemId = sportsItemId;
+        if (sportsItemId != null) {
+            if (this.sportsItem == null) {
+                this.sportsItem = new SportsItem();
+            }
+            this.sportsItem.setId(sportsItemId);
+        } else {
+            this.sportsItem = null;
+        }
     }
 
     @JsonProperty("sportsItem")

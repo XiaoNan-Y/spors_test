@@ -371,50 +371,12 @@ public class TeacherController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
-            log.info("Getting teacher exemption applications - keyword: {}, page: {}, size: {}", 
-                    keyword, page, size);
-            Page<ExemptionApplication> exemptions = exemptionService.getTeacherExemptionApplications(
-                keyword, PageRequest.of(page, size));
-            
-            // 构造返回数据，只返回需要的字段
-            List<Map<String, Object>> content = exemptions.getContent().stream()
-                .map(app -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", app.getId());
-                    item.put("studentId", app.getStudentId());
-                    item.put("studentNumber", app.getStudentNumber());
-                    item.put("studentName", app.getStudentName());
-                    item.put("className", app.getClassName());
-                    item.put("type", app.getType());
-                    item.put("reason", app.getReason());
-                    item.put("status", app.getStatus());
-                    item.put("teacherReviewComment", app.getTeacherReviewComment());
-                    item.put("adminReviewComment", app.getAdminReviewComment());
-                    item.put("createdAt", app.getCreatedAt());
-                    item.put("applyTime", app.getApplyTime());
-                    
-                    // 添加体育项目信息
-                    if (app.getSportsItem() != null) {
-                        item.put("sportsItemId", app.getSportsItem().getId());
-                        item.put("sportsItemName", app.getSportsItem().getName());
-                    }
-                    
-                    return item;
-                })
-                .collect(Collectors.toList());
-            
-            // 构造分页信息
-            Map<String, Object> result = new HashMap<>();
-            result.put("content", content);
-            result.put("totalElements", exemptions.getTotalElements());
-            result.put("totalPages", exemptions.getTotalPages());
-            result.put("size", exemptions.getSize());
-            result.put("number", exemptions.getNumber());
-            
-            return Result.success(result);
+            Page<ExemptionApplicationDTO> applications = exemptionService
+                .getTeacherPendingApplications(null, "RETEST", keyword, PageRequest.of(page, size));
+            return Result.success(applications);
         } catch (Exception e) {
-            log.error("Failed to get teacher exemption applications", e);
-            return Result.error("获取教师免测申请列表失败：" + e.getMessage());
+            log.error("获取重测申请列表失败", e);
+            return Result.error("获取重测申请列表失败：" + e.getMessage());
         }
     }
 
@@ -424,20 +386,15 @@ public class TeacherController {
     @PostMapping("/exemptions/{id}/review")
     public Result reviewExemption(
             @PathVariable Long id,
-            @RequestBody Map<String, String> reviewData,
-            @RequestAttribute Long userId) {
+            @RequestParam String status,
+            @RequestParam String comment,
+            @RequestParam Long reviewerId) {
         try {
-            String status = reviewData.get("status");
-            String comment = reviewData.get("comment");
-            
-            log.info("Teacher reviewing exemption - id: {}, status: {}, comment: {}, teacherId: {}", 
-                    id, status, comment, userId);
-            
-            ExemptionApplicationDTO result = exemptionService.teacherReview(id, status, comment, userId);
-            return Result.success(result);
+            ExemptionApplication reviewed = exemptionService.teacherReview(id, status, comment, reviewerId);
+            return Result.success(reviewed);
         } catch (Exception e) {
-            log.error("Failed to review exemption", e);
-            return Result.error("审核免测申请失败：" + e.getMessage());
+            log.error("审核失败", e);
+            return Result.error("审核失败：" + e.getMessage());
         }
     }
 

@@ -148,4 +148,26 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
            "WHERE e.studentId = :studentId " +
            "ORDER BY e.applyTime DESC")
     List<ExemptionApplication> findAllByStudentId(@Param("studentId") Long studentId);
+
+    // 查询管理员待审核的免测申请
+    @Query("SELECT e FROM ExemptionApplication e WHERE e.type = 'EXEMPTION' " +
+           "AND e.status = 'PENDING' " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<ExemptionApplication> findPendingExemptionApplications(
+        @Param("keyword") String keyword, 
+        Pageable pageable
+    );
+    
+    // 查询教师待审核的重测申请
+    @Query("SELECT e FROM ExemptionApplication e WHERE e.type = 'RETEST' " +
+           "AND e.status = 'PENDING' " +
+           "AND (:keyword IS NULL OR " +
+           "LOWER(e.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(e.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<ExemptionApplication> findPendingRetestApplications(
+        @Param("keyword") String keyword, 
+        Pageable pageable
+    );
 } 

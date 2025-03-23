@@ -6,8 +6,7 @@ import com.sports.entity.User;
 import com.sports.repository.ExemptionApplicationRepository;
 import com.sports.repository.UserRepository;
 import com.sports.service.ExemptionService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -21,10 +20,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
 
+@Slf4j
 @Service
 public class ExemptionServiceImpl implements ExemptionService {
-
-    private static final Logger log = LoggerFactory.getLogger(ExemptionServiceImpl.class);
 
     @Autowired
     private ExemptionApplicationRepository exemptionRepository;
@@ -63,22 +61,16 @@ public class ExemptionServiceImpl implements ExemptionService {
 
     @Override
     @Transactional
-    public ExemptionApplicationDTO submitApplication(ExemptionApplication application) {
-        application.setStatus("PENDING_TEACHER");
-        ExemptionApplication saved = exemptionRepository.save(application);
-        return convertToDTO(saved);
+    public ExemptionApplication submitApplication(ExemptionApplication application) {
+        application.setStatus("PENDING");
+        application.setApplyTime(LocalDateTime.now());
+        application.setUpdateTime(LocalDateTime.now());
+        return exemptionRepository.save(application);
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Page<ExemptionApplication> getStudentApplications(Long studentId, Pageable pageable) {
-        try {
-            log.info("Getting student applications for studentId: {}", studentId);
-            return exemptionRepository.findByStudentId(studentId, pageable);
-        } catch (Exception e) {
-            log.error("获取学生申请列表失败 - studentId: " + studentId, e);
-            throw new RuntimeException("获取学生申请列表失败: " + e.getMessage());
-        }
+        return exemptionRepository.findByStudentId(studentId, pageable);
     }
 
     @Override
@@ -97,50 +89,44 @@ public class ExemptionServiceImpl implements ExemptionService {
 
     @Override
     @Transactional
-    public ExemptionApplicationDTO teacherReview(Long id, String status, String reviewComment, Long reviewerId) {
+    public ExemptionApplication adminReview(Long id, String status, String comment, Long reviewerId) {
         ExemptionApplication application = exemptionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("申请不存在"));
-        
-        // 检查状态是否允许教师审核
-        if (!application.getStatus().equals("PENDING_TEACHER")) {
-            throw new RuntimeException("当前状态不允许教师审核");
+            .orElseThrow(() -> new RuntimeException("申请不存在"));
+
+        if (!"EXEMPTION".equals(application.getType())) {
+            throw new RuntimeException("只能审核免测申请");
         }
-        
-        // 更新审核信息
+
         application.setStatus(status);
-        application.setTeacherReviewComment(reviewComment);
-        application.setTeacherReviewTime(LocalDateTime.now());
+        application.setAdminReviewComment(comment);
+        application.setAdminReviewTime(LocalDateTime.now());
         application.setUpdateTime(LocalDateTime.now());
         
-        // 如果是通过，则状态改为待管理员审核
-        if (status.equals("APPROVED")) {
-            application.setStatus("PENDING_ADMIN");
-        }
-        
-        ExemptionApplication updated = exemptionRepository.save(application);
-        return convertToDTO(updated);
+        return exemptionRepository.save(application);
     }
 
     @Override
     @Transactional
-    public ExemptionApplicationDTO adminReview(Long id, String status, String reviewComment, Long reviewerId) {
+    public ExemptionApplication teacherReview(Long id, String status, String comment, Long reviewerId) {
         ExemptionApplication application = exemptionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("申请不存在"));
-        
+            .orElseThrow(() -> new RuntimeException("申请不存在"));
+
+        if (!"RETEST".equals(application.getType())) {
+            throw new RuntimeException("只能审核重测申请");
+        }
+
         application.setStatus(status);
-        application.setAdminReviewComment(reviewComment);
-        application.setAdminReviewTime(LocalDateTime.now());
+        application.setTeacherReviewComment(comment);
+        application.setTeacherReviewTime(LocalDateTime.now());
         application.setUpdateTime(LocalDateTime.now());
         
-        ExemptionApplication updated = exemptionRepository.save(application);
-        return convertToDTO(updated);
+        return exemptionRepository.save(application);
     }
 
     @Override
-    public ExemptionApplicationDTO getApplicationById(Long id) {
-        ExemptionApplication application = exemptionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("申请不存在"));
-        return convertToDTO(application);
+    public ExemptionApplication getApplicationById(Long id) {
+        return exemptionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("申请不存在"));
     }
 
     @Override
@@ -209,40 +195,76 @@ public class ExemptionServiceImpl implements ExemptionService {
     @Override
     public Page<ExemptionApplicationDTO> getAdminPendingApplications(
             String className, String type, String keyword, Pageable pageable) {
-        return getAllApplications(className, type, "PENDING_ADMIN", keyword, pageable);
+        try {
+            // 构建查询条件
+            List<ExemptionApplication> applications;
+            if (className != null && !className.isEmpty()) {
+                // 如果指定了班级，则按班级筛选
+                applications = exemptionRepository.findAllWithFiltersNoPage(
+                    className, type, "PENDING_ADMIN", keyword);
+            } else {
+                // 否则查询所有待管理员审核的申请
+                applications = exemptionRepository.findAllWithFiltersNoPage(
+                    null, type, "PENDING_ADMIN", keyword);
+            }
+            
+            // 手动分页
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), applications.size());
+            
+            List<ExemptionApplication> pageContent = start < end ? 
+                applications.subList(start, end) : 
+                new ArrayList<>();
+                
+            // 转换为DTO
+            List<ExemptionApplicationDTO> dtos = pageContent.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+                
+            return new PageImpl<>(dtos, pageable, applications.size());
+        } catch (Exception e) {
+            log.error("获取管理员待审核申请失败", e);
+            throw new RuntimeException("获取管理员待审核申请失败: " + e.getMessage());
+        }
     }
 
     @Override
     public List<String> getDistinctClassNames() {
-        return exemptionRepository.findDistinctClassNames();
+        try {
+            return userRepository.findDistinctClassName();
+        } catch (Exception e) {
+            log.error("获取班级列表失败", e);
+            throw new RuntimeException("获取班级列表失败: " + e.getMessage());
+        }
     }
 
     @Override
-    @Transactional(readOnly = true)
+    public Page<ExemptionApplication> getAdminExemptionApplications(String keyword, Pageable pageable) {
+        try {
+            return exemptionRepository.findPendingExemptionApplications(keyword, pageable);
+        } catch (Exception e) {
+            log.error("获取管理员待审核免测申请列表失败", e);
+            throw new RuntimeException("获取管理员待审核免测申请列表失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public Page<ExemptionApplication> getTeacherRetestApplications(String keyword, Pageable pageable) {
+        try {
+            return exemptionRepository.findPendingRetestApplications(keyword, pageable);
+        } catch (Exception e) {
+            log.error("获取教师待审核重测申请列表失败", e);
+            throw new RuntimeException("获取教师待审核重测申请列表失败: " + e.getMessage());
+        }
+    }
+
+    @Override
     public Page<ExemptionApplication> getTeacherExemptionApplications(String keyword, Pageable pageable) {
         try {
-            Page<ExemptionApplication> applications = exemptionRepository.findTeacherPendingApplications(
-                keyword != null ? keyword.trim() : "", 
-                keyword != null ? keyword.trim() : "", 
-                pageable
-            );
-            
-            // 手动初始化懒加载的关联对象
-            applications.getContent().forEach(app -> {
-                if (app.getSportsItem() != null) {
-                    app.getSportsItem().getId();  // 触发懒加载
-                    app.getSportsItem().getName();
-                }
-                if (app.getStudent() != null) {
-                    app.getStudent().getId();  // 触发懒加载
-                    app.getStudent().getRealName();
-                }
-            });
-            
-            return applications;
+            return exemptionRepository.findPendingExemptionApplications(keyword, pageable);
         } catch (Exception e) {
-            log.error("获取教师待审核申请列表失败", e);
-            throw new RuntimeException("获取教师待审核申请列表失败: " + e.getMessage());
+            log.error("获取教师免测申请列表失败", e);
+            throw new RuntimeException("获取教师免测申请列表失败: " + e.getMessage());
         }
     }
 

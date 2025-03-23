@@ -1,7 +1,7 @@
 <template>
   <div class="exemption-review">
     <div class="header">
-      <h2>免测/重测申请审核</h2>
+      <h2>免测申请审核</h2>
       <div class="actions">
         <el-button type="warning" @click="fixStudentNames">
           <i class="el-icon-refresh"></i> 修复学生信息
@@ -199,7 +199,7 @@ export default {
   methods: {
     async fetchRecords() {
       try {
-        const response = await this.$axios.get('/api/admin/exemptions', {
+        const response = await this.$axios.get('/api/exemptions/admin/list', {
           params: {
             keyword: this.filters.keyword,
             page: this.currentPage - 1,
