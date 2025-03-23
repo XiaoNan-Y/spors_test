@@ -239,12 +239,21 @@ public class ExemptionServiceImpl implements ExemptionService {
     }
 
     @Override
-    public Page<ExemptionApplication> getAdminExemptionApplications(String keyword, Pageable pageable) {
+    public Page<ExemptionApplication> getAdminExemptionApplications(
+            String keyword, String status, Pageable pageable) {
         try {
-            return exemptionRepository.findPendingExemptionApplications(keyword, pageable);
+            if (status != null && !status.isEmpty()) {
+                // 如果指定了状态，则按状态筛选
+                return exemptionRepository.findByTypeAndStatusAndKeyword(
+                    "EXEMPTION", status, keyword, pageable);
+            } else {
+                // 否则返回所有状态的申请
+                return exemptionRepository.findByTypeAndKeyword(
+                    "EXEMPTION", keyword, pageable);
+            }
         } catch (Exception e) {
-            log.error("获取管理员待审核免测申请列表失败", e);
-            throw new RuntimeException("获取管理员待审核免测申请列表失败: " + e.getMessage());
+            log.error("获取管理员免测申请列表失败", e);
+            throw new RuntimeException("获取管理员免测申请列表失败: " + e.getMessage());
         }
     }
 

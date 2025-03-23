@@ -2,27 +2,15 @@
   <div class="exemption-review">
     <div class="header">
       <h2>免测申请审核</h2>
-      <div class="actions">
-        <el-button type="warning" @click="fixStudentNames">
-          <i class="el-icon-refresh"></i> 修复学生信息
-        </el-button>
-      </div>
     </div>
 
     <div class="filters">
       <el-form :inline="true" class="filter-form">
-        <el-form-item label="申请类型">
-          <el-select v-model="filters.type" placeholder="选择申请类型" clearable>
-            <el-option label="免测" value="EXEMPTION" />
-            <el-option label="重测" value="RETEST" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="选择状态" clearable>
-            <el-option label="待教师审核" value="PENDING_TEACHER" />
-            <el-option label="待管理员审核" value="PENDING_ADMIN" />
+            <el-option label="全部" value="" />
+            <el-option label="待审核" value="PENDING" />
             <el-option label="已通过" value="APPROVED" />
-            <el-option label="教师已驳回" value="REJECTED_TEACHER" />
             <el-option label="已驳回" value="REJECTED" />
           </el-select>
         </el-form-item>
@@ -51,12 +39,19 @@
       <el-table-column prop="studentNumber" label="学号" width="120" />
       <el-table-column prop="studentName" label="姓名" width="120" />
       <el-table-column prop="className" label="班级" width="120" />
-      <el-table-column prop="type" label="申请类型" width="100">
+      <el-table-column prop="reason" label="申请原因" show-overflow-tooltip />
+      <el-table-column label="证明材料" width="120">
         <template slot-scope="scope">
-          {{ scope.row.type === 'EXEMPTION' ? '免测' : '重测' }}
+          <el-button 
+            v-if="scope.row.attachmentUrl"
+            type="text" 
+            @click="previewAttachment(scope.row.attachmentUrl)"
+          >
+            查看附件
+          </el-button>
+          <span v-else>无</span>
         </template>
       </el-table-column>
-      <el-table-column prop="reason" label="申请原因" show-overflow-tooltip />
       <el-table-column prop="status" label="状态" width="120">
         <template slot-scope="scope">
           <el-tag :type="getStatusType(scope.row.status)">
@@ -64,26 +59,26 @@
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="teacherReviewComment" label="教师审核意见" show-overflow-tooltip />
-      <el-table-column prop="adminReviewComment" label="管理员审核意见" show-overflow-tooltip />
-      <el-table-column prop="createdAt" label="申请时间" width="180">
+      <el-table-column prop="adminReviewComment" label="审核意见" show-overflow-tooltip />
+      <el-table-column prop="applyTime" label="申请时间" width="180">
         <template slot-scope="scope">
-          {{ formatDateTime(scope.row.applyTime || scope.row.createdAt) }}
+          {{ formatDateTime(scope.row.applyTime) }}
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="200" fixed="right">
+      <el-table-column label="操作" width="120" fixed="right">
         <template slot-scope="scope">
           <el-button
+            v-if="scope.row.status === 'PENDING'"
             size="mini"
             type="primary"
             @click="handleReview(scope.row)"
-            v-if="scope.row.status === 'PENDING_ADMIN'"
           >审核</el-button>
           <el-button
+            v-else
             size="mini"
-            type="warning"
-            @click="handleModify(scope.row)"
-          >修改</el-button>
+            type="info"
+            @click="handleDetail(scope.row)"
+          >查看</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -106,6 +101,17 @@
       :visible.sync="reviewDialog.visible"
       width="500px"
     >
+      <div class="review-info">
+        <p><strong>学生信息：</strong>{{ currentRecord?.studentName }} ({{ currentRecord?.studentNumber }})</p>
+        <p><strong>班级：</strong>{{ currentRecord?.className }}</p>
+        <p><strong>申请原因：</strong>{{ currentRecord?.reason }}</p>
+        <p v-if="currentRecord?.attachmentUrl">
+          <strong>证明材料：</strong>
+          <el-button type="text" @click="previewAttachment(currentRecord.attachmentUrl)">
+            查看附件
+          </el-button>
+        </p>
+      </div>
       <el-form :model="reviewForm" ref="reviewForm" label-width="100px">
         <el-form-item label="审核结果" prop="status">
           <el-radio-group v-model="reviewForm.status">
@@ -128,34 +134,40 @@
       </div>
     </el-dialog>
 
-    <!-- 修改对话框 -->
+    <!-- 详情对话框 -->
     <el-dialog
-      title="修改审核状态"
-      :visible.sync="modifyDialog.visible"
+      title="申请详情"
+      :visible.sync="detailDialog.visible"
       width="500px"
     >
-      <el-form :model="modifyForm" ref="modifyForm" label-width="100px">
-        <el-form-item label="审核状态" prop="status">
-          <el-select v-model="modifyForm.status" placeholder="选择状态">
-            <el-option label="待教师审核" value="PENDING_TEACHER" />
-            <el-option label="待管理员审核" value="PENDING_ADMIN" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="教师已驳回" value="REJECTED_TEACHER" />
-            <el-option label="已驳回" value="REJECTED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="审核意见" prop="adminReviewComment">
-          <el-input
-            type="textarea"
-            v-model="modifyForm.adminReviewComment"
-            :rows="4"
-            placeholder="请输入审核意见"
-          />
-        </el-form-item>
-      </el-form>
+      <div class="detail-info">
+        <el-descriptions :column="1" border>
+          <el-descriptions-item label="学生姓名">{{ currentRecord?.studentName }}</el-descriptions-item>
+          <el-descriptions-item label="学号">{{ currentRecord?.studentNumber }}</el-descriptions-item>
+          <el-descriptions-item label="班级">{{ currentRecord?.className }}</el-descriptions-item>
+          <el-descriptions-item label="申请原因">{{ currentRecord?.reason }}</el-descriptions-item>
+          <el-descriptions-item label="证明材料">
+            <el-button 
+              v-if="currentRecord?.attachmentUrl"
+              type="text" 
+              @click="previewAttachment(currentRecord.attachmentUrl)"
+            >
+              查看附件
+            </el-button>
+            <span v-else>无</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="申请时间">{{ formatDateTime(currentRecord?.applyTime) }}</el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="getStatusType(currentRecord?.status)">
+              {{ getStatusText(currentRecord?.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="审核意见">{{ currentRecord?.adminReviewComment || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="审核时间">{{ formatDateTime(currentRecord?.adminReviewTime) || '-' }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="modifyDialog.visible = false">取消</el-button>
-        <el-button type="primary" @click="submitModify">确定</el-button>
+        <el-button @click="detailDialog.visible = false">关闭</el-button>
       </div>
     </el-dialog>
   </div>
@@ -172,25 +184,20 @@ export default {
       currentPage: 1,
       pageSize: 10,
       filters: {
-        type: undefined,
-        status: undefined,
+        status: '',
         keyword: ''
       },
       reviewDialog: {
+        visible: false
+      },
+      detailDialog: {
         visible: false
       },
       reviewForm: {
         status: '',
         adminReviewComment: ''
       },
-      currentRecord: null,
-      modifyDialog: {
-        visible: false
-      },
-      modifyForm: {
-        status: '',
-        adminReviewComment: ''
-      }
+      currentRecord: null
     }
   },
   created() {
@@ -199,23 +206,27 @@ export default {
   methods: {
     async fetchRecords() {
       try {
+        this.loading = true
         const response = await this.$axios.get('/api/exemptions/admin/list', {
           params: {
+            status: this.filters.status,
             keyword: this.filters.keyword,
             page: this.currentPage - 1,
             size: this.pageSize
           }
-        });
+        })
         
         if (response.data.code === 200) {
-          this.records = response.data.data.content;
-          this.total = response.data.data.totalElements;
+          this.records = response.data.data.content
+          this.total = response.data.data.totalElements
         } else {
-          this.$message.error(response.data.message);
+          this.$message.error(response.data.message)
         }
       } catch (error) {
-        console.error('获取记录失败:', error);
-        this.$message.error('获取记录失败: ' + error.message);
+        console.error('获取记录失败:', error)
+        this.$message.error('获取记录失败: ' + error.message)
+      } finally {
+        this.loading = false
       }
     },
     handleSearch() {
@@ -224,34 +235,29 @@ export default {
     },
     resetFilters() {
       this.filters = {
-        type: undefined,
-        status: undefined,
+        status: '',
         keyword: ''
       }
       this.handleSearch()
     },
     getStatusType(status) {
       const types = {
-        PENDING_TEACHER: 'warning',
-        PENDING_ADMIN: 'warning',
+        PENDING: 'warning',
         APPROVED: 'success',
-        REJECTED: 'danger',
-        REJECTED_TEACHER: 'danger'
+        REJECTED: 'danger'
       }
       return types[status] || 'info'
     },
     getStatusText(status) {
       const texts = {
-        PENDING_TEACHER: '待教师审核',
-        PENDING_ADMIN: '待管理员审核',
+        PENDING: '待审核',
         APPROVED: '已通过',
-        REJECTED: '已驳回',
-        REJECTED_TEACHER: '教师已驳回'
+        REJECTED: '已驳回'
       }
       return texts[status] || status
     },
     formatDateTime(datetime) {
-      if (!datetime) return ''
+      if (!datetime) return '-'
       return new Date(datetime).toLocaleString()
     },
     handleSizeChange(val) {
@@ -270,6 +276,10 @@ export default {
       }
       this.reviewDialog.visible = true
     },
+    handleDetail(row) {
+      this.currentRecord = row
+      this.detailDialog.visible = true
+    },
     async submitReview() {
       if (!this.reviewForm.status) {
         this.$message.warning('请选择审核结果')
@@ -277,12 +287,12 @@ export default {
       }
       
       try {
-        const response = await this.$http.put(
-          `/api/exemptions/${this.currentRecord.id}/review`,
+        const response = await this.$axios.post(
+          `/api/exemptions/admin/review/${this.currentRecord.id}`,
           {
             status: this.reviewForm.status,
-            adminReviewComment: this.reviewForm.adminReviewComment,
-            adminReviewTime: new Date().toISOString()
+            comment: this.reviewForm.adminReviewComment,
+            reviewerId: localStorage.getItem('userId')
           }
         )
         
@@ -291,57 +301,16 @@ export default {
           this.reviewDialog.visible = false
           this.fetchRecords()
         } else {
-          this.$message.error(response.data.msg || '审核失败')
+          this.$message.error(response.data.message || '审核失败')
         }
       } catch (error) {
         console.error('审核失败:', error)
-        this.$message.error('审核失败')
+        this.$message.error('审核失败: ' + error.message)
       }
     },
-    async fixStudentNames() {
-      try {
-        const response = await this.$http.post('/api/data-fix/fix-exemption-names')
-        if (response.data.code === 200) {
-          this.$message.success(response.data.data || '修复成功')
-          // 重新加载数据
-          this.fetchRecords()
-        } else {
-          this.$message.error(response.data.msg || '修复失败')
-        }
-      } catch (error) {
-        console.error('修复失败:', error)
-        this.$message.error('修复失败')
-      }
-    },
-    handleModify(row) {
-      this.currentRecord = row
-      this.modifyForm = {
-        status: row.status,
-        adminReviewComment: row.adminReviewComment || ''
-      }
-      this.modifyDialog.visible = true
-    },
-    async submitModify() {
-      try {
-        const response = await this.$http.put(
-          `/api/exemptions/${this.currentRecord.id}/modify`,
-          {
-            status: this.modifyForm.status,
-            adminReviewComment: this.modifyForm.adminReviewComment
-          }
-        )
-        
-        if (response.data.code === 200) {
-          this.$message.success('修改成功')
-          this.modifyDialog.visible = false
-          this.fetchRecords()
-        } else {
-          this.$message.error(response.data.msg || '修改失败')
-        }
-      } catch (error) {
-        console.error('修改失败:', error)
-        this.$message.error('修改失败')
-      }
+    previewAttachment(url) {
+      if (!url) return
+      window.open(url, '_blank')
     }
   }
 }
@@ -353,23 +322,34 @@ export default {
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 20px;
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
 }
 
 .filters {
   margin-bottom: 20px;
+  background-color: #f5f7fa;
+  padding: 20px;
+  border-radius: 4px;
 }
 
 .pagination-container {
   margin-top: 20px;
   text-align: right;
+}
+
+.review-info {
+  background-color: #f5f7fa;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+}
+
+.review-info p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+.detail-info {
+  padding: 10px;
 }
 </style> 

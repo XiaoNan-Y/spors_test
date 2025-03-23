@@ -90,7 +90,11 @@ public interface ExemptionService {
     Page<ExemptionApplication> getTeacherExemptionApplications(String keyword, Pageable pageable);
 
     // 管理员获取免测申请列表
-    Page<ExemptionApplication> getAdminExemptionApplications(String keyword, Pageable pageable);
+    Page<ExemptionApplication> getAdminExemptionApplications(
+        String keyword, 
+        String status,
+        Pageable pageable
+    );
     
     // 教师获取重测申请列表
     Page<ExemptionApplication> getTeacherRetestApplications(String keyword, Pageable pageable);

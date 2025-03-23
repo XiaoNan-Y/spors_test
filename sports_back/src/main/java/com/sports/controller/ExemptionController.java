@@ -9,6 +9,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/exemptions")
@@ -50,11 +52,12 @@ public class ExemptionController {
     @GetMapping("/admin/list")
     public Result getAdminExemptions(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
             Page<ExemptionApplication> applications = exemptionService
-                .getAdminExemptionApplications(keyword, PageRequest.of(page, size));
+                .getAdminExemptionApplications(keyword, status, PageRequest.of(page, size));
             return Result.success(applications);
         } catch (Exception e) {
             log.error("获取免测申请列表失败", e);
@@ -66,10 +69,12 @@ public class ExemptionController {
     @PostMapping("/admin/review/{id}")
     public Result adminReview(
             @PathVariable Long id,
-            @RequestParam String status,
-            @RequestParam String comment,
-            @RequestParam Long reviewerId) {
+            @RequestBody Map<String, Object> params) {
         try {
+            String status = (String) params.get("status");
+            String comment = (String) params.get("comment");
+            Long reviewerId = Long.valueOf(params.get("reviewerId").toString());
+            
             ExemptionApplication reviewed = exemptionService.adminReview(id, status, comment, reviewerId);
             return Result.success(reviewed);
         } catch (Exception e) {
