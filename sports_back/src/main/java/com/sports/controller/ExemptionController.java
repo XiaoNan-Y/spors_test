@@ -7,6 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -124,6 +128,23 @@ public class ExemptionController {
         } catch (Exception e) {
             log.error("获取申请详情失败", e);
             return Result.error("获取申请详情失败：" + e.getMessage());
+        }
+    }
+
+    // 导出免测申请数据
+    @GetMapping("/admin/export")
+    public ResponseEntity<byte[]> exportExemptions() {
+        try {
+            byte[] excelBytes = exemptionService.exportApprovedExemptions();
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDispositionFormData("attachment", "免测申请数据.xlsx");
+            
+            return new ResponseEntity<>(excelBytes, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("导出免测申请数据失败", e);
+            throw new RuntimeException("导出失败：" + e.getMessage());
         }
     }
 } 

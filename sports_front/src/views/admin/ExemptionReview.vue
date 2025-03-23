@@ -25,6 +25,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleSearch">查询</el-button>
           <el-button @click="resetFilters">重置</el-button>
+          <el-button type="success" @click="handleExport">导出数据</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -311,6 +312,46 @@ export default {
     previewAttachment(url) {
       if (!url) return
       window.open(url, '_blank')
+    },
+    async handleExport() {
+      try {
+        // 使用原生 fetch 处理文件下载
+        const response = await fetch('/api/exemptions/admin/export', {
+          headers: {
+            'Authorization': 'Bearer ' + localStorage.getItem('token')
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('导出失败');
+        }
+        
+        // 获取文件名
+        const contentDisposition = response.headers.get('content-disposition');
+        let filename = '免测申请数据.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = decodeURIComponent(filenameMatch[1]);
+          }
+        }
+        
+        // 下载文件
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        this.$message.success('导出成功');
+      } catch (error) {
+        console.error('导出失败:', error);
+        this.$message.error('导出失败: ' + error.message);
+      }
     }
   }
 }

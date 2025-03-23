@@ -98,4 +98,6 @@ public interface ExemptionService {
     
     // 教师获取重测申请列表
     Page<ExemptionApplication> getTeacherRetestApplications(String keyword, Pageable pageable);
+
+    byte[] exportApprovedExemptions() throws Exception;
 } 

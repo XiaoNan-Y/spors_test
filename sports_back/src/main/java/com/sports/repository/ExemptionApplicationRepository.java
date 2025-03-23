@@ -191,4 +191,11 @@ public interface ExemptionApplicationRepository extends JpaRepository<ExemptionA
         @Param("keyword") String keyword, 
         Pageable pageable
     );
+
+    @Query("SELECT e FROM ExemptionApplication e WHERE e.type = :type AND e.status = :status " +
+           "ORDER BY e.applyTime DESC")
+    List<ExemptionApplication> findByTypeAndStatus(
+        @Param("type") String type,
+        @Param("status") String status
+    );
 } 

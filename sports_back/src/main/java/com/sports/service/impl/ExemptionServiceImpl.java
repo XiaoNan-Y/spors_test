@@ -7,6 +7,11 @@ import com.sports.repository.ExemptionApplicationRepository;
 import com.sports.repository.UserRepository;
 import com.sports.service.ExemptionService;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -15,7 +20,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
@@ -274,6 +281,62 @@ public class ExemptionServiceImpl implements ExemptionService {
         } catch (Exception e) {
             log.error("获取教师免测申请列表失败", e);
             throw new RuntimeException("获取教师免测申请列表失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public byte[] exportApprovedExemptions() throws Exception {
+        try {
+            // 查询所有已通过的申请
+            List<ExemptionApplication> approvedApplications = exemptionRepository
+                .findByTypeAndStatus("EXEMPTION", "APPROVED");
+
+            // 创建工作簿
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("免测申请数据");
+
+            // 创建标题行
+            Row headerRow = sheet.createRow(0);
+            String[] headers = {"序号", "学号", "姓名", "班级", "申请原因", "申请时间", "审核意见", "审核时间"};
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+            }
+
+            // 填充数据
+            int rowNum = 1;
+            for (ExemptionApplication app : approvedApplications) {
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(rowNum - 1);
+                row.createCell(1).setCellValue(app.getStudentNumber());
+                row.createCell(2).setCellValue(app.getStudentName());
+                row.createCell(3).setCellValue(app.getClassName());
+                row.createCell(4).setCellValue(app.getReason());
+                row.createCell(5).setCellValue(
+                    app.getApplyTime() != null ? 
+                    app.getApplyTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : ""
+                );
+                row.createCell(6).setCellValue(app.getAdminReviewComment());
+                row.createCell(7).setCellValue(
+                    app.getAdminReviewTime() != null ? 
+                    app.getAdminReviewTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : ""
+                );
+            }
+
+            // 调整列宽
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            // 将工作簿写入字节数组
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            workbook.write(outputStream);
+            workbook.close();
+
+            return outputStream.toByteArray();
+        } catch (Exception e) {
+            log.error("导出免测申请数据失败", e);
+            throw new Exception("导出失败：" + e.getMessage());
         }
     }
 
