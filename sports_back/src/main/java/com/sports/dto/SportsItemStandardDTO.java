@@ -8,13 +8,17 @@ public class SportsItemStandardDTO {
     private Long id;
     private String name;
     private String description;
-    private String notes;
-    private List<StandardDetail> standards;
-    
-    @Data
-    public static class StandardDetail {
-        private String grade;
-        private String scoreRange;
-        private String requirement;
-    }
+    private String unit;
+    private String type;
+    private String testMethod;
+    private String location;
+    private String testTime;
+    private String standard;
+    private Boolean isActive;
+    private Double excellentScore;
+    private Double passScore;
+    private String standardRequirement;
+    private String status;
+    private String deadline;
+    private String scoreRule;
 } 

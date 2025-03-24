@@ -9,27 +9,21 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SportsItemService {
+    List<SportsItem> findByIsActiveTrue();
     SportsItem save(SportsItem sportsItem);
-    
-    void delete(Long id);
-    
-    SportsItem update(SportsItem sportsItem);
-    
+    boolean existsById(Long id);
+    void deleteById(Long id);
     Optional<SportsItem> findById(Long id);
+    List<SportsItem> findActiveItems();
+    SportsItemStandardDTO getItemStandards(Long id);
     
     List<SportsItem> findAll();
     
     Page<SportsItem> findByKeyword(String keyword, Pageable pageable);
     
-    List<SportsItem> findActiveItems();
-    
     boolean updateStatus(Long id, boolean isActive);
-    
-    boolean existsById(Long id);
-    
-    void deleteById(Long id);
     
     List<SportsItemStandardDTO> getAllItemsWithStandards();
     
-    SportsItemStandardDTO getItemStandards(Long id);
+    SportsItem update(SportsItem sportsItem);
 }

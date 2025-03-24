@@ -10,6 +10,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,27 +22,56 @@ import java.util.stream.Collectors;
 @Transactional
 public class SportsItemServiceImpl implements SportsItemService {
     
+    private static final Logger log = LoggerFactory.getLogger(SportsItemServiceImpl.class);
+
     @Autowired
     private SportsItemRepository sportsItemRepository;
 
     @Override
+    public List<SportsItem> findByIsActiveTrue() {
+        return sportsItemRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    @Transactional
     public SportsItem save(SportsItem sportsItem) {
         return sportsItemRepository.save(sportsItem);
     }
 
     @Override
-    public void delete(Long id) {
-        sportsItemRepository.deleteById(id);
+    public boolean existsById(Long id) {
+        return sportsItemRepository.existsById(id);
     }
 
     @Override
-    public SportsItem update(SportsItem sportsItem) {
-        return sportsItemRepository.save(sportsItem);
+    @Transactional
+    public void deleteById(Long id) {
+        try {
+            sportsItemRepository.deleteById(id);
+        } catch (Exception e) {
+            log.error("删除体育项目失败", e);
+            throw new RuntimeException("删除体育项目失败: " + e.getMessage());
+        }
     }
 
     @Override
     public Optional<SportsItem> findById(Long id) {
         return sportsItemRepository.findById(id);
+    }
+
+    @Override
+    public List<SportsItem> findActiveItems() {
+        return sportsItemRepository.findByIsActiveTrue();
+    }
+
+    @Override
+    public SportsItemStandardDTO getItemStandards(Long id) {
+        SportsItem item = sportsItemRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("体育项目不存在"));
+            
+        SportsItemStandardDTO dto = new SportsItemStandardDTO();
+        BeanUtils.copyProperties(item, dto);
+        return dto;
     }
 
     @Override
@@ -57,11 +88,6 @@ public class SportsItemServiceImpl implements SportsItemService {
     }
 
     @Override
-    public List<SportsItem> findActiveItems() {
-        return sportsItemRepository.findByIsActiveTrue();
-    }
-
-    @Override
     public boolean updateStatus(Long id, boolean isActive) {
         Optional<SportsItem> optionalItem = sportsItemRepository.findById(id);
         if (optionalItem.isPresent()) {
@@ -74,16 +100,6 @@ public class SportsItemServiceImpl implements SportsItemService {
     }
 
     @Override
-    public boolean existsById(Long id) {
-        return sportsItemRepository.existsById(id);
-    }
-
-    @Override
-    public void deleteById(Long id) {
-        sportsItemRepository.deleteById(id);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public List<SportsItemStandardDTO> getAllItemsWithStandards() {
         return sportsItemRepository.findAll().stream()
@@ -91,43 +107,14 @@ public class SportsItemServiceImpl implements SportsItemService {
             .collect(Collectors.toList());
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public SportsItemStandardDTO getItemStandards(Long id) {
-        SportsItem item = sportsItemRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("体育项目不存在"));
-        
-        if (!item.getIsActive()) {
-            throw new RuntimeException("该体育项目当前不可用");
-        }
-        
-        return convertToDTO(item);
-    }
-
     private SportsItemStandardDTO convertToDTO(SportsItem item) {
         SportsItemStandardDTO dto = new SportsItemStandardDTO();
         BeanUtils.copyProperties(item, dto);
-        
-        // 设置评分标准列表
-        List<SportsItemStandardDTO.StandardDetail> standards = new ArrayList<>();
-        
-        // 这里需要根据实际的数据结构来设置标准
-        // 示例：从item的某些字段解析或者从关联表获取
-        standards.add(createStandardDetail("A", "90-100", "优秀"));
-        standards.add(createStandardDetail("B", "80-89", "良好"));
-        standards.add(createStandardDetail("C", "70-79", "及格"));
-        standards.add(createStandardDetail("D", "0-69", "不及格"));
-        
-        dto.setStandards(standards);
         return dto;
     }
 
-    private SportsItemStandardDTO.StandardDetail createStandardDetail(
-        String grade, String scoreRange, String requirement) {
-        SportsItemStandardDTO.StandardDetail detail = new SportsItemStandardDTO.StandardDetail();
-        detail.setGrade(grade);
-        detail.setScoreRange(scoreRange);
-        detail.setRequirement(requirement);
-        return detail;
+    @Override
+    public SportsItem update(SportsItem sportsItem) {
+        return sportsItemRepository.save(sportsItem);
     }
 } 

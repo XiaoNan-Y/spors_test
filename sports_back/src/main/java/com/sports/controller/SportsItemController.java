@@ -28,22 +28,12 @@ public class SportsItemController {
     private SportsItemService sportsItemService;
 
     @GetMapping
-    public Result list(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+    public Result getSportsItems() {
         try {
-            PageRequest pageRequest = PageRequest.of(page, size);
-            Page<SportsItem> items = sportsItemService.findByKeyword(keyword, pageRequest);
-            
-            // 添加调试日志
-            log.debug("Found {} items", items.getTotalElements());
-            log.debug("Page content: {}", items.getContent());
-            
+            List<SportsItem> items = sportsItemService.findByIsActiveTrue();
             return Result.success(items);
         } catch (Exception e) {
-            log.error("Failed to get sports items", e);
-            return Result.error("获取体测项目列表失败：" + e.getMessage());
+            return Result.error("获取体测项目失败：" + e.getMessage());
         }
     }
 
@@ -141,6 +131,31 @@ public class SportsItemController {
         } catch (Exception e) {
             log.error("获取体育项目标准失败", e);
             return Result.error("获取体育项目标准失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/student/{id}")
+    public Result getStudentItemDetail(@PathVariable Long id) {
+        try {
+            SportsItem item = sportsItemService.findById(id)
+                .orElseThrow(() -> new RuntimeException("体育项目不存在"));
+            
+            // 构建返回数据，包含标准信息
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", item.getId());
+            result.put("name", item.getName());
+            result.put("description", item.getDescription());
+            result.put("unit", item.getUnit());
+            result.put("type", item.getType());
+            result.put("testMethod", item.getTestMethod());
+            result.put("location", item.getLocation());
+            result.put("testTime", item.getTestTime());
+            result.put("standard", item.getStandard());
+            
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取体育项目详情失败", e);
+            return Result.error("获取体育项目详情失败：" + e.getMessage());
         }
     }
 }

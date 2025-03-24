@@ -18,7 +18,7 @@
     </div>
 
     <el-table
-      :data="tableData || []"
+      :data="tableData"
       border
       stripe
       style="width: 100%"
@@ -29,6 +29,10 @@
       <el-table-column prop="type" label="项目类型" width="100"></el-table-column>
       <el-table-column prop="description" label="项目描述" show-overflow-tooltip></el-table-column>
       <el-table-column prop="unit" label="计量单位" width="100"></el-table-column>
+      <el-table-column prop="testMethod" label="测试方法" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="location" label="测试地点"></el-table-column>
+      <el-table-column prop="testTime" label="测试时间" width="120"></el-table-column>
+      <el-table-column prop="standard" label="评分标准" show-overflow-tooltip></el-table-column>
       <el-table-column prop="isActive" label="状态" width="100">
         <template slot-scope="scope">
           <el-switch
@@ -77,7 +81,7 @@
     </div>
 
     <!-- 添加/编辑对话框 -->
-    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="500px">
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="600px">
       <el-form :model="form" :rules="rules" ref="form" label-width="100px">
         <el-form-item label="项目名称" prop="name">
           <el-input v-model="form.name"></el-input>
@@ -86,6 +90,7 @@
           <el-select v-model="form.type" placeholder="请选择项目类型">
             <el-option label="田径" value="田径"></el-option>
             <el-option label="力量" value="力量"></el-option>
+            <el-option label="耐力" value="耐力"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="项目描述" prop="description">
@@ -93,6 +98,18 @@
         </el-form-item>
         <el-form-item label="计量单位" prop="unit">
           <el-input v-model="form.unit"></el-input>
+        </el-form-item>
+        <el-form-item label="测试方法" prop="testMethod">
+          <el-input type="textarea" v-model="form.testMethod" rows="3"></el-input>
+        </el-form-item>
+        <el-form-item label="测试地点" prop="location">
+          <el-input v-model="form.location"></el-input>
+        </el-form-item>
+        <el-form-item label="测试时间" prop="testTime">
+          <el-input v-model="form.testTime" placeholder="例如：每学期第3-4周"></el-input>
+        </el-form-item>
+        <el-form-item label="评分标准" prop="standard">
+          <el-input type="textarea" v-model="form.standard" rows="3" placeholder="例如：男生：优秀≤7.0秒，及格≤8.5秒"></el-input>
         </el-form-item>
         <el-form-item label="状态" prop="isActive">
           <el-switch v-model="form.isActive"></el-switch>
@@ -124,6 +141,10 @@ export default {
         type: '',
         description: '',
         unit: '',
+        testMethod: '',
+        location: '',
+        testTime: '',
+        standard: '',
         isActive: true
       },
       rules: {
@@ -132,6 +153,21 @@ export default {
         ],
         type: [
           { required: true, message: '请选择项目类型', trigger: 'change' }
+        ],
+        unit: [
+          { required: true, message: '请输入计量单位', trigger: 'blur' }
+        ],
+        testMethod: [
+          { required: true, message: '请输入测试方法', trigger: 'blur' }
+        ],
+        location: [
+          { required: true, message: '请输入测试地点', trigger: 'blur' }
+        ],
+        testTime: [
+          { required: true, message: '请输入测试时间', trigger: 'blur' }
+        ],
+        standard: [
+          { required: true, message: '请输入评分标准', trigger: 'blur' }
         ]
       }
     }
@@ -153,8 +189,14 @@ export default {
         
         if (response.data.code === 200) {
           const data = response.data.data
-          this.tableData = data.content
-          this.total = data.totalElements
+          if (Array.isArray(data)) {
+            this.tableData = data
+            this.total = data.length
+          } else if (data && data.content) {
+            this.tableData = data.content
+            this.total = data.totalElements
+          }
+          console.log('获取到的数据:', this.tableData)
         } else {
           this.$message.error(response.data.msg || '获取体测项目列表失败')
         }
@@ -184,6 +226,10 @@ export default {
         type: '',
         description: '',
         unit: '',
+        testMethod: '',
+        location: '',
+        testTime: '',
+        standard: '',
         isActive: true
       }
       this.dialogVisible = true

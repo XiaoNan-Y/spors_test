@@ -3,6 +3,7 @@ package com.sports.entity;
 import lombok.Data;
 import javax.persistence.*;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 @Data
 @Entity
@@ -12,26 +13,63 @@ public class SportsItem implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(length = 50)
     private String name;
-    
-    @Column(length = 500)
     private String description;
-    
-    @Column(nullable = false, length = 20)
     private String unit;
-    
-    @Column(name = "type")
     private String type;
     
     @Column(name = "is_active")
-    private Boolean isActive = true;
-
+    private Boolean isActive;
+    
     @Column(name = "excellent_score")
-    private Double excellentScore;  // 优秀分数线
-
+    private Double excellentScore;
+    
     @Column(name = "pass_score")
-    private Double passScore;      // 及格分数线
+    private Double passScore;
+    
+    @Column(name = "standard_requirement")
+    private String standardRequirement;
+    
+    @Column(name = "test_method")
+    private String testMethod;
+    
+    private String location;
+    private String standard;
+    private String status;
+    
+    @Column(name = "test_time")
+    private String testTime;
+    
+    private String deadline;
+    
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+    
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+    
+    @Column(name = "create_time")
+    private LocalDateTime createTime;
+    
+    @Column(name = "score_rule")
+    private String scoreRule;
+    
+    @Column(name = "update_time")
+    private LocalDateTime updateTime;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+        createTime = LocalDateTime.now();
+        updateTime = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+        updateTime = LocalDateTime.now();
+    }
 
     public SportsItem() {
     }
