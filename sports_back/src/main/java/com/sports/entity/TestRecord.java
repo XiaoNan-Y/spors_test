@@ -49,7 +49,7 @@ public class TestRecord implements Serializable {
     @Column(nullable = false)
     private Double score;
 
-    @Column(length = 20)
+    @Column(name = "status")
     private String status;
 
     @Column(name = "review_comment")

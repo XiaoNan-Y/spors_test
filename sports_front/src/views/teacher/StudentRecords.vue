@@ -56,6 +56,13 @@
       <el-table-column prop="studentInfo.className" label="班级"></el-table-column>
       <el-table-column prop="sportsItem.name" label="测试项目"></el-table-column>
       <el-table-column prop="score" label="成绩"></el-table-column>
+      <el-table-column label="测试状态" align="center">
+        <template #default="scope">
+          <el-tag :type="getStatusType(scope.row.status)">
+            {{ getStatusText(scope.row.status) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="180" align="center">
         <template slot-scope="scope">
           <el-button
@@ -267,20 +274,22 @@ export default {
       this.getList()
     },
     getStatusType(status) {
-      const statusMap = {
-        'PENDING': 'warning',
+      const typeMap = {
         'APPROVED': 'success',
+        'PENDING': 'warning',
+        'EXEMPTED': 'info',
         'REJECTED': 'danger'
-      }
-      return statusMap[status] || 'info'
+      };
+      return typeMap[status] || 'warning';
     },
     getStatusText(status) {
       const statusMap = {
-        'PENDING': '待审核',
-        'APPROVED': '已通过',
-        'REJECTED': '已驳回'
-      }
-      return statusMap[status] || status
+        'APPROVED': '已测试',
+        'PENDING': '未测试',
+        'EXEMPTED': '免测',
+        'REJECTED': '未测试'
+      };
+      return statusMap[status] || '未测试';
     },
     canEdit(row) {
       return row.status === 'PENDING' || row.status === 'REJECTED'
