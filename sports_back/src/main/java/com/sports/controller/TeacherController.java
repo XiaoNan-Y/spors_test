@@ -217,85 +217,52 @@ public class TeacherController {
 
     // 修改成绩
     @PutMapping("/test-records/{id}")
-    public Result updateTestRecord(@PathVariable Long id, @RequestBody Map<String, Object> updateData) {
+    public Result updateTestRecord(@PathVariable Long id, @RequestBody Map<String, Object> updates) {
         try {
-            log.info("开始更新成绩记录, ID: {}, 更新数据: {}", id, updateData);
+            log.info("开始更新成绩记录 - id: {}, updates: {}", id, updates);
             
-            // 1. 使用 EntityGraph 获取记录及其关联实体
-            TestRecord record = testRecordRepository.findWithDetailsById(id)
-                .orElseThrow(() -> new RuntimeException("记录不存在"));
-            log.info("找到待更新记录: {}", record);
-
-            // 2. 验证记录状态
-            if (!("PENDING".equals(record.getStatus()) || "REJECTED".equals(record.getStatus()))) {
-                log.warn("记录状态不允许修改: {}", record.getStatus());
-                return Result.error("只能修改待审核或已驳回的记录");
-            }
-
-            // 3. 更新成绩
-            try {
-                Object scoreObj = updateData.get("score");
-                log.debug("接收到的成绩数据: {}, 类型: {}", scoreObj, 
-                         scoreObj != null ? scoreObj.getClass().getName() : "null");
-                
-                if (scoreObj == null) {
-                    log.warn("成绩数据为空");
-                    return Result.error("成绩不能为空");
-                }
-
-                Double newScore;
-                if (scoreObj instanceof Integer) {
-                    newScore = ((Integer) scoreObj).doubleValue();
-                } else if (scoreObj instanceof Double) {
-                    newScore = (Double) scoreObj;
-                } else if (scoreObj instanceof String) {
-                    newScore = Double.parseDouble((String) scoreObj);
-                } else {
-                    log.error("无效的成绩格式: {}, 类型: {}", scoreObj, scoreObj.getClass().getName());
-                    return Result.error("无效的成绩格式");
-                }
-
-                // 验证成绩是否合理
-                if (newScore < 0) {
-                    log.warn("成绩不能为负数: {}", newScore);
-                    return Result.error("成绩不能为负数");
-                }
-
-                // 保存原始值用于日志
-                Double oldScore = record.getScore();
-                
-                // 更新记录
+            // 查找记录
+            TestRecord record = testRecordRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("记录不存在，ID: " + id));
+            
+            log.debug("找到待更新记录: {}", record);
+            
+            // 更新成绩
+            if (updates.containsKey("score")) {
+                Double newScore = Double.parseDouble(updates.get("score").toString());
+                log.info("更新成绩 {} -> {}", record.getScore(), newScore);
                 record.setScore(newScore);
-                record.setStatus("PENDING");
-                record.setUpdateTime(LocalDateTime.now());
                 
-                // 4. 保存更新
-                try {
-                    log.info("准备保存更新: ID={}, 原成绩={}, 新成绩={}", id, oldScore, newScore);
-                    
-                    // 使用 merge 而不是 save
-                    TestRecord updated = testRecordRepository.saveAndFlush(record);
-                    log.info("成绩更新成功. ID: {}, 原成绩: {}, 新成绩: {}", 
-                            id, oldScore, newScore);
-                    
-                    // 重新获取完整的记录
-                    TestRecord result = testRecordRepository.findWithDetailsById(id)
-                        .orElseThrow(() -> new RuntimeException("无法获取更新后的记录"));
-                    
-                    return Result.success(result);
-                } catch (Exception e) {
-                    log.error("数据库保存失败", e);
-                    return Result.error("保存更新失败: " + e.getMessage());
+                // 如果成绩为0，自动将状态设置为未测试
+                if (newScore == 0) {
+                    log.info("成绩为0，状态自动设置为未测试");
+                    record.setStatus("PENDING");
+                } else if (updates.containsKey("status")) {
+                    String newStatus = updates.get("status").toString();
+                    log.info("更新状态 {} -> {}", record.getStatus(), newStatus);
+                    record.setStatus(newStatus);
                 }
-
-            } catch (NumberFormatException e) {
-                log.error("成绩格式转换失败", e);
-                return Result.error("成绩格式无效: " + e.getMessage());
             }
-
+            
+            // 更新时间
+            record.setUpdateTime(LocalDateTime.now());
+            
+            // 保存更新
+            TestRecord savedRecord = testRecordRepository.save(record);
+            log.info("成绩记录更新成功 - id: {}", savedRecord.getId());
+            
+            // 构建返回数据
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", savedRecord.getId());
+            response.put("score", savedRecord.getScore());
+            response.put("status", savedRecord.getStatus());
+            response.put("updateTime", savedRecord.getUpdateTime());
+            
+            return Result.success(response);
+            
         } catch (Exception e) {
-            log.error("更新成绩记录失败", e);
-            return Result.error("更新成绩失败: " + e.getMessage());
+            log.error("更新成绩记录失败 - id: " + id, e);
+            return Result.error("更新失败：" + e.getMessage());
         }
     }
 

@@ -64,13 +64,14 @@
         </template>
       </el-table-column>
       <el-table-column label="操作" width="180" align="center">
-        <template slot-scope="scope">
+        <template #default="scope">
           <el-button
             size="mini"
             type="primary"
             @click="handleEdit(scope.row)"
-            :disabled="!canEdit(scope.row)">
-            修改
+            :disabled="scope.row.status === 'EXEMPTED'"
+          >
+            {{ getActionButtonText(scope.row.status) }}
           </el-button>
           <el-button
             size="mini"
@@ -97,7 +98,7 @@
 
     <!-- 添加修改对话框 -->
     <el-dialog
-      title="修改成绩"
+      :title="editDialog.title"
       :visible.sync="editDialog.visible"
       width="500px"
       @closed="handleEditDialogClosed">
@@ -164,7 +165,8 @@ export default {
       tableData: [],
       total: 0,
       editDialog: {
-        visible: false
+        visible: false,
+        title: '修改成绩'
       },
       editForm: {
         id: null,
@@ -291,8 +293,18 @@ export default {
       };
       return statusMap[status] || '未测试';
     },
-    canEdit(row) {
-      return row.status === 'PENDING' || row.status === 'REJECTED'
+    getActionButtonText(status) {
+      switch(status) {
+        case 'APPROVED':
+          return '修改';
+        case 'PENDING':
+        case 'REJECTED':
+          return '录入';
+        case 'EXEMPTED':
+          return '免测';
+        default:
+          return '录入';
+      }
     },
     handleEdit(row) {
       this.editForm = {
@@ -301,7 +313,8 @@ export default {
         sportsItemName: row.sportsItem.name,
         score: row.score
       }
-      this.editDialog.visible = true
+      this.editDialog.title = row.status === 'APPROVED' ? '修改成绩' : '录入成绩';
+      this.editDialog.visible = true;
     },
     handleDetail(row) {
       this.detailForm = {
@@ -320,58 +333,42 @@ export default {
       this.$refs.editForm.validate(async (valid) => {
         if (valid) {
           try {
-            console.log('开始提交修改请求，表单数据：', this.editForm);
-            
-            // 确保成绩是数字类型
             const score = parseFloat(this.editForm.score);
             if (isNaN(score)) {
               this.$message.error('请输入有效的成绩');
               return;
             }
 
-            console.log('发送请求前的数据：', {
+            // 根据成绩值决定状态
+            const status = score === 0 ? 'PENDING' : 'APPROVED';
+
+            console.log('提交数据:', {
               id: this.editForm.id,
-              score: score
+              score: score,
+              status: status
             });
 
             const response = await this.$axios.put(
               `/api/teacher/test-records/${this.editForm.id}`,
-              { score: score },
-              {
-                headers: {
-                  'Content-Type': 'application/json'
-                }
+              { 
+                score: score,
+                status: status  // 根据成绩动态设置状态
               }
             );
-            
-            console.log('服务器响应：', response);
 
             if (response.data.code === 200) {
-              this.$message.success('修改成功');
+              this.$message.success(this.editDialog.title === '修改成绩' ? '修改成功' : '录入成功');
               this.editDialog.visible = false;
-              this.getList();
+              await this.getList();
             } else {
-              this.$message.error(response.data.message || '修改失败');
+              this.$message.error(response.data.message || '操作失败');
             }
           } catch (error) {
-            console.error('修改失败，详细错误信息：', {
-              error: error,
-              response: error.response,
-              message: error.message,
-              stack: error.stack
-            });
-
-            let errorMessage = '修改失败';
-            if (error.response) {
-              console.log('服务器响应状态：', error.response.status);
-              console.log('服务器响应数据：', error.response.data);
-              errorMessage = error.response.data.message || errorMessage;
-            }
-
+            console.error('操作失败:', error);
+            const errorMessage = error.response?.data?.message || '操作失败';
             this.$message.error(errorMessage);
           }
         } else {
-          console.log('表单验证失败');
           this.$message.warning('请正确填写表单');
         }
       });
