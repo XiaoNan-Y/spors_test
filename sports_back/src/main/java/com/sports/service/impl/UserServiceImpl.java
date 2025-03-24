@@ -45,22 +45,40 @@ public class UserServiceImpl implements UserService {
     
     @Override
     public Result login(User loginUser) {
+        log.info("用户尝试登录 - username: {}", loginUser.getUsername());
+        
         User user = userRepository.findByUsername(loginUser.getUsername());
         if (user == null) {
+            log.warn("登录失败 - 用户不存在: {}", loginUser.getUsername());
             return Result.error("用户不存在");
         }
         
+        log.info("找到用户 - id: {}, username: {}, userType: {}, className: {}", 
+            user.getId(), user.getUsername(), user.getUserType(), user.getClassName());
+        
         if (!loginUser.getPassword().equals(user.getPassword())) {
+            log.warn("登录失败 - 密码错误: username={}", loginUser.getUsername());
             return Result.error("用户名或密码错误");
         }
         
+        // 构建返回数据
         Map<String, Object> data = new HashMap<>();
         data.put("id", user.getId());
         data.put("username", user.getUsername());
         data.put("userType", user.getUserType());
-        data.put("token", "token"); // 临时token
+        data.put("realName", user.getRealName());
+        data.put("className", user.getClassName());
+        data.put("token", generateToken(user));  // 生成新的token
+        
+        log.info("用户登录成功 - id: {}, username: {}, userType: {}", 
+            user.getId(), user.getUsername(), user.getUserType());
         
         return Result.success(data);
+    }
+    
+    private String generateToken(User user) {
+        // 这里应该实现真正的token生成逻辑
+        return "token_" + user.getId() + "_" + System.currentTimeMillis();
     }
     
     @Override

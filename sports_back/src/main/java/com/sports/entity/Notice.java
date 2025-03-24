@@ -35,9 +35,17 @@ public class Notice {
     @Column(name = "update_time")
     private LocalDateTime updateTime;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "create_by")
-    private User createBy;
+    @Column(name = "create_by")
+    private Long createBy;
+    
+    @Column(name = "creator_id")
+    private Long creatorId;
+    
+    @Column(name = "is_global")
+    private Boolean isGlobal = false;
+    
+    @Column(name = "class_ids")
+    private String classIds;  // 存储班级ID，多个班级用逗号分隔
 
     @PrePersist
     protected void onCreate() {

@@ -14,6 +14,7 @@
           <el-option label="全部" value=""></el-option>
           <el-option label="体测安排" value="TEST_SCHEDULE"></el-option>
           <el-option label="成绩公布" value="SCORE_RELEASE"></el-option>
+          <el-option label="系统维护" value="SYSTEM_MAINTENANCE"></el-option>
           <el-option label="其他通知" value="OTHER"></el-option>
         </el-select>
       </div>
@@ -45,6 +46,12 @@
           </span>
         </template>
       </el-table-column>
+      <el-table-column prop="classIds" label="发送班级" width="150">
+        <template slot-scope="scope">
+          <span v-if="scope.row.isGlobal">全部班级</span>
+          <span v-else>{{ formatClassIds(scope.row.classIds) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="createTime" label="发布时间" width="180">
         <template slot-scope="scope">
           {{ formatDate(scope.row.createTime) }}
@@ -59,7 +66,6 @@
             @change="handleStatusChange(scope.row)"
             active-color="#13ce66"
             inactive-color="#ff4949"
-            :disabled="!isOwner(scope.row)"
           >
           </el-switch>
         </template>
@@ -76,15 +82,13 @@
             <el-button
               type="warning"
               size="mini"
-              @click="handleEdit(scope.row)"
-              v-if="isOwner(scope.row)">
+              @click="handleEdit(scope.row)">
               编辑
             </el-button>
             <el-button
               type="danger"
               size="mini"
-              @click="handleDelete(scope.row)"
-              v-if="isOwner(scope.row)">
+              @click="handleDelete(scope.row)">
               删除
             </el-button>
           </el-button-group>
@@ -108,11 +112,12 @@
 
     <!-- 添加/编辑对话框 -->
     <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="700px">
-      <el-form :model="form" :rules="rules" ref="form" label-width="80px">
+      <el-form :model="form" :rules="rules" ref="form" label-width="100px">
         <el-form-item label="通知类型" prop="type">
           <el-select v-model="form.type" placeholder="请选择通知类型" style="width: 100%">
             <el-option label="体测安排" value="TEST_SCHEDULE"></el-option>
             <el-option label="成绩公布" value="SCORE_RELEASE"></el-option>
+            <el-option label="系统维护" value="SYSTEM_MAINTENANCE"></el-option>
             <el-option label="其他通知" value="OTHER"></el-option>
           </el-select>
         </el-form-item>
@@ -120,6 +125,27 @@
           <el-select v-model="form.priority" placeholder="请选择重要程度" style="width: 100%">
             <el-option label="普通" value="NORMAL"></el-option>
             <el-option label="重要" value="HIGH"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="发送范围" prop="isGlobal">
+          <el-radio-group v-model="form.isGlobal">
+            <el-radio :label="true">全部班级</el-radio>
+            <el-radio :label="false">指定班级</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="选择班级" prop="classIds" v-if="!form.isGlobal">
+          <el-select 
+            v-model="selectedClasses" 
+            multiple 
+            placeholder="请选择班级"
+            style="width: 100%"
+          >
+            <el-option 
+              v-for="item in classList" 
+              :key="item.value" 
+              :label="item.label" 
+              :value="item.value">
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="标题" prop="title">
@@ -164,6 +190,11 @@
         <span v-if="currentNotice.priority === 'HIGH'" class="notice-priority">
           <i class="el-icon-warning"></i> 重要通知
         </span>
+        <span>
+          发送范围：
+          <template v-if="currentNotice.isGlobal">全部班级</template>
+          <template v-else>{{ formatClassIds(currentNotice.classIds) }}</template>
+        </span>
       </div>
       <div class="notice-content">{{ currentNotice.content }}</div>
     </el-dialog>
@@ -186,6 +217,8 @@ export default {
       viewDialogVisible: false,
       dialogTitle: '',
       currentNotice: {},
+      classList: [],
+      selectedClasses: [],
       form: {
         id: null,
         type: 'OTHER',
@@ -193,9 +226,11 @@ export default {
         title: '',
         content: '',
         status: 1,
+        isGlobal: true,
+        classIds: '',
         createTime: null,
         updateTime: null,
-        createBy: null
+        creatorId: null
       },
       rules: {
         type: [
@@ -206,23 +241,33 @@ export default {
         ],
         title: [
           { required: true, message: '请输入标题', trigger: 'blur' },
-          { max: 100, message: '长度不能超过100个字符', trigger: 'blur' }
+          { min: 2, max: 100, message: '长度在 2 到 100 个字符', trigger: 'blur' }
         ],
         content: [
           { required: true, message: '请输入内容', trigger: 'blur' },
-          { max: 2000, message: '长度不能超过2000个字符', trigger: 'blur' }
+          { min: 5, max: 2000, message: '长度在 5 到 2000 个字符', trigger: 'blur' }
         ]
       },
       currentUserId: null
     }
   },
   created() {
-    const userId = localStorage.getItem('userId')
-    if (userId) {
-      this.currentUserId = parseInt(userId)
-      this.form.createBy = this.currentUserId
+    // 检查用户角色
+    const userRole = localStorage.getItem('userRole')
+    if (userRole !== 'TEACHER') {
+      this.$message.error('无权访问')
+      this.$router.push('/login')
+      return
     }
+    
+    console.log('教师通知管理页面初始化，用户ID:', this.currentUserId)
     this.fetchNoticeList()
+    this.fetchClassList() // 获取班级列表
+  },
+  watch: {
+    selectedClasses(val) {
+      this.form.classIds = val.join(',')
+    }
   },
   methods: {
     formatDate(date) {
@@ -233,6 +278,7 @@ export default {
       const typeMap = {
         'TEST_SCHEDULE': 'primary',
         'SCORE_RELEASE': 'success',
+        'SYSTEM_MAINTENANCE': 'warning',
         'OTHER': 'info'
       }
       return typeMap[type] || 'info'
@@ -241,13 +287,43 @@ export default {
       const typeMap = {
         'TEST_SCHEDULE': '体测安排',
         'SCORE_RELEASE': '成绩公布',
+        'SYSTEM_MAINTENANCE': '系统维护',
         'OTHER': '其他通知'
       }
       return typeMap[type] || '其他通知'
     },
+    formatClassIds(classIds) {
+      if (!classIds) return '无'
+      return classIds.split(',').join(', ')
+    },
+    async fetchClassList() {
+      try {
+        const response = await this.$http.get('/api/teacher/classes')
+        if (response.data.code === 200) {
+          // 将班级列表转换为选择器需要的格式
+          this.classList = response.data.data.map(className => ({
+            label: className,
+            value: className
+          }))
+        } else {
+          console.error('获取班级列表失败:', response.data.msg)
+        }
+      } catch (error) {
+        console.error('获取班级列表失败:', error)
+        // 如果API调用失败，使用一些默认班级
+        this.classList = [
+          { label: '计科1班', value: '计科1班' },
+          { label: '计科2班', value: '计科2班' },
+          { label: '软工1班', value: '软工1班' },
+          { label: '软工2班', value: '软工2班' }
+        ]
+      }
+    },
     async fetchNoticeList() {
       try {
         this.loading = true
+        console.log('开始获取教师通知列表，当前用户ID:', this.currentUserId)
+        
         const response = await this.$http.get('/api/teacher/notices', {
           params: {
             keyword: this.searchKeyword,
@@ -257,10 +333,13 @@ export default {
           }
         })
         
+        console.log('获取到的响应:', response)
+        
         if (response.data.code === 200) {
           const data = response.data.data
           this.noticeList = data.content || []
           this.total = data.totalElements || 0
+          console.log('解析后的通知列表:', this.noticeList)
         } else {
           this.$message.error(response.data.msg || '获取通知列表失败')
         }
@@ -292,10 +371,13 @@ export default {
         title: '',
         content: '',
         status: 1,
+        isGlobal: true,
+        classIds: '',
         createTime: null,
         updateTime: null,
-        createBy: this.currentUserId
+        creatorId: this.currentUserId
       }
+      this.selectedClasses = []
       this.dialogVisible = true
     },
     handleView(row) {
@@ -303,41 +385,45 @@ export default {
       this.viewDialogVisible = true
     },
     handleEdit(row) {
-      if (!this.isOwner(row)) {
-        this.$message.warning('只能编辑自己发布的通知')
-        return
-      }
       this.dialogTitle = '编辑通知'
       this.form = { ...row }
+      this.selectedClasses = this.form.classIds ? this.form.classIds.split(',') : []
       this.dialogVisible = true
     },
     async handleSubmit() {
       this.$refs.form.validate(async valid => {
         if (valid) {
           try {
-            const url = this.form.id ? `/api/teacher/notices/${this.form.id}` : '/api/teacher/notices'
-            const method = this.form.id ? 'put' : 'post'
-            
-            const res = await this.$http[method](url, this.form)
-            if (res.data.code === 200) {
-              this.$message.success(this.form.id ? '更新成功' : '添加成功')
-              this.dialogVisible = false
-              this.fetchNoticeList()
+            // 处理班级选择
+            if (this.form.isGlobal) {
+              this.form.classIds = null;
+            } else if (this.selectedClasses && this.selectedClasses.length > 0) {
+              this.form.classIds = this.selectedClasses.join(',');
             } else {
-              this.$message.error(res.data.msg || '操作失败')
+              return this.$message.error('请选择至少一个班级');
+            }
+            
+            console.log('提交的表单数据:', this.form);
+            
+            const url = this.form.id ? `/api/teacher/notices/${this.form.id}` : '/api/teacher/notices';
+            const method = this.form.id ? 'put' : 'post';
+            
+            const res = await this.$http[method](url, this.form);
+            if (res.data.code === 200) {
+              this.$message.success(this.form.id ? '更新成功' : '添加成功');
+              this.dialogVisible = false;
+              this.fetchNoticeList();
+            } else {
+              this.$message.error(res.data.msg || '操作失败');
             }
           } catch (error) {
-            console.error('操作失败:', error)
-            this.$message.error(error.response?.data?.msg || '操作失败')
+            console.error('操作失败:', error);
+            this.$message.error(error.response?.data?.msg || '操作失败');
           }
         }
-      })
+      });
     },
     async handleDelete(row) {
-      if (!this.isOwner(row)) {
-        this.$message.warning('只能删除自己发布的通知')
-        return
-      }
       try {
         await this.$confirm('确认删除该通知吗？', '提示', {
           type: 'warning'
@@ -354,28 +440,20 @@ export default {
       }
     },
     async handleStatusChange(row) {
-      if (!this.isOwner(row)) {
-        this.$message.warning('只能修改自己发布的通知')
-        row.status = row.status === 1 ? 0 : 1 // 恢复状态
-        return
-      }
       try {
         const res = await this.$http.put(`/api/teacher/notices/${row.id}/status`, {
           status: row.status
         })
         if (res.data.code === 200) {
-          this.$message.success('状态更新成功')
-          this.fetchNoticeList()
+          this.$message.success(`${row.status === 1 ? '启用' : '禁用'}成功`)
         } else {
-          this.$message.error(res.data.msg || '状态更新失败')
+          row.status = row.status === 1 ? 0 : 1 // 恢复状态
+          this.$message.error(res.data.msg || '操作失败')
         }
       } catch (error) {
-        console.error('状态更新失败:', error)
-        this.$message.error('状态更新失败')
+        row.status = row.status === 1 ? 0 : 1 // 恢复状态
+        this.$message.error('操作失败')
       }
-    },
-    isOwner(notice) {
-      return notice && notice.createBy === this.currentUserId
     }
   }
 }

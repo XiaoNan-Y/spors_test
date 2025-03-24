@@ -76,7 +76,7 @@ public class TeacherController {
             stats.setPendingReviews(pendingReviews);
             
             // 获取班级数量
-            List<String> classes = userRepository.findDistinctClassName();
+            List<String> classes = userRepository.findDistinctClassNames();
             stats.setClassCount(classes.size());
             
             // 计算测试完成率和参测率
@@ -142,13 +142,11 @@ public class TeacherController {
     @GetMapping("/classes")
     public Result getClassList() {
         try {
-            // 从成绩记录中获取所有不重复的班级
-            List<String> classNames = testRecordRepository.findDistinctClassNames();
-            log.debug("获取到的班级列表: {}", classNames);
-            return Result.success(classNames);
+            List<String> classes = userRepository.findDistinctClassNames();
+            return Result.success(classes);
         } catch (Exception e) {
             log.error("获取班级列表失败", e);
-            return Result.error("获取班级列表失败：" + e.getMessage());
+            return Result.error("获取班级列表失败: " + e.getMessage());
         }
     }
 

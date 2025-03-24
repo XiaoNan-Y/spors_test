@@ -39,60 +39,76 @@ export default {
         username: '',
         password: ''
       },
+      loading: false,
       loginRules: {
-        username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-        password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
-      },
-      loading: false
+        username: [
+          { required: true, message: '请输入用户名', trigger: 'blur' }
+        ],
+        password: [
+          { required: true, message: '请输入密码', trigger: 'blur' }
+        ]
+      }
     }
   },
   methods: {
-    async handleLogin() {
-      try {
-        const response = await this.$axios.post('/api/users/login', this.loginForm)
-        if (response.data.code === 200) {
-          const user = response.data.data
-          console.log('登录成功，用户信息：', user)
-          
-          // 保存用户信息
-          localStorage.setItem('token', user.token)
-          localStorage.setItem('username', user.username)
-          localStorage.setItem('userRole', user.userType)
-          localStorage.setItem('userId', user.id.toString())
-          
-          console.log('保存到localStorage的信息:', {
-            token: localStorage.getItem('token'),
-            username: localStorage.getItem('username'),
-            userRole: localStorage.getItem('userRole'),
-            userId: localStorage.getItem('userId')
-          })
-          
-          // 等待一下确保数据已保存
-          await this.$nextTick()
-          
-          // 根据用户角色重定向到不同的首页
-          switch (user.userType) {
-            case 'STUDENT':
-              await this.$router.push('/student/home')
-              break
-            case 'TEACHER':
-              await this.$router.push('/teacher/dashboard')
-              break
-            case 'ADMIN':
-              await this.$router.push('/admin/dashboard')
-              break
-            default:
-              await this.$router.push('/login')
+    handleLogin() {
+      this.$refs.loginForm.validate(async valid => {
+        if (valid) {
+          try {
+            this.loading = true
+            console.log('开始登录请求:', this.loginForm)
+            
+            const response = await this.$axios.post('/api/users/login', this.loginForm)
+            console.log('登录响应:', response.data)
+            
+            if (response.data.code === 200) {
+              // 先清除旧的登录信息
+              localStorage.clear()
+              
+              const { id, token, userType, username, realName, className } = response.data.data
+              
+              // 存储新的用户信息
+              localStorage.setItem('userId', id)
+              localStorage.setItem('token', token)
+              localStorage.setItem('userRole', userType)
+              localStorage.setItem('username', username)
+              localStorage.setItem('realName', realName)
+              localStorage.setItem('className', className)
+              
+              // 打印存储的信息用于调试
+              console.log('存储的用户信息:', {
+                userId: localStorage.getItem('userId'),
+                username: localStorage.getItem('username'),
+                userRole: localStorage.getItem('userRole')
+              })
+              
+              this.$message.success('登录成功')
+              
+              // 根据角色跳转
+              switch (userType) {
+                case 'STUDENT':
+                  this.$router.push('/student/home')
+                  break
+                case 'TEACHER':
+                  this.$router.push('/teacher/dashboard')
+                  break
+                case 'ADMIN':
+                  this.$router.push('/admin/dashboard')
+                  break
+                default:
+                  this.$router.push('/login')
+              }
+            } else {
+              this.$message.error(response.data.message || '登录失败')
+            }
+          } catch (error) {
+            console.error('登录失败:', error)
+            this.$message.error(error.response?.data?.message || '登录失败')
+          } finally {
+            this.loading = false
           }
-          
-          this.$message.success('登录成功')
-        } else {
-          this.$message.error(response.data.message || '登录失败')
         }
-      } catch (error) {
-        console.error('登录失败:', error)
-        this.$message.error('登录失败')
-      }
+      })
     }
   }
 }

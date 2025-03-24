@@ -49,14 +49,31 @@ public class TeacherNoticeController {
     }
 
     @PostMapping
-    public Result addNotice(@RequestBody Notice notice) {
+    public Result addNotice(@RequestBody Notice notice, @RequestAttribute Long userId) {
         try {
+            log.info("添加通知 - userId: {}, notice: {}", userId, notice);
+            
+            notice.setCreatorId(userId);
+            notice.setCreateBy(userId);
             notice.setCreateTime(LocalDateTime.now());
             notice.setUpdateTime(LocalDateTime.now());
             notice.setStatus(1);  // 默认启用
+            
+            // 处理班级选择
+            if (notice.getIsGlobal() == null || notice.getIsGlobal()) {
+                notice.setIsGlobal(true);
+                notice.setClassIds(null);  // 确保全局通知的班级ID为null
+            } else {
+                notice.setIsGlobal(false);
+                // 确保班级ID格式正确
+                log.info("指定班级通知 - classIds: {}", notice.getClassIds());
+            }
+            
             Notice saved = noticeRepository.save(notice);
+            log.info("通知保存成功 - id: {}", saved.getId());
             return Result.success(saved);
         } catch (Exception e) {
+            log.error("添加公告失败", e);
             return Result.error("添加公告失败：" + e.getMessage());
         }
     }

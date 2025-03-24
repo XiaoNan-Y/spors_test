@@ -51,4 +51,23 @@ public interface NoticeRepository extends JpaRepository<Notice, Long>, JpaSpecif
 
     @EntityGraph(attributePaths = {"createBy"})
     Page<Notice> findAll(Specification<Notice> spec, Pageable pageable);
+
+    @Query("SELECT n FROM Notice n WHERE " +
+           "(n.isGlobal = true OR " +
+           "(:className IS NOT NULL AND " +
+           "   (n.classIds = :className OR " +
+           "   n.classIds LIKE CONCAT(:className,',%') OR " +
+           "   n.classIds LIKE CONCAT('%,',:className,',%') OR " +
+           "   n.classIds LIKE CONCAT('%,',:className))" +
+           ")) AND " +
+           "n.status = 1 AND " +
+           "(:keyword IS NULL OR :keyword = '' OR n.title LIKE CONCAT('%',:keyword,'%')) AND " +
+           "(:type IS NULL OR :type = '' OR n.type = :type) " +
+           "ORDER BY n.createTime DESC")
+    Page<Notice> findByGlobalOrClassId(
+        @Param("className") String className,
+        @Param("keyword") String keyword,
+        @Param("type") String type,
+        Pageable pageable
+    );
 }

@@ -52,8 +52,8 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     boolean existsByStudentNumber(String studentNumber);
     
     // 获取所有不重复的班级名称
-    @Query("SELECT DISTINCT u.className FROM User u WHERE u.className IS NOT NULL ORDER BY u.className")
-    List<String> findDistinctClassName();
+    @Query("SELECT DISTINCT u.className FROM User u WHERE u.className IS NOT NULL AND u.className <> ''")
+    List<String> findDistinctClassNames();
 
     boolean existsByUsername(String username);
     boolean existsByTeacherNumber(String teacherNumber);

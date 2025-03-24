@@ -26,6 +26,8 @@ import org.slf4j.LoggerFactory;
 import com.sports.entity.SportsItem;
 import com.sports.repository.ExemptionApplicationRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.sports.repository.NoticeRepository;
+import org.springframework.data.domain.PageImpl;
 
 import java.util.List;
 import java.util.Map;
@@ -61,6 +63,9 @@ public class StudentController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private NoticeRepository noticeRepository;
 
     @GetMapping("/dashboard/stats")
     public Result getDashboardStats(@RequestAttribute Long userId) {
@@ -183,18 +188,69 @@ public class StudentController {
         @RequestParam(required = false) String keyword,
         @RequestParam(required = false) String type,
         @RequestParam(defaultValue = "0") int page,
-        @RequestParam(defaultValue = "10") int size) {
+        @RequestParam(defaultValue = "10") int size,
+        @RequestAttribute Long userId) {
         try {
-            log.info("获取通知列表 - keyword: {}, type: {}, page: {}, size: {}", 
-                    keyword, type, page, size);
-            Page<Notice> notices = studentService.getNotices(keyword, type, PageRequest.of(page, size));
+            log.info("开始处理获取通知请求 - userId: {}, keyword: {}, type: {}, page: {}, size: {}", 
+                    userId, keyword, type, page, size);
             
-            // 构造返回数据
-            Map<String, Object> result = new HashMap<>();
-            result.put("content", notices.getContent());
-            result.put("totalElements", notices.getTotalElements());
-            result.put("totalPages", notices.getTotalPages());
+            // 获取学生信息
+            User student = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("学生不存在"));
             
+            log.info("获取到学生信息 - userId: {}, username: {}, realName: {}, className: {}, studentNumber: {}",
+                    userId, student.getUsername(), student.getRealName(), student.getClassName(), student.getStudentNumber());
+            
+            // 查询通知
+            Page<Notice> notices = noticeRepository.findByGlobalOrClassId(
+                student.getClassName(),
+                keyword,
+                type,
+                PageRequest.of(page, size)
+            );
+            
+            log.info("数据库查询返回 {} 条通知", notices.getTotalElements());
+            
+            // 过滤通知
+            List<Notice> filteredNotices = new ArrayList<>();
+            for (Notice notice : notices.getContent()) {
+                log.info("比较班级: 通知班级='{}', 学生班级='{}', 用户ID={}, 用户名={}",
+                        notice.getClassIds(), student.getClassName(), userId, student.getUsername());
+                
+                boolean shouldShow = false;
+                
+                // 全局通知对所有人可见
+                if (Boolean.TRUE.equals(notice.getIsGlobal())) {
+                    shouldShow = true;
+                } 
+                // 班级通知只对特定班级可见
+                else if (notice.getClassIds() != null && student.getClassName() != null) {
+                    // 检查学生班级是否在通知的班级列表中
+                    String[] classIds = notice.getClassIds().split(",");
+                    for (String classId : classIds) {
+                        if (classId.trim().equals(student.getClassName())) {
+                            shouldShow = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (shouldShow) {
+                    filteredNotices.add(notice);
+                    log.info("通知ID: {}, 标题: {}, 全局: {}, 班级IDs: '{}', 是否显示: {}, 用户ID={}, 用户名={}",
+                            notice.getId(), notice.getTitle(), notice.getIsGlobal(), notice.getClassIds(), 
+                            shouldShow, userId, student.getUsername());
+                }
+            }
+            
+            // 创建新的分页结果
+            Page<Notice> result = new PageImpl<>(
+                filteredNotices,
+                PageRequest.of(page, size),
+                notices.getTotalElements()
+            );
+            
+            log.info("返回 {} 条通知给用户 {} ({})", filteredNotices.size(), student.getUsername(), userId);
             return Result.success(result);
         } catch (Exception e) {
             log.error("获取通知列表失败", e);
@@ -477,19 +533,28 @@ public class StudentController {
     @GetMapping("/info")
     public Result getStudentInfo(@RequestAttribute Long userId) {
         try {
+            log.info("获取学生信息 - userId: {}", userId);
+            
             User student = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
             
-            Map<String, Object> info = new HashMap<>();
-            info.put("real_name", student.getRealName());
-            info.put("class_name", student.getClassName());
-            info.put("student_number", student.getStudentNumber());
-            info.put("email", student.getEmail());
-            info.put("phone", student.getPhone());
+            log.info("找到学生信息 - id: {}, username: {}, realName: {}, className: {}, studentNumber: {}", 
+                student.getId(), student.getUsername(), student.getRealName(), 
+                student.getClassName(), student.getStudentNumber());
             
+            // 构建返回数据，使用新的 Map 对象，确保字段名称与前端一致
+            Map<String, Object> info = new HashMap<>();
+            info.put("studentNumber", student.getStudentNumber());  // 改为 studentNumber
+            info.put("realName", student.getRealName());           // 改为 realName
+            info.put("className", student.getClassName());         // 保持 className
+            info.put("email", student.getEmail());                 // 保持 email
+            info.put("phone", student.getPhone());                 // 保持 phone
+            info.put("username", student.getUsername());           // 添加 username
+            
+            log.info("返回学生信息: {}", info);
             return Result.success(info);
         } catch (Exception e) {
-            log.error("获取学生信息失败", e);
+            log.error("获取学生信息失败 - userId: {}", userId, e);
             return Result.error("获取学生信息失败：" + e.getMessage());
         }
     }

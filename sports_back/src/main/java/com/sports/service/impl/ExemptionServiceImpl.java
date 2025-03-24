@@ -299,7 +299,7 @@ public class ExemptionServiceImpl implements ExemptionService {
     @Override
     public List<String> getDistinctClassNames() {
         try {
-            return userRepository.findDistinctClassName();
+            return userRepository.findDistinctClassNames();
         } catch (Exception e) {
             log.error("获取班级列表失败", e);
             throw new RuntimeException("获取班级列表失败: " + e.getMessage());
