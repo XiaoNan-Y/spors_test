@@ -39,6 +39,9 @@ import com.sports.dto.TeacherDashboardDTO;
 import com.sports.dto.ExemptionApplicationDTO;
 import com.sports.service.ExemptionService;
 
+import java.net.URLEncoder;
+import java.util.Base64;
+
 @RestController
 @RequestMapping("/api/teacher")
 @CrossOrigin
@@ -398,9 +401,7 @@ public class TeacherController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String studentNumber) {
         log.info("开始导出学生成绩记录");
-        log.debug("导出参数: className={}, sportsItemId={}, status={}, studentNumber={}", 
-            className, sportsItemId, status, studentNumber);
-
+        
         Workbook workbook = null;
         ByteArrayOutputStream outputStream = null;
 
@@ -491,12 +492,36 @@ public class TeacherController {
             workbook.write(outputStream);
             byte[] content = outputStream.toByteArray();
 
+            // 文件名处理
+            String dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String statusText = "";
+            if (status != null && !status.isEmpty()) {
+                switch (status) {
+                    case "APPROVED":
+                        statusText = "已测试";
+                        break;
+                    case "PENDING":
+                        statusText = "未测试";
+                        break;
+                    case "EXEMPTED":
+                        statusText = "免测";
+                        break;
+                    default:
+                        statusText = "全部";
+                }
+            } else {
+                statusText = "全部";
+            }
+            
+            String fileName = String.format("学生成绩记录_%s_%s.xlsx", statusText, dateStr);
+            
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
-            String fileName = String.format("学生成绩记录_%s.xlsx", 
-                LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
-            headers.setContentDispositionFormData("attachment", 
-                new String(fileName.getBytes("UTF-8"), "ISO-8859-1"));
+            
+            // 使用 Base64 编码
+            String encodedFileName = Base64.getEncoder().encodeToString(fileName.getBytes("UTF-8"));
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, 
+                "attachment; filename=" + encodedFileName + ".xlsx");
             headers.setContentLength(content.length);
 
             return ResponseEntity.ok()
