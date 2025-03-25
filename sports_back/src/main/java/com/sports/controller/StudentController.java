@@ -538,23 +538,20 @@ public class StudentController {
             User student = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
             
-            log.info("找到学生信息 - id: {}, username: {}, realName: {}, className: {}, studentNumber: {}", 
-                student.getId(), student.getUsername(), student.getRealName(), 
-                student.getClassName(), student.getStudentNumber());
+            log.info("找到学生信息 - id: {}, username: {}, realName: {}", 
+                student.getId(), student.getUsername(), student.getRealName());
             
-            // 构建返回数据，使用新的 Map 对象，确保字段名称与前端一致
             Map<String, Object> info = new HashMap<>();
-            info.put("studentNumber", student.getStudentNumber());  // 改为 studentNumber
-            info.put("realName", student.getRealName());           // 改为 realName
-            info.put("className", student.getClassName());         // 保持 className
-            info.put("email", student.getEmail());                 // 保持 email
-            info.put("phone", student.getPhone());                 // 保持 phone
-            info.put("username", student.getUsername());           // 添加 username
+            info.put("id", student.getId());
+            info.put("username", student.getUsername());
+            info.put("realName", student.getRealName());
+            info.put("className", student.getClassName());
+            info.put("studentNumber", student.getStudentNumber());
+            // 其他需要的信息...
             
-            log.info("返回学生信息: {}", info);
             return Result.success(info);
         } catch (Exception e) {
-            log.error("获取学生信息失败 - userId: {}", userId, e);
+            log.error("获取学生信息失败", e);
             return Result.error("获取学生信息失败：" + e.getMessage());
         }
     }

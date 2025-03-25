@@ -33,6 +33,13 @@ request.interceptors.request.use(
       console.log('设置请求头 userId:', userId)
     }
     
+    // 从localStorage获取用户ID
+    const userInfo = JSON.parse(localStorage.getItem('studentInfo'));
+    if (userInfo && userInfo.id) {
+      // 添加到请求头
+      config.headers['X-User-ID'] = userInfo.id;
+    }
+    
     // 打印最终的请求配置
     console.log('最终请求配置:', {
       url: config.url,

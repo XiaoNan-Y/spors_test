@@ -46,7 +46,7 @@ export default {
   name: 'StudentHome',
   data() {
     return {
-      studentName: localStorage.getItem('realName') || '',
+      studentName: '',
       className: '',
       studentNumber: '',
       currentTime: '',
@@ -93,9 +93,12 @@ export default {
     }
   },
   created() {
-    this.fetchUserInfo()
+    this.loadUserInfo()
     this.updateDateTime()
     this.timer = setInterval(this.updateDateTime, 1000)
+  },
+  activated() {
+    this.loadUserInfo()
   },
   beforeDestroy() {
     if (this.timer) {
@@ -120,27 +123,33 @@ export default {
         weekday: 'long'
       })
     },
-    async fetchUserInfo() {
-      try {
-        const res = await this.$http.get('/api/student/info')
-        console.log('获取到的用户信息:', res.data)
-        
-        if (res.data.code === 200) {
-          const { real_name, class_name, student_number } = res.data.data
-          this.studentName = real_name || localStorage.getItem('realName')
-          this.className = class_name
-          this.studentNumber = student_number
-          
-          localStorage.setItem('realName', real_name)
-          localStorage.setItem('className', class_name)
-          localStorage.setItem('studentNumber', student_number)
-        }
-      } catch (error) {
-        console.error('获取用户信息失败:', error)
-        this.studentName = localStorage.getItem('realName') || ''
-        this.className = localStorage.getItem('className') || ''
-        this.studentNumber = localStorage.getItem('studentNumber') || ''
+    loadUserInfo() {
+      const userInfo = JSON.parse(localStorage.getItem('studentInfo'));
+      if (userInfo && userInfo.realName) {
+        this.studentName = userInfo.realName;
+        this.className = userInfo.className;
+        this.studentNumber = userInfo.studentNumber;
+      } else {
+        this.fetchUserInfo();
       }
+    },
+    fetchUserInfo() {
+      this.$axios.get('/api/student/info')
+        .then(response => {
+          if (response.data.code === 200 && response.data.data) {
+            const userData = response.data.data;
+            this.studentName = userData.realName;
+            this.className = userData.className;
+            this.studentNumber = userData.studentNumber;
+            
+            localStorage.setItem('studentInfo', JSON.stringify(userData));
+          } else {
+            console.error('获取用户信息失败:', response.data.message);
+          }
+        })
+        .catch(error => {
+          console.error('获取用户信息请求失败:', error);
+        });
     },
     navigateTo(path) {
       this.$router.push(path)

@@ -33,7 +33,8 @@ const studentRouter = {
       meta: {
         title: '首页',
         requiresAuth: true,
-        role: 'STUDENT'
+        role: 'STUDENT',
+        keepAlive: true
       }
     },
     {
