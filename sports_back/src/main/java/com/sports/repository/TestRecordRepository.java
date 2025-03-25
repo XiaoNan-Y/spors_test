@@ -97,17 +97,17 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     );
 
     @Query("SELECT DISTINCT t FROM TestRecord t " +
-           "LEFT JOIN t.sportsItem si " +
+           "LEFT JOIN FETCH t.sportsItem " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
-           "AND (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
-           "AND (:keyword IS NULL OR :keyword = '' OR " +
-           "LOWER(t.studentName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(t.studentNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "ORDER BY t.createdAt DESC")
+           "AND (:sportsItemId IS NULL OR t.sportsItem.id = :sportsItemId) " +
+           "AND (:status IS NULL OR :status = '' OR t.status = :status) " +
+           "AND (:studentNumber IS NULL OR :studentNumber = '' OR t.studentNumber = :studentNumber) " +
+           "ORDER BY t.className, t.studentNumber, t.sportsItem.name")
     List<TestRecord> findByFiltersForExport(
         @Param("className") String className,
         @Param("sportsItemId") Long sportsItemId,
-        @Param("keyword") String keyword
+        @Param("status") String status,
+        @Param("studentNumber") String studentNumber
     );
 
     @Query("SELECT DISTINCT tr FROM TestRecord tr " +

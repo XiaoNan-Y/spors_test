@@ -392,28 +392,37 @@ public class TeacherController {
     }
 
     @GetMapping("/test-records/export")
-    @Transactional(readOnly = true)
-    public ResponseEntity<byte[]> exportTestRecords(
+    public ResponseEntity<?> exportTestRecords(
             @RequestParam(required = false) String className,
             @RequestParam(required = false) Long sportsItemId,
-            @RequestParam(required = false) String keyword) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String studentNumber) {
         log.info("开始导出学生成绩记录");
-        log.debug("导出参数: className={}, sportsItemId={}, keyword={}", 
-            className, sportsItemId, keyword);
+        log.debug("导出参数: className={}, sportsItemId={}, status={}, studentNumber={}", 
+            className, sportsItemId, status, studentNumber);
 
-        try (Workbook workbook = new XSSFWorkbook();
-             ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-            
+        Workbook workbook = null;
+        ByteArrayOutputStream outputStream = null;
+
+        try {
             // 查询数据
             List<TestRecord> records = testRecordRepository.findByFiltersForExport(
-                className, sportsItemId, keyword);
-            
-            if (records.isEmpty()) {
-                throw new RuntimeException("没有找到符合条件的记录");
-            }
-            
-            log.info("查询到 {} 条记录准备导出", records.size());
+                className, 
+                sportsItemId, 
+                status,
+                studentNumber
+            );
 
+            log.info("查询到 {} 条记录", records.size());
+            if (records.isEmpty()) {
+                Map<String, String> response = new HashMap<>();
+                response.put("message", "没有找到符合条件的记录");
+                return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(response);
+            }
+
+            workbook = new XSSFWorkbook();
             Sheet sheet = workbook.createSheet("学生成绩记录");
 
             // 创建标题行
@@ -422,7 +431,7 @@ public class TeacherController {
                 "序号", "学号", "学生姓名", "班级", "测试项目", "成绩", "单位", 
                 "状态", "审核意见", "审核时间", "创建时间", "更新时间"
             };
-            
+
             // 设置列宽
             int[] columnWidths = {2500, 4000, 4000, 4000, 4000, 3000, 2500, 3000, 8000, 6000, 6000, 6000};
             for (int i = 0; i < columnWidths.length; i++) {
@@ -434,7 +443,7 @@ public class TeacherController {
             headerStyle.setAlignment(HorizontalAlignment.CENTER);
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
             headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
-            
+
             // 设置标题
             for (int i = 0; i < columnHeaders.length; i++) {
                 Cell cell = headerRow.createCell(i);
@@ -450,8 +459,6 @@ public class TeacherController {
             int rowNum = 1;
             for (TestRecord record : records) {
                 Row row = sheet.createRow(rowNum++);
-                
-                // 使用数组来简化单元格赋值
                 Object[] rowData = {
                     rowNum - 1,
                     record.getStudentNumber(),
@@ -464,10 +471,9 @@ public class TeacherController {
                     record.getReviewComment(),
                     formatDateTime(record.getReviewTime()),
                     formatDateTime(record.getCreatedAt()),
-                    formatDateTime(record.getUpdatedAt())
+                    formatDateTime(record.getUpdateTime())
                 };
-                
-                // 填充每个单元格
+
                 for (int i = 0; i < rowData.length; i++) {
                     Cell cell = row.createCell(i);
                     if (rowData[i] != null) {
@@ -481,27 +487,40 @@ public class TeacherController {
                 }
             }
 
-            // 写入文件
+            outputStream = new ByteArrayOutputStream();
             workbook.write(outputStream);
             byte[] content = outputStream.toByteArray();
 
-            // 设置响应头
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
             String fileName = String.format("学生成绩记录_%s.xlsx", 
                 LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
             headers.setContentDispositionFormData("attachment", 
                 new String(fileName.getBytes("UTF-8"), "ISO-8859-1"));
+            headers.setContentLength(content.length);
 
-            log.info("导出成功，文件名: {}", fileName);
-            return ResponseEntity
-                .ok()
+            return ResponseEntity.ok()
                 .headers(headers)
                 .body(content);
 
         } catch (Exception e) {
-            log.error("导出失败", e);
-            throw new RuntimeException(e.getMessage());
+            log.error("导出失败: ", e);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "导出失败：" + e.getMessage());
+            return ResponseEntity.badRequest()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(response);
+        } finally {
+            try {
+                if (workbook != null) {
+                    workbook.close();
+                }
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+            } catch (Exception e) {
+                log.error("关闭资源失败: ", e);
+            }
         }
     }
 

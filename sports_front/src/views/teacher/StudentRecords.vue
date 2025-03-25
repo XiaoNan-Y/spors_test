@@ -25,9 +25,9 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryParams.status" placeholder="选择状态" clearable>
-            <el-option label="待审核" value="PENDING"></el-option>
-            <el-option label="已通过" value="APPROVED"></el-option>
-            <el-option label="已驳回" value="REJECTED"></el-option>
+            <el-option label="未测试" value="PENDING"></el-option>
+            <el-option label="已测试" value="APPROVED"></el-option>
+            <el-option label="免测" value="EXEMPTED"></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="学号">
@@ -40,6 +40,7 @@
         <el-form-item>
           <el-button type="primary" @click="handleQuery">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
+          <el-button type="success" @click="handleExport">导出成绩</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -380,6 +381,96 @@ export default {
         studentName: '',
         sportsItemName: '',
         score: null
+      }
+    },
+    async handleExport() {
+      try {
+        await this.$confirm('确认要导出当前筛选条件下的成绩数据吗？', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'info'
+        });
+
+        const loading = this.$loading({
+          lock: true,
+          text: '正在导出数据，请稍候...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(0, 0, 0, 0.7)'
+        });
+
+        try {
+          // 构建查询参数
+          const params = {
+            className: this.queryParams.className || '',
+            sportsItemId: this.queryParams.sportsItemId || '',
+            status: this.queryParams.status || '',
+            studentNumber: this.queryParams.studentNumber || ''
+          };
+
+          console.log('导出查询参数:', params);
+
+          // 使用原生fetch API进行下载
+          const response = await fetch(`/api/teacher/test-records/export?className=${encodeURIComponent(params.className)}&sportsItemId=${encodeURIComponent(params.sportsItemId || '')}&status=${encodeURIComponent(params.status)}&studentNumber=${encodeURIComponent(params.studentNumber)}`, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'userId': localStorage.getItem('userId')
+            }
+          });
+
+          // 检查响应状态
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('服务器错误:', errorText);
+            throw new Error(`服务器返回错误: ${response.status} ${response.statusText}`);
+          }
+
+          // 获取内容类型
+          const contentType = response.headers.get('content-type');
+          
+          // 如果是JSON响应（错误消息）
+          if (contentType && contentType.includes('application/json')) {
+            const result = await response.json();
+            this.$message.warning(result.message || '没有找到符合条件的记录');
+            return;
+          }
+
+          // 如果是Excel文件
+          const blob = await response.blob();
+          
+          // 获取文件名
+          let fileName = '学生成绩记录.xlsx';
+          const disposition = response.headers.get('content-disposition');
+          if (disposition && disposition.includes('filename')) {
+            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+            const matches = filenameRegex.exec(disposition);
+            if (matches && matches[1]) {
+              fileName = matches[1].replace(/['"]/g, '');
+            }
+          }
+
+          // 创建下载链接
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+
+          this.$message.success('导出成功');
+        } catch (error) {
+          console.error('导出过程出错:', error);
+          this.$message.error('导出失败：' + (error.message || '未知错误'));
+        } finally {
+          loading.close();
+        }
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('导出操作失败:', error);
+        }
       }
     }
   }
