@@ -5,6 +5,7 @@ import com.sports.entity.ExemptionApplication;
 import com.sports.entity.User;
 import com.sports.service.ExemptionService;
 import com.sports.service.ExcelService;
+import com.sports.repository.TestRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Arrays;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -29,6 +31,9 @@ public class AdminController {
     
     @Autowired
     private ExcelService excelService;
+    
+    @Autowired
+    private TestRecordRepository testRecordRepository;
     
     @GetMapping("/exemptions")
     public Result getExemptions(
@@ -100,6 +105,25 @@ public class AdminController {
             return Result.success(users);
         } catch (Exception e) {
             return Result.error("导入失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/class-names")
+    public Result getClassNames() {
+        try {
+            // 从测试记录中获取所有不同的班级名称
+            List<String> classNames = testRecordRepository.findDistinctClassNames();
+            
+            // 如果没有记录，返回一个空列表
+            if (classNames == null || classNames.isEmpty()) {
+                // 可以添加一些默认班级
+                classNames = Arrays.asList("计科1班", "计科2班", "软工1班", "软工2班");
+            }
+            
+            return Result.success(classNames);
+        } catch (Exception e) {
+            log.error("获取班级列表失败", e);
+            return Result.error("获取班级列表失败：" + e.getMessage());
         }
     }
 } 

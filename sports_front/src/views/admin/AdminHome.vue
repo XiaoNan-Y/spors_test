@@ -71,28 +71,24 @@
       <div slot="header" class="clearfix">
         <span>快捷操作</span>
       </div>
-      <el-row :gutter="20">
-        <el-col :span="6">
-          <el-button type="primary" icon="el-icon-plus" @click="$router.push('/admin/student-manage')">
-            添加学生
-          </el-button>
-        </el-col>
-        <el-col :span="6">
-          <el-button type="success" icon="el-icon-plus" @click="$router.push('/admin/teacher-manage')">
-            添加教师
-          </el-button>
-        </el-col>
-        <el-col :span="6">
-          <el-button type="warning" icon="el-icon-plus" @click="$router.push('/admin/sports-item')">
-            添加项目
-          </el-button>
-        </el-col>
-        <el-col :span="6">
-          <el-button type="info" icon="el-icon-message" @click="$router.push('/admin/notice')">
-            发布公告
-          </el-button>
-        </el-col>
-      </el-row>
+      <div class="quick-actions">
+        <div class="action-card" @click="handleQuickAction('add-record')">
+          <i class="el-icon-plus"></i>
+          <span>录入成绩</span>
+        </div>
+        <div class="action-card" @click="handleQuickAction('review-data')">
+          <i class="el-icon-check"></i>
+          <span>审核数据</span>
+        </div>
+        <div class="action-card" @click="handleQuickAction('review-exemption')">
+          <i class="el-icon-document-checked"></i>
+          <span>免测审核</span>
+        </div>
+        <div class="action-card" @click="handleQuickAction('manage-students')">
+          <i class="el-icon-user"></i>
+          <span>学生管理</span>
+        </div>
+      </div>
     </el-card>
 
     <!-- 最新公告区域 -->
@@ -143,6 +139,24 @@ export default {
         minute: '2-digit',
         hour12: false
       })
+    },
+    handleQuickAction(action) {
+      switch (action) {
+        case 'add-record':
+          this.$router.push('/admin/data-review');
+          break;
+        case 'review-data':
+          this.$router.push('/admin/data-review');
+          break;
+        case 'review-exemption':
+          this.$router.push('/admin/exemption-review');
+          break;
+        case 'manage-students':
+          this.$router.push('/admin/users/student');
+          break;
+        default:
+          console.warn('未定义的操作:', action);
+      }
     }
   }
 }
@@ -271,5 +285,56 @@ export default {
 .notice-time {
   color: #909399;
   font-size: 12px;
+}
+
+.quick-actions {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0;
+}
+
+.action-card {
+  flex: 1;
+  margin: 0 10px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background-color: #409EFF;
+  color: white;
+  border-radius: 4px;
+}
+
+.action-card:nth-child(1) {
+  background-color: #409EFF;
+}
+
+.action-card:nth-child(2) {
+  background-color: #67C23A;
+}
+
+.action-card:nth-child(3) {
+  background-color: #E6A23C;
+}
+
+.action-card:nth-child(4) {
+  background-color: #909399;
+}
+
+.action-card:hover {
+  opacity: 0.8;
+}
+
+.action-card i {
+  font-size: 18px;
+  margin-right: 5px;
+  color: white;
+}
+
+.action-card span {
+  font-size: 14px;
+  color: white;
 }
 </style> 

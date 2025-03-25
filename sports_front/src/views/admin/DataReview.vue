@@ -3,9 +3,6 @@
     <div class="header">
       <h2>数据录入与审核</h2>
       <div class="actions">
-        <el-button type="primary" @click="showAddDialog">
-          <i class="el-icon-plus"></i> 录入成绩
-        </el-button>
         <el-button type="success" @click="exportData">
           <i class="el-icon-download"></i> 导出数据
         </el-button>
@@ -106,80 +103,68 @@
     </div>
 
     <!-- 录入成绩对话框 -->
-    <el-dialog 
-      title="录入成绩" 
-      :visible.sync="addDialog.visible" 
-      width="400px"
-      @closed="handleDialogClosed"
+    <el-dialog
+      title="录入成绩"
+      :visible.sync="addDialog.visible"
+      width="500px"
+      @closed="resetForm('addForm')"
     >
-      <el-form :model="form" :rules="rules" ref="recordForm" label-width="80px">
-        <!-- 学生选择 -->
-        <el-form-item label="学生" prop="studentId">
-          <el-select 
-            v-model="form.studentId" 
-            placeholder="请选择学生" 
+      <el-form :model="addForm" :rules="rules" ref="addForm" label-width="100px">
+        <el-form-item label="学生" prop="studentId" required>
+          <el-select
+            v-model="addForm.studentId"
             filterable
             remote
+            reserve-keyword
+            placeholder="请选择学生"
             :remote-method="searchStudents"
             :loading="studentLoading"
             style="width: 100%"
           >
             <el-option
-              v-for="student in students"
-              :key="student.id"
-              :label="student.realName"
-              :value="student.id"
+              v-for="item in students"
+              :key="item.id"
+              :label="`${item.realName} (${item.studentNumber})`"
+              :value="item.id"
             >
-              <span>{{ student.realName }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">
-                {{ student.username }}
-              </span>
+              <span>{{ item.realName }}</span>
+              <span style="float: right; color: #8492a6; font-size: 13px">{{ item.studentNumber }}</span>
             </el-option>
           </el-select>
         </el-form-item>
-
-        <!-- 测试项目选择 -->
-        <el-form-item label="测试项目" prop="sportsItemId">
-          <el-select 
-            v-model="form.sportsItemId" 
-            placeholder="请选择项目"
-            @change="handleSportsItemChange"
+        
+        <el-form-item label="测试项目" prop="sportsItemId" required>
+          <el-select
+            v-model="addForm.sportsItemId"
+            filterable
+            placeholder="请选择测试项目"
             style="width: 100%"
+            @change="handleSportsItemChange"
           >
             <el-option
               v-for="item in sportsItems"
               :key="item.id"
               :label="item.name"
               :value="item.id"
-            >
-              <span>{{ item.name }}</span>
-              <span style="float: right; color: #8492a6; font-size: 13px">
-                {{ item.unit }}
-              </span>
-            </el-option>
+            ></el-option>
           </el-select>
         </el-form-item>
-
-        <!-- 成绩输入 -->
-        <el-form-item label="成绩" prop="score">
-          <div style="display: flex; align-items: center;">
-            <el-input-number 
-              v-model="form.score" 
-              :precision="2"
-              :step="0.1"
-              :min="0"
-              controls-position="right"
-              style="width: 160px;"
-            ></el-input-number>
-            <span style="margin-left: 10px; color: #606266;">{{ selectedItemUnit }}</span>
-          </div>
+        
+        <el-form-item label="成绩" prop="score" required>
+          <el-input-number
+            v-model="addForm.score"
+            :precision="2"
+            :step="0.01"
+            :min="0"
+            controls-position="right"
+            style="width: 100%"
+          ></el-input-number>
         </el-form-item>
-
-        <!-- 班级选择 -->
+        
         <el-form-item label="班级" prop="className">
-          <el-select v-model="form.className" placeholder="请选择班级" style="width: 100%">
+          <el-select v-model="addForm.className" placeholder="请选择班级" style="width: 100%">
             <el-option
-              v-for="className in classList"
+              v-for="className in classNames"
               :key="className"
               :label="className"
               :value="className"
@@ -187,11 +172,9 @@
           </el-select>
         </el-form-item>
       </el-form>
-
-      <!-- 对话框底部按钮 -->
       <div slot="footer" class="dialog-footer">
         <el-button @click="addDialog.visible = false">取 消</el-button>
-        <el-button type="primary" @click="submitForm">确 定</el-button>
+        <el-button type="primary" @click="submitAdd">确 定</el-button>
       </div>
     </el-dialog>
 
@@ -335,6 +318,7 @@
 </template>
 
 <script>
+import axios from 'axios'
 import { 
   getTestRecords, 
   addTestRecord, 
@@ -364,11 +348,11 @@ export default {
       addDialog: {
         visible: false
       },
-      form: {
+      addForm: {
         studentId: null,
         sportsItemId: null,
-        score: null,
-        className: null
+        score: 0,
+        className: ''
       },
       rules: {
         studentId: [
@@ -378,11 +362,7 @@ export default {
           { required: true, message: '请选择测试项目', trigger: 'change' }
         ],
         score: [
-          { required: true, message: '请输入测试成绩', trigger: 'blur' },
-          { type: 'number', message: '成绩必须为数字', trigger: 'blur' }
-        ],
-        className: [
-          { required: true, message: '请选择班级', trigger: 'change' }
+          { required: true, message: '请输入成绩', trigger: 'blur' }
         ]
       },
       teachers: [],
@@ -418,6 +398,7 @@ export default {
         status: [{ required: true, message: '请选择审核状态', trigger: 'change' }],
         comment: [{ required: true, message: '请输入审核意见', trigger: 'blur' }]
       },
+      classNames: [],
     }
   },
   created() {
@@ -505,37 +486,99 @@ export default {
       return new Date(datetime).toLocaleString()
     },
     showAddDialog() {
-      this.addDialog.visible = true
+      this.addDialog.visible = true;
+      this.loadSportsItems();
+      this.loadClassNames();
     },
     async exportData() {
       try {
-        const response = await exportRecords(this.filters)
-        // 处理导出逻辑
-      } catch (error) {
-        this.$message.error('导出失败：' + error.message)
-      }
-    },
-    handleDialogClosed() {
-      this.$refs.recordForm.resetFields()
-    },
-    submitForm() {
-      this.$refs.recordForm.validate(async (valid) => {
-        if (valid) {
-          try {
-            const response = await addTestRecord(this.form)
-            if (response.data.code === 200) {
-              this.$message.success('成绩录入成功')
-              this.addDialog.visible = false
-              this.handleSearch()
-            } else {
-              this.$message.error(response.data.msg || '录入失败')
-            }
-          } catch (error) {
-            console.error('录入失败:', error)
-            this.$message.error('录入失败')
+        const loading = this.$loading({
+          lock: true,
+          text: '正在导出数据...',
+          spinner: 'el-icon-loading',
+          background: 'rgba(0, 0, 0, 0.7)'
+        });
+        
+        // 获取所有数据进行导出
+        const params = {
+          sportsItemId: this.filters.sportsItemId || null,
+          status: this.filters.status || null,
+          keyword: this.filters.keyword || null
+        };
+        
+        // 使用正确的API路径
+        const baseUrl = process.env.VUE_APP_API_URL || 'http://localhost:8080';
+        const response = await axios({
+          url: `${baseUrl}/api/admin/test-records/export`,
+          method: 'GET',
+          params,
+          responseType: 'blob',
+          headers: {
+            'X-User-ID': localStorage.getItem('userId') || '1'
+          }
+        });
+        
+        // 创建下载链接
+        const blob = new Blob([response.data], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        
+        // 获取文件名
+        let fileName = '体测数据.xlsx';
+        const contentDisposition = response.headers['content-disposition'];
+        if (contentDisposition) {
+          const matches = contentDisposition.match(/filename="(.+?)"/);
+          if (matches && matches.length > 1) {
+            fileName = decodeURIComponent(matches[1]);
           }
         }
-      })
+        
+        // 下载文件
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        loading.close();
+        this.$message.success('数据导出成功');
+      } catch (error) {
+        console.error('导出失败:', error);
+        this.$message.error('导出失败: ' + (error.message || '未知错误'));
+      }
+    },
+    resetForm(formName) {
+      if (this.$refs[formName]) {
+        this.$refs[formName].resetFields();
+      }
+      this.addForm = {
+        studentId: null,
+        sportsItemId: null,
+        score: 0,
+        className: ''
+      };
+    },
+    submitAdd() {
+      this.$refs.addForm.validate(async (valid) => {
+        if (valid) {
+          try {
+            const response = await this.$http.post('/api/admin/test-records', this.addForm);
+            if (response.data.code === 200) {
+              this.$message.success('成绩录入成功');
+              this.addDialog.visible = false;
+              this.handleSearch(); // 刷新列表
+            } else {
+              this.$message.error(response.data.msg || '录入失败');
+            }
+          } catch (error) {
+            console.error('录入失败:', error);
+            this.$message.error('录入失败');
+          }
+        }
+      });
     },
     handleReview(record) {
       this.currentRecord = record
@@ -565,28 +608,30 @@ export default {
       this.detailDialog.visible = true
     },
     handleSportsItemChange(value) {
-      const item = this.sportsItems.find(i => i.id === value)
+      const item = this.sportsItems.find(i => i.id === value);
       if (item) {
-        this.selectedItemUnit = item.unit
+        this.selectedItemUnit = item.unit;
       }
     },
     searchStudents(query) {
-      this.studentLoading = true
-      this.$http.get('/api/admin/students', {
-        params: {
-          query,
-          page: 0,
-          size: 10
-        }
-      }).then(response => {
-        if (response.data.code === 200) {
-          this.students = response.data.data.content || []
-        } else {
-          this.$message.error(response.data.msg || '获取学生列表失败')
-        }
-      }).finally(() => {
-        this.studentLoading = false
-      })
+      if (query) {
+        this.studentLoading = true;
+        this.$http.get('/api/admin/students', {
+          params: {
+            query,
+            page: 0,
+            size: 10
+          }
+        }).then(response => {
+          if (response.data.code === 200) {
+            this.students = response.data.data.content || [];
+          } else {
+            this.$message.error(response.data.msg || '获取学生列表失败');
+          }
+        }).finally(() => {
+          this.studentLoading = false;
+        });
+      }
     },
     handleSizeChange(newSize) {
       this.pageSize = newSize
@@ -614,7 +659,28 @@ export default {
           }
         }
       })
-    }
+    },
+    async loadSportsItems() {
+      try {
+        const response = await this.$http.get('/api/sports-items');
+        if (response.data.code === 200) {
+          this.sportsItems = response.data.data;
+        }
+      } catch (error) {
+        console.error('获取体育项目失败:', error);
+        this.$message.error('获取体育项目失败');
+      }
+    },
+    async loadClassNames() {
+      try {
+        const response = await this.$http.get('/api/admin/class-names');
+        if (response.data.code === 200) {
+          this.classNames = response.data.data;
+        }
+      } catch (error) {
+        console.error('获取班级列表失败:', error);
+      }
+    },
   }
 }
 </script>

@@ -97,7 +97,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     );
 
     @Query("SELECT DISTINCT t FROM TestRecord t " +
-           "LEFT JOIN FETCH t.sportsItem " +
+           "LEFT JOIN FETCH t.sportsItem si " +
            "WHERE (:className IS NULL OR :className = '' OR t.className = :className) " +
            "AND (:sportsItemId IS NULL OR t.sportsItem.id = :sportsItemId) " +
            "AND (:status IS NULL OR :status = '' OR t.status = :status) " +
@@ -153,7 +153,7 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         Pageable pageable
     );
 
-    @Query("SELECT DISTINCT t.className FROM TestRecord t WHERE t.className IS NOT NULL ORDER BY t.className")
+    @Query("SELECT DISTINCT t.className FROM TestRecord t ORDER BY t.className")
     List<String> findDistinctClassNames();
 
     @Query("SELECT tr.className, " +
@@ -255,5 +255,18 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
     List<TestRecord> findByStudentNumberAndStatusWithSportsItem(
         @Param("studentNumber") String studentNumber, 
         @Param("status") String status
+    );
+
+    @Query("SELECT DISTINCT t FROM TestRecord t " +
+           "LEFT JOIN FETCH t.sportsItem si " +
+           "LEFT JOIN FETCH t.student s " +
+           "WHERE (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
+           "AND (:status IS NULL OR t.status = :status) " +
+           "AND (:keyword IS NULL OR t.studentNumber LIKE %:keyword% " +
+           "OR t.studentName LIKE %:keyword%)")
+    List<TestRecord> findAllForExport(
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("status") String status,
+        @Param("keyword") String keyword
     );
 }
