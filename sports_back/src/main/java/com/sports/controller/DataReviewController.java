@@ -37,14 +37,13 @@ public class DataReviewController {
 
     @GetMapping("/test-records")
     public Result getTestRecords(
-            @RequestParam(required = false) Long sportsItemId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         try {
-            log.info("Received parameters - sportsItemId: {}, status: {}, keyword: {}, page: {}, size: {}", 
-                    sportsItemId, status, keyword, page, size);
+            log.info("Received parameters - status: {}, keyword: {}, page: {}, size: {}", 
+                    status, keyword, page, size);
                     
             // 处理空字符串参数
             status = (status != null && status.trim().isEmpty()) ? null : status;
@@ -52,7 +51,7 @@ public class DataReviewController {
             
             PageRequest pageRequest = PageRequest.of(page, size);
             Page<TestRecord> records = testRecordRepository.findAllWithFilters(
-                sportsItemId,
+                null, // 不再使用 sportsItemId 筛选
                 status,
                 keyword,
                 pageRequest
@@ -103,12 +102,11 @@ public class DataReviewController {
 
     @GetMapping("/test-records/export")
     public ResponseEntity<byte[]> exportTestRecords(
-            @RequestParam(required = false) Long sportsItemId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String keyword) {
         try {
-            log.info("Exporting test records - sportsItemId: {}, status: {}, keyword: {}", 
-                    sportsItemId, status, keyword);
+            log.info("Exporting test records - status: {}, keyword: {}", 
+                    status, keyword);
                     
             // 处理空字符串参数
             status = (status != null && status.trim().isEmpty()) ? null : status;
@@ -116,7 +114,7 @@ public class DataReviewController {
             
             // 获取数据
             List<TestRecord> records = testRecordRepository.findAllForExport(
-                sportsItemId,
+                null, // 不再使用 sportsItemId 筛选
                 status,
                 keyword
             );

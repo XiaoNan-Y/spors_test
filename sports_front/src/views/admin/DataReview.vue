@@ -11,16 +11,6 @@
 
     <div class="filters">
       <el-form :inline="true" class="filter-form">
-        <el-form-item label="测试项目">
-          <el-select v-model="filters.sportsItemId" placeholder="选择测试项目" clearable>
-            <el-option
-              v-for="item in sportsItems"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
-          </el-select>
-        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="filters.status" placeholder="选择状态" clearable>
             <el-option label="待审核" value="PENDING" />
@@ -339,8 +329,7 @@ export default {
       currentPage: 1,
       pageSize: 10,
       filters: {
-        sportsItemId: undefined,
-        status: undefined,
+        status: '',
         keyword: ''
       },
       sportsItems: [],
@@ -414,10 +403,9 @@ export default {
     async fetchRecords() {
       try {
         this.loading = true;
-        const { sportsItemId, status, keyword } = this.filters;
+        const { status, keyword } = this.filters;
         const response = await this.$http.get('/api/admin/test-records', {
           params: {
-            sportsItemId,
             status,
             keyword,
             page: this.currentPage - 1,
@@ -457,13 +445,11 @@ export default {
       this.fetchRecords()
     },
     resetFilters() {
-      this.$refs.filterForm.resetFields()
       this.filters = {
-        sportsItemId: undefined,
-        status: undefined,
+        status: '',
         keyword: ''
-      }
-      this.handleSearch()
+      };
+      this.handleSearch(); // 重置后立即搜索
     },
     getStatusType(status) {
       const types = {
@@ -501,7 +487,6 @@ export default {
         
         // 获取所有数据进行导出
         const params = {
-          sportsItemId: this.filters.sportsItemId || null,
           status: this.filters.status || null,
           keyword: this.filters.keyword || null
         };
