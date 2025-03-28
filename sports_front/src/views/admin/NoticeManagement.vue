@@ -294,8 +294,20 @@ export default {
         status: 1,
         createTime: null,
         updateTime: null,
-        createBy: this.$store.state.user.id
+        createBy: null
       }
+      
+      // 安全地获取用户ID
+      if (this.$store.state.user) {
+        this.form.createBy = this.$store.state.user.id
+      } else {
+        // 尝试从localStorage获取
+        const userId = localStorage.getItem('userId')
+        if (userId) {
+          this.form.createBy = parseInt(userId)
+        }
+      }
+      
       this.dialogVisible = true
     },
     handleView(row) {
