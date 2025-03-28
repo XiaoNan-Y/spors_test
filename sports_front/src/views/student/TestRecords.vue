@@ -20,9 +20,11 @@
       <el-table-column prop="sportsItemName" label="体育项目"></el-table-column>
       <el-table-column prop="score" label="成绩"></el-table-column>
       <el-table-column prop="grade" label="等级"></el-table-column>
-      <el-table-column prop="status" label="状态">
+      <el-table-column prop="status" label="状态" width="120">
         <template slot-scope="scope">
-          <el-tag :type="getStatusType(scope.row.status)">{{ getStatusText(scope.row.status) }}</el-tag>
+          <el-tag :type="getStatusType(scope.row.status)">
+            {{ getStatusText(scope.row.status) }}
+          </el-tag>
         </template>
       </el-table-column>
       <el-table-column prop="reviewComment" label="审核意见"></el-table-column>
@@ -124,20 +126,26 @@ export default {
       this.getTestRecords()
     },
     getStatusType(status) {
-      const types = {
-        'PENDING': 'warning',
+      const typeMap = {
+        'TESTED': 'success',
+        'NOT_TESTED': 'info',
+        'EXEMPTED': 'warning',
         'APPROVED': 'success',
-        'REJECTED': 'danger'
-      }
-      return types[status] || 'info'
+        'REJECTED': 'danger',
+        'PENDING': 'warning'
+      };
+      return typeMap[status] || 'info';
     },
     getStatusText(status) {
-      const texts = {
-        'PENDING': '待审核',
+      const statusMap = {
+        'TESTED': '已测试',
+        'NOT_TESTED': '未测试',
+        'EXEMPTED': '免测',
         'APPROVED': '已通过',
-        'REJECTED': '已拒绝'
-      }
-      return texts[status] || status
+        'REJECTED': '已驳回',
+        'PENDING': '待审核'
+      };
+      return statusMap[status] || status;
     },
     formatDateTime(datetime) {
       if (!datetime) return '';
