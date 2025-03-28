@@ -3,8 +3,10 @@ package com.sports.controller;
 import com.sports.common.Result;
 import com.sports.entity.ExemptionApplication;
 import com.sports.entity.User;
+import com.sports.entity.TestRecord;
 import com.sports.service.ExemptionService;
 import com.sports.service.ExcelService;
+import com.sports.service.TestRecordService;
 import com.sports.repository.TestRecordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -34,6 +36,9 @@ public class AdminController {
     
     @Autowired
     private TestRecordRepository testRecordRepository;
+    
+    @Autowired
+    private TestRecordService testRecordService;
     
     @GetMapping("/exemptions")
     public Result getExemptions(
@@ -124,6 +129,23 @@ public class AdminController {
         } catch (Exception e) {
             log.error("获取班级列表失败", e);
             return Result.error("获取班级列表失败：" + e.getMessage());
+        }
+    }
+
+    // 审核成绩记录
+    @PutMapping("/records/{id}/review")
+    public Result reviewRecord(
+        @PathVariable Long id,
+        @RequestParam String status,
+        @RequestParam(required = false) String comment,
+        @RequestAttribute Long userId
+    ) {
+        try {
+            // 将参数 status 传递给 reviewStatus
+            TestRecord updated = testRecordService.reviewRecord(id, status, comment, userId);
+            return Result.success(updated);
+        } catch (Exception e) {
+            return Result.error("审核失败：" + e.getMessage());
         }
     }
 } 

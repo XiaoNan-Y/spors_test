@@ -66,14 +66,26 @@ public class TestRecordServiceImpl implements TestRecordService {
 
     @Override
     public TestRecord save(TestRecord record) {
-        // 验证必填字段
-        if (record.getStudentNumber() == null || record.getSportsItemId() == null || 
-            record.getScore() == null || record.getClassName() == null) {
-            throw new IllegalArgumentException("必填字段不能为空");
+        // 设置测试状态 - 教师端关注
+        if (record.getId() == null) {
+            // 新记录，根据是否有成绩设置状态
+            if (record.getScore() != null && record.getScore() > 0) {
+                record.setStatus("TESTED");  // 已测试
+            } else {
+                record.setStatus("NOT_TESTED");  // 未测试
+            }
+            
+            // 新记录的审核状态始终为待审核 - 管理员端关注
+            record.setReviewStatus("PENDING");
         }
         
-        record.setCreatedAt(LocalDateTime.now());
-        record.setUpdatedAt(LocalDateTime.now());
+        // 设置创建/更新时间
+        LocalDateTime now = LocalDateTime.now();
+        if (record.getCreatedAt() == null) {
+            record.setCreatedAt(now);
+        }
+        record.setUpdatedAt(now);
+        
         return testRecordRepository.save(record);
     }
 
@@ -84,7 +96,15 @@ public class TestRecordServiceImpl implements TestRecordService {
             .orElseThrow(() -> new RuntimeException("记录不存在"));
             
         existing.setScore(record.getScore());
-        existing.setClassName(record.getClassName());  // 更新班级信息而不是测试时间
+        existing.setClassName(record.getClassName());
+        
+        // 更新测试状态
+        if (record.getScore() != null && record.getScore() > 0) {
+            existing.setStatus("TESTED");  // 已测试
+        }
+        
+        // 更新后重置审核状态为待审核
+        existing.setReviewStatus("PENDING");
         existing.setUpdatedAt(LocalDateTime.now());
         
         return testRecordRepository.save(existing);
@@ -92,23 +112,23 @@ public class TestRecordServiceImpl implements TestRecordService {
 
     @Override
     @Transactional
-    public TestRecord reviewRecord(Long id, String status, String reviewComment, Long reviewerId) {
+    public TestRecord reviewRecord(Long id, String reviewStatus, String reviewComment, Long reviewerId) {
         TestRecord record = testRecordRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("记录不存在"));
 
         // 检查是否为待审核状态
-        if (!"PENDING".equals(record.getStatus()) && !"REJECTED".equals(record.getStatus())) {
-            throw new RuntimeException("只能审核待审核或已驳回状态的记录");
+        if (!"PENDING".equals(record.getReviewStatus())) {
+            throw new RuntimeException("只能审核待审核状态的记录");
         }
 
         // 检查成绩是否异常
         boolean isAbnormal = checkAbnormalScore(record);
-        if (isAbnormal && "APPROVED".equals(status)) {
+        if (isAbnormal && "APPROVED".equals(reviewStatus)) {
             throw new RuntimeException("异常成绩不能直接通过审核：" + getAbnormalReason(record));
         }
 
-        // 更新审核信息
-        record.setStatus(status);
+        // 更新审核信息 - 只修改审核状态，不影响测试状态
+        record.setReviewStatus(reviewStatus);
         record.setReviewComment(reviewComment);
         record.setReviewTime(LocalDateTime.now());
         record.setUpdatedAt(LocalDateTime.now());
@@ -363,7 +383,7 @@ public class TestRecordServiceImpl implements TestRecordService {
             log.info("Getting test records with filters: className={}, sportsItemId={}, status={}, studentNumber={}", 
                      className, sportsItemId, status, studentNumber);
                      
-            Page<TestRecord> records = testRecordRepository.findByFilters(
+            Page<TestRecord> records = testRecordRepository.findByFiltersWithReviewStatus(
                 className,
                 sportsItemId,
                 status,

@@ -115,10 +115,10 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
            "LEFT JOIN tr.student s " +
            "WHERE (:className IS NULL OR :className = '' OR tr.className = :className) " +
            "AND (:sportsItemId IS NULL OR si.id = :sportsItemId) " +
-           "AND (:status IS NULL OR :status = '' OR tr.status = :status) " +
+           "AND (:status IS NULL OR :status = '' OR tr.reviewStatus = :status) " +
            "AND (:studentNumber IS NULL OR :studentNumber = '' OR tr.studentNumber = :studentNumber) " +
            "ORDER BY tr.createdAt DESC")
-    Page<TestRecord> findByFilters(
+    Page<TestRecord> findByFiltersWithReviewStatus(
         @Param("className") String className,
         @Param("sportsItemId") Long sportsItemId,
         @Param("status") String status,
@@ -268,5 +268,20 @@ public interface TestRecordRepository extends JpaRepository<TestRecord, Long>, J
         @Param("sportsItemId") Long sportsItemId,
         @Param("status") String status,
         @Param("keyword") String keyword
+    );
+
+    Page<TestRecord> findByReviewStatus(String reviewStatus, Pageable pageable);
+
+    @Query("SELECT t FROM TestRecord t WHERE " +
+           "(:className IS NULL OR t.className = :className) AND " +
+           "(:sportsItemId IS NULL OR t.sportsItem.id = :sportsItemId) AND " +
+           "(:reviewStatus IS NULL OR t.reviewStatus = :reviewStatus) AND " +
+           "(:studentNumber IS NULL OR t.studentNumber = :studentNumber)")
+    Page<TestRecord> findByFilters(
+        @Param("className") String className,
+        @Param("sportsItemId") Long sportsItemId,
+        @Param("reviewStatus") String reviewStatus,
+        @Param("studentNumber") String studentNumber,
+        Pageable pageable
     );
 }

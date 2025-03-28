@@ -49,10 +49,10 @@
         </template>
       </el-table-column>
       <el-table-column prop="score" label="成绩" width="100" />
-      <el-table-column prop="status" label="状态" width="100">
+      <el-table-column prop="reviewStatus" label="审核状态" width="100">
         <template slot-scope="scope">
-          <el-tag :type="getStatusType(scope.row.status)">
-            {{ getStatusText(scope.row.status) }}
+          <el-tag :type="getReviewStatusType(scope.row.reviewStatus)">
+            {{ getReviewStatusText(scope.row.reviewStatus) }}
           </el-tag>
         </template>
       </el-table-column>
@@ -72,8 +72,8 @@
           <el-button
             size="mini"
             type="success"
-            @click="handleReview(scope.row)"
-            v-if="scope.row.status === 'PENDING'"
+            @click="handleReview(scope.row, 'APPROVED')"
+            v-if="scope.row.reviewStatus === 'PENDING'"
           >审核</el-button>
         </template>
       </el-table-column>
@@ -233,8 +233,8 @@
             {{ currentRecord.teacher ? currentRecord.teacher.realName : '-' }}
           </el-descriptions-item>
           <el-descriptions-item label="审核状态">
-            <el-tag :type="getStatusType(currentRecord.status)">
-              {{ getStatusText(currentRecord.status) }}
+            <el-tag :type="getReviewStatusType(currentRecord.reviewStatus)">
+              {{ getReviewStatusText(currentRecord.reviewStatus) }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="审核时间">
@@ -261,8 +261,8 @@
             </el-table-column>
             <el-table-column label="状态" align="center">
               <template slot-scope="scope">
-                <el-tag :type="getStatusType(scope.row.status)">
-                  {{ getStatusText(scope.row.status) }}
+                <el-tag :type="getReviewStatusType(scope.row.reviewStatus)">
+                  {{ getReviewStatusText(scope.row.reviewStatus) }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -451,21 +451,21 @@ export default {
       };
       this.handleSearch(); // 重置后立即搜索
     },
-    getStatusType(status) {
-      const types = {
-        PENDING: 'warning',
-        APPROVED: 'success',
-        REJECTED: 'danger'
-      }
-      return types[status] || 'info'
+    getReviewStatusText(reviewStatus) {
+      const statusMap = {
+        'PENDING': '待审核',
+        'APPROVED': '已通过',
+        'REJECTED': '已驳回'
+      };
+      return statusMap[reviewStatus] || reviewStatus;
     },
-    getStatusText(status) {
-      const texts = {
-        PENDING: '待审核',
-        APPROVED: '已通过',
-        REJECTED: '已驳回'
-      }
-      return texts[status] || status
+    getReviewStatusType(reviewStatus) {
+      const typeMap = {
+        'PENDING': 'warning',
+        'APPROVED': 'success',
+        'REJECTED': 'danger'
+      };
+      return typeMap[reviewStatus] || 'info';
     },
     formatDateTime(datetime) {
       if (!datetime) return ''
@@ -565,8 +565,9 @@ export default {
         }
       });
     },
-    handleReview(record) {
-      this.currentRecord = record
+    handleReview(row, action) {
+      this.currentRecord = row
+      this.reviewForm.status = action
       this.reviewDialog.visible = true
     },
     submitReview() {

@@ -49,8 +49,8 @@ public class TestRecord implements Serializable {
     @Column(nullable = false)
     private Double score;
 
-    @Column(name = "status")
-    private String status;
+    @Column(name = "status", nullable = false)
+    private String status = "PENDING";
 
     @Column(name = "review_comment")
     private String reviewComment;
@@ -70,6 +70,9 @@ public class TestRecord implements Serializable {
     @Column(name = "create_time")
     private LocalDateTime createTime;
 
+    @Column(name = "review_status", nullable = false)
+    private String reviewStatus = "PENDING";
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sports_item_id")
     private SportsItem sportsItem;
@@ -84,6 +87,9 @@ public class TestRecord implements Serializable {
         updateTime = LocalDateTime.now();
         if (status == null) {
             status = "PENDING";
+        }
+        if (reviewStatus == null) {
+            reviewStatus = "PENDING";
         }
     }
 
@@ -167,5 +173,13 @@ public class TestRecord implements Serializable {
     @JsonProperty("updatedAt")
     public void setUpdatedAt(LocalDateTime time) {
         this.updateTime = time;
+    }
+
+    public String getReviewStatus() {
+        return reviewStatus;
+    }
+
+    public void setReviewStatus(String reviewStatus) {
+        this.reviewStatus = reviewStatus;
     }
 } 
