@@ -67,8 +67,8 @@
           <el-button
             size="mini"
             type="primary"
-            @click="handleEdit(scope.row)"
-          >编辑</el-button>
+            @click="handleDetail(scope.row)"
+          >详情</el-button>
           <el-button
             size="mini"
             type="success"
@@ -207,67 +207,34 @@
     </el-dialog>
 
     <!-- 详情对话框 -->
-    <el-dialog 
-      title="成绩详情" 
-      :visible.sync="detailDialog.visible" 
-      width="600px"
+    <el-dialog
+      title="成绩详情"
+      :visible.sync="detailDialog.visible"
+      width="500px"
     >
-      <div v-if="currentRecord" class="detail-container">
+      <div class="record-detail" v-if="currentRecord">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="学生姓名">
-            {{ currentRecord.student ? currentRecord.student.realName : '-' }} ({{ currentRecord.studentNumber || '-' }})
-          </el-descriptions-item>
-          <el-descriptions-item label="学号">
-            {{ currentRecord.student ? currentRecord.student.username : '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="班级">
-            {{ currentRecord.className || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="测试项目">
-            {{ currentRecord.sportsItem ? currentRecord.sportsItem.name : '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="测试成绩">
-            {{ currentRecord.score || '-' }} {{ currentRecord.sportsItem ? currentRecord.sportsItem.unit : '' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="记录教师">
-            {{ currentRecord.teacher ? currentRecord.teacher.realName : '-' }}
-          </el-descriptions-item>
+          <el-descriptions-item label="学生">{{ currentRecord.student ? currentRecord.student.realName : '-' }} ({{ currentRecord.studentNumber || '-' }})</el-descriptions-item>
+          <el-descriptions-item label="测试项目">{{ currentRecord.sportsItem ? currentRecord.sportsItem.name : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="测试成绩">{{ currentRecord.score || '-' }} {{ currentRecord.sportsItem ? currentRecord.sportsItem.unit : '' }}</el-descriptions-item>
+          <el-descriptions-item label="班级">{{ currentRecord.className || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="录入教师">{{ currentRecord.teacher ? currentRecord.teacher.realName : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="录入时间">{{ formatDateTime(currentRecord.createdAt) }}</el-descriptions-item>
           <el-descriptions-item label="审核状态">
             <el-tag :type="getReviewStatusType(currentRecord.reviewStatus)">
               {{ getReviewStatusText(currentRecord.reviewStatus) }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="审核时间">
-            {{ formatDateTime(currentRecord.reviewTime) || '-' }}
-          </el-descriptions-item>
-          <el-descriptions-item label="审核意见" :span="2">
-            {{ currentRecord.reviewComment || '-' }}
-          </el-descriptions-item>
+          <el-descriptions-item label="审核意见">{{ currentRecord.reviewComment || '-' }}</el-descriptions-item>
         </el-descriptions>
-
-        <!-- 如果需要显示历史成绩，可以添加一个表格 -->
-        <div class="history-records" v-if="historyRecords.length > 0">
-          <h3>历史成绩记录</h3>
-          <el-table :data="historyRecords" size="small" border stripe>
-            <el-table-column label="测试时间" align="center">
-              <template slot-scope="scope">
-                {{ formatDateTime(scope.row.testTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="成绩" align="center">
-              <template slot-scope="scope">
-                {{ scope.row.score || '-' }} {{ scope.row.sportsItem ? scope.row.sportsItem.unit : '' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="状态" align="center">
-              <template slot-scope="scope">
-                <el-tag :type="getReviewStatusType(scope.row.reviewStatus)">
-                  {{ getReviewStatusText(scope.row.reviewStatus) }}
-                </el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
+      </div>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="detailDialog.visible = false">关闭</el-button>
+        <el-button 
+          type="primary" 
+          @click="handleReview(currentRecord, 'APPROVED')"
+          v-if="currentRecord && currentRecord.reviewStatus === 'PENDING'"
+        >审核</el-button>
       </div>
     </el-dialog>
 
@@ -633,9 +600,9 @@ export default {
         }
       });
     },
-    handleEdit(record) {
-      this.currentRecord = record
-      this.detailDialog.visible = true
+    handleDetail(record) {
+      this.currentRecord = record;
+      this.detailDialog.visible = true;
     },
     handleSportsItemChange(value) {
       const item = this.sportsItems.find(i => i.id === value);
