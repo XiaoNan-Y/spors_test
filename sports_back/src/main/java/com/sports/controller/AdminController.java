@@ -138,13 +138,18 @@ public class AdminController {
         @PathVariable Long id,
         @RequestParam String status,
         @RequestParam(required = false) String comment,
+        @RequestParam(defaultValue = "false") boolean forceApprove,
         @RequestAttribute Long userId
     ) {
         try {
-            // 将参数 status 传递给 reviewStatus
-            TestRecord updated = testRecordService.reviewRecord(id, status, comment, userId);
+            log.info("审核记录: id={}, status={}, comment={}, forceApprove={}, userId={}", 
+                    id, status, comment, forceApprove, userId);
+            
+            // 调用带有 forceApprove 参数的方法
+            TestRecord updated = testRecordService.reviewRecord(id, status, comment, userId, forceApprove);
             return Result.success(updated);
         } catch (Exception e) {
+            log.error("审核失败", e);
             return Result.error("审核失败：" + e.getMessage());
         }
     }

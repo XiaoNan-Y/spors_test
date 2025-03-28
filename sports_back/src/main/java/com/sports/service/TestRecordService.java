@@ -32,6 +32,8 @@ public interface TestRecordService {
     
     TestRecord reviewRecord(Long id, String status, String reviewComment, Long reviewerId);
     
+    TestRecord reviewRecord(Long id, String reviewStatus, String reviewComment, Long reviewerId, boolean forceApprove);
+    
     boolean checkAbnormalScore(TestRecord record);
     
     String getAbnormalReason(TestRecord record);

@@ -566,28 +566,72 @@ export default {
       });
     },
     handleReview(row, action) {
-      this.currentRecord = row
-      this.reviewForm.status = action
-      this.reviewDialog.visible = true
+      this.currentRecord = row;
+      this.reviewForm.status = action;
+      this.reviewDialog.visible = true;
     },
     submitReview() {
       this.$refs.reviewForm.validate(async (valid) => {
         if (valid) {
           try {
-            const response = await reviewTestRecord(this.currentRecord.id, this.reviewForm)
-            if (response.data.code === 200) {
-              this.$message.success('审核成功')
-              this.reviewDialog.visible = false
-              this.handleSearch()
-            } else {
-              this.$message.error(response.data.msg || '审核失败')
-            }
+            // 先尝试正常审核
+            const response = await this.$http.put(
+              `/api/admin/records/${this.currentRecord.id}/review`, 
+              null,
+              {
+                params: {
+                  status: this.reviewForm.status,
+                  comment: this.reviewForm.comment || ''
+                }
+              }
+            );
+            
+            this.$message.success('审核成功');
+            this.reviewDialog.visible = false;
+            this.handleSearch();
           } catch (error) {
-            console.error('审核失败:', error)
-            this.$message.error('审核失败')
+            // 如果是异常成绩错误
+            if (error.response && error.response.data && 
+                error.response.data.msg && 
+                error.response.data.msg.includes('异常成绩')) {
+              
+              // 显示确认对话框
+              this.$confirm(
+                `${error.response.data.msg}，确定要强制通过审核吗？`, 
+                '异常成绩警告', 
+                {
+                  confirmButtonText: '强制通过',
+                  cancelButtonText: '取消',
+                  type: 'warning'
+                }
+              ).then(async () => {
+                // 用户确认，强制审核
+                const forceResponse = await this.$http.put(
+                  `/api/admin/records/${this.currentRecord.id}/review`, 
+                  null,
+                  {
+                    params: {
+                      status: this.reviewForm.status,
+                      comment: this.reviewForm.comment + ' (强制通过异常成绩)',
+                      forceApprove: true
+                    }
+                  }
+                );
+                
+                this.$message.success('已强制通过审核');
+                this.reviewDialog.visible = false;
+                this.handleSearch();
+              }).catch(() => {
+                this.$message.info('已取消审核');
+              });
+            } else {
+              // 其他错误
+              console.error('审核失败:', error);
+              this.$message.error('审核失败: ' + (error.response?.data?.msg || error.message || '未知错误'));
+            }
           }
         }
-      })
+      });
     },
     handleEdit(record) {
       this.currentRecord = record

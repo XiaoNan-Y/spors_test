@@ -26,7 +26,7 @@
 
         <el-menu-item index="/teacher/exemption-review">
           <i class="el-icon-document-checked"></i>
-          <span slot="title">免测/重测审核</span>
+          <span slot="title">重测申请审核</span>
         </el-menu-item>
 
         <el-menu-item index="/teacher/score-appeals">

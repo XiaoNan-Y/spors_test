@@ -112,7 +112,7 @@ public class TestRecordServiceImpl implements TestRecordService {
 
     @Override
     @Transactional
-    public TestRecord reviewRecord(Long id, String reviewStatus, String reviewComment, Long reviewerId) {
+    public TestRecord reviewRecord(Long id, String reviewStatus, String reviewComment, Long reviewerId, boolean forceApprove) {
         TestRecord record = testRecordRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("记录不存在"));
 
@@ -121,19 +121,25 @@ public class TestRecordServiceImpl implements TestRecordService {
             throw new RuntimeException("只能审核待审核状态的记录");
         }
 
-        // 检查成绩是否异常
+        // 检查成绩是否异常，但如果是强制审核则跳过
         boolean isAbnormal = checkAbnormalScore(record);
-        if (isAbnormal && "APPROVED".equals(reviewStatus)) {
+        if (isAbnormal && "APPROVED".equals(reviewStatus) && !forceApprove) {
             throw new RuntimeException("异常成绩不能直接通过审核：" + getAbnormalReason(record));
         }
 
-        // 更新审核信息 - 只修改审核状态，不影响测试状态
+        // 更新审核信息
         record.setReviewStatus(reviewStatus);
         record.setReviewComment(reviewComment);
         record.setReviewTime(LocalDateTime.now());
         record.setUpdatedAt(LocalDateTime.now());
 
         return testRecordRepository.save(record);
+    }
+
+    @Override
+    @Transactional
+    public TestRecord reviewRecord(Long id, String reviewStatus, String reviewComment, Long reviewerId) {
+        return reviewRecord(id, reviewStatus, reviewComment, reviewerId, false);
     }
 
     @Override
@@ -158,7 +164,7 @@ public class TestRecordServiceImpl implements TestRecordService {
             case "1000米跑":
                 return score < 180 || score > 600;
             case "立定跳远":
-                return score < 1.5 || score > 3.0;
+                return score < 150 || score > 300;
             case "引体向上":
                 return score < 0 || score > 30;
             case "仰卧起坐":
@@ -193,34 +199,35 @@ public class TestRecordServiceImpl implements TestRecordService {
                 break;
             case "1000米跑":
                 if (score < 180) {
-                    return "1000米跑成绩异常：成绩小于3分钟，可能存在记录错误";
+                    return "1000米跑成绩异常：成绩小于180秒，可能存在记录错误";
                 } else if (score > 600) {
-                    return "1000米跑成绩异常：成绩大于10分钟，可能存在记录错误";
+                    return "1000米跑成绩异常：成绩大于600秒，可能存在记录错误";
                 }
                 break;
             case "立定跳远":
-                if (score < 1.5) {
-                    return "立定跳远成绩异常：成绩小于1.5米，可能存在记录错误";
-                } else if (score > 3.0) {
-                    return "立定跳远成绩异常：成绩大于3.0米，可能存在记录错误";
+                if (score < 150) {
+                    return "立定跳远成绩异常：成绩小于150厘米，可能存在记录错误";
+                } else if (score > 300) {
+                    return "立定跳远成绩异常：成绩大于300厘米，可能存在记录错误";
                 }
                 break;
             case "引体向上":
                 if (score < 0) {
-                    return "引体向上成绩异常：成绩不能为负数";
+                    return "引体向上成绩异常：成绩小于0个，可能存在记录错误";
                 } else if (score > 30) {
                     return "引体向上成绩异常：成绩大于30个，可能存在记录错误";
                 }
                 break;
             case "仰卧起坐":
                 if (score < 0) {
-                    return "仰卧起坐成绩异常：成绩不能为负数";
+                    return "仰卧起坐成绩异常：成绩小于0个，可能存在记录错误";
                 } else if (score > 80) {
                     return "仰卧起坐成绩异常：成绩大于80个，可能存在记录错误";
                 }
                 break;
         }
-        return null;
+        
+        return "成绩异常";
     }
 
     @Override
