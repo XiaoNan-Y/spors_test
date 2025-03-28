@@ -4,6 +4,7 @@ import com.sports.common.Result;
 import com.sports.entity.ExemptionApplication;
 import com.sports.entity.RetestApplication;
 import com.sports.entity.User;
+import com.sports.repository.ExemptionApplicationRepository;
 import com.sports.repository.RetestApplicationRepository;
 import com.sports.repository.UserRepository;
 import com.sports.service.ExemptionService;
@@ -35,6 +36,9 @@ public class ExemptionController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ExemptionApplicationRepository exemptionRepository;
 
     // 学生提交申请
     @PostMapping("/student/submit")
@@ -240,14 +244,28 @@ public class ExemptionController {
     }
 
     @DeleteMapping("/student/{id}")
-    public Result deleteApplication(
+    public Result deleteApplicationLegacy(
         @PathVariable Long id,
-        @RequestParam Long studentId
+        @RequestParam(required = false) Long studentId
     ) {
         try {
-            exemptionService.deleteApplication(id, studentId);
-            return Result.success(null);
+            log.info("删除申请 - id: {}, studentId: {}", id, studentId);
+            
+            // 先检查记录是否存在
+            boolean exists = exemptionRepository.existsById(id);
+            
+            if (!exists) {
+                log.info("申请不存在 - id: {}", id);
+                // 返回成功状态，但在消息中说明记录不存在
+                return Result.success("申请不存在或已被删除，无需操作");
+            }
+            
+            // 存在则删除
+            exemptionRepository.deleteById(id);
+            log.info("成功删除申请 - id: {}", id);
+            return Result.success("删除成功");
         } catch (Exception e) {
+            log.error("删除申请失败", e);
             return Result.error("删除申请失败：" + e.getMessage());
         }
     }
@@ -276,6 +294,30 @@ public class ExemptionController {
         } catch (Exception e) {
             log.error("获取重测申请列表失败", e);
             return Result.error("获取重测申请列表失败：" + e.getMessage());
+        }
+    }
+
+    @GetMapping("/debug/check/{id}")
+    public Result checkExemptionExists(@PathVariable Long id) {
+        try {
+            boolean exists = exemptionRepository.existsById(id);
+            
+            if (exists) {
+                ExemptionApplication app = exemptionRepository.findById(id).orElse(null);
+                Map<String, Object> data = new HashMap<>();
+                data.put("exists", true);
+                if (app != null) {
+                    data.put("id", app.getId());
+                    data.put("studentId", app.getStudentId());
+                    data.put("studentName", app.getStudentName());
+                    data.put("status", app.getStatus());
+                }
+                return Result.success(data);
+            } else {
+                return Result.success("记录不存在");
+            }
+        } catch (Exception e) {
+            return Result.error("检查失败: " + e.getMessage());
         }
     }
 } 

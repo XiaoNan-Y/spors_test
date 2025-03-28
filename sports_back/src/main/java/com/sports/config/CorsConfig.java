@@ -1,23 +1,40 @@
 package com.sports.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
 
 @Configuration
-public class CorsConfig implements WebMvcConfigurer {
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")  // 允许所有路径
-                .allowedOrigins(
-                    "http://localhost:8081",
-                    "http://10.90.56.69:8081",
-                    "http://localhost:8080"
-                )
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .exposedHeaders("Authorization", "Content-Disposition")
-                .allowCredentials(true)
-                .maxAge(3600);
+public class CorsConfig {
+
+    @Bean
+    public CorsFilter corsFilter() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        
+        // 允许的来源，包括本地开发环境和您的特定IP
+        config.addAllowedOrigin("http://localhost:8081");
+        config.addAllowedOrigin("http://127.0.0.1:8081");
+        config.addAllowedOrigin("http://10.91.4.89:8081");
+        
+        // 允许凭证
+        config.setAllowCredentials(true);
+        
+        // 允许的HTTP方法
+        config.addAllowedMethod("*");
+        
+        // 允许的头信息
+        config.addAllowedHeader("*");
+        
+        // 暴露的头信息
+        config.addExposedHeader("Authorization");
+        
+        // 预检请求的有效期
+        config.setMaxAge(3600L);
+        
+        source.registerCorsConfiguration("/**", config);
+        return new CorsFilter(source);
     }
 } 
